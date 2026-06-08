@@ -430,16 +430,44 @@ pearlite+bainite together (no separate bainite bay), and `T_eq` is held at the e
 for hypoeutectoid steels. 8-test triad (identity + shape-preservation, the 4140-band
 calibration + 1045 prediction, the divergence integration); full suite **147 green**.
 
-**Next: Phase 2c** — the third triad leg + the banked Phase-2 artifact. A
-microstructure→hardness map (seed a minimal `properties.py`; Phase 3 extends it) → the
-**Jominy hardness-vs-distance** curve + the **1045/4140 hardness benchmark**. The
-calibration stays *validating* rather than curve-fitting because the sub-models are anchored
-separately: 1045 and 4140 are both ~0.4 %C so they **share a quenched-end hardness**
-(validates the hardness model alone) while they **diverge with distance** (the Phase-2b
-hardenability shift, already validated). A clean downstream cross-check is also available —
-compute the ideal critical diameter `D_I` *from* the finished model (ideal-quench a series
-of diameters through the fin solver, find the critical one) and compare to published `D_I`;
-that direction is sound where `D_I → τ` would not be (see Phase 2b). **Deferred from
-Phase 1c:** the experimentation surface (`sweep.py`, `app.py`, `steel.ipynb`) — the
-static-figure floor is banked; the interactive layer is the next viz increment. Nothing
-downstream touches the frozen solver's internals — only its `CONTRACT.md`.
+**Phase 2c is built ✓** (2026-06-08) — `projects/steel/properties.py` + `demo_jominy.py`,
+the microstructure→hardness map and the banked Phase-2 artifact, completing the **third
+(benchmark) leg** of the Phase-2 triad (the analytical + conservation legs were banked
+thermally in 2a). Hardness is a **rule of mixtures over the constituents** (`HV = Σ fᵢ·HVᵢ(C)`
+— exactly the **Maynier 1978** Jominy-prediction structure), computed in **Vickers** (linear,
+additive, soft-defined) and converted to **HRC** only at the boundary via an **ASTM E140**
+table valid ~20–65 HRC (below 20 HRC Rockwell-C is undefined → `nan`, the honest output for a
+soft pearlitic tail — the memory note). The discipline that keeps it *validating* not
+curve-fitting (advisor): every constituent hardness is anchored to an **independent** dataset
+— martensite to the **as-quenched-martensite-vs-%C** curve (Hodge–Orehoski/Krauss),
+ferrite-pearlite to **normalized plain-carbon hardness** (ASM) — so the Jominy curve is a
+genuine cross-source check, *not* tuned to the benchmark it is validated against. v1 drops
+Maynier's cooling-rate and minor-alloy terms (carbon-only constituents → the minimal seed
+Phase 3 extends). **What the benchmark leg actually shows** (recorded precisely, not flattened
+to "validated ✓"): (1) the map in isolation — E140 pairs pinned, the martensite curve hit
+across **0.2–0.8 %C** (the *slope*, since both benchmark steels are ~0.4 %C), pure-phase-exact
++ bounded + monotone mixing, **and** the **50 %-martensite criterion** (Hodge–Orehoski, ~43 HRC
+at 0.4 %C — a *mixture* anchor independent of both endpoints, read at fM = 0.5 regardless of
+spatial position, so it validates the transition decoupled from the kinetics); (2) the
+consequence — 1045 & 4140 (both ~0.4 %C) **share the quenched-end hardness** (~55–57 HRC; full
+martensite, the 2b shift silent → the hardness model alone) and **diverge with distance**, with
+**4140 a quantitative match** to its published deep-hardening plateau (~55 HRC @ ½ in, ~49 @
+1 in) and **1045's endpoints + the divergence matching**. The 1045 **knee sits ~2–3 mm deeper**
+than a lean published 1040 — a *verified*-upstream artifact (re-running 1045 at `T_eq ≈ A₃ =
+780` moves the knee shallower) of the documented Phase-2b **A₁-not-A₃** simplification, **not** a
+hardness-map error: the linear rule cannot mismap the transition without breaking the validated
+quenched-end anchor, so the well-anchored claims are asserted tightly and the 1045 knee
+*position* loosely. 20-test file; full suite **167 green** (16 `test_properties` + 3
+`test_demo_jominy` + the figure `docs/figures/steel-jominy-hardness.png`).
+
+**Next: Phase 3** (structure→properties full + carburizing) — extend `properties.py` with the
+cooling-rate/minor-alloy terms (and **rewire `demo_four_curves` onto it**, retiring the
+`INDICATIVE_HARDNESS` placeholders now superseded but left in place to preserve 2b
+byte-identity), tempering, and a strength/toughness trade-off; then `carburize.py` reunites the
+mass-diffusion face of the spine. **Immediate available cross-check (not required for the
+triad):** the **D_I** downstream check — compute the ideal critical diameter *from* the finished
+model (ideal-quench a series of diameters, find the critical one) vs published `D_I`; that
+direction is sound where `D_I → τ` would not be (see Phase 2b). **Still deferred from Phase 1c:**
+the experimentation surface (`sweep.py`, `app.py`, `steel.ipynb`) — the static-figure floor is
+banked; the interactive layer is the next viz increment. Nothing downstream touches the frozen
+solver's internals — only its `CONTRACT.md`.

@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 from .kinetics import CCurve
 from .pathint import TransformResult
 from .cooling import CoolingPath
+from .properties import JominyHardness, RELIABLE_HRC_MIN
 
 # Stable colours so the legend reads the same across every figure.
 PHASE_COLORS = {
@@ -157,6 +158,68 @@ def plot_microstructure_bars(
     ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.32), ncol=4, fontsize=8,
               frameon=False)
     return ax
+
+
+# Stable per-steel colours for the Jominy artifact (plain-carbon warm, alloy cool).
+STEEL_COLORS = {
+    "1045": "#c0392b",
+    "4140": "#2471a3",
+}
+
+
+def jominy_hardness_figure(
+    curves: dict[str, JominyHardness],
+    references: dict[str, tuple] | None = None,
+    title: str = "Jominy hardenability: a plain-carbon (1045) vs an alloy steel (4140)",
+) -> "plt.Figure":
+    """The banked **Phase-2 artifact**: hardness vs distance from the quenched end.
+
+    ``curves`` maps a steel label → its :class:`~projects.steel.properties.JominyHardness`
+    traverse (from :func:`~projects.steel.properties.jominy_hardness`). Optional
+    ``references`` maps a label → ``(distance_mm, HRC)`` of *published* end-quench points
+    (reference facts, supplied by the demo) drawn as markers for comparison.
+
+    The thesis the figure makes visible: both steels **share the quenched-end hardness**
+    (set by ~0.4 %C martensite — the validated-in-isolation hardness model) and then
+    **diverge with distance** — 4140 holds its deep-hardening plateau while 1045 falls to
+    a soft, *off-HRC-scale* ferrite-pearlite tail (the validated Phase-2b hardenability
+    shift, read out in hardness). Points below ~20 HRC are not plotted on the HRC axis
+    (Rockwell-C is undefined there); the 1045 tail is annotated instead.
+    """
+    fig, ax = plt.subplots(figsize=(9, 6))
+
+    for label, h in curves.items():
+        color = STEEL_COLORS.get(label, None)
+        dist_mm = h.distance * 1000.0
+        finite = np.isfinite(h.HRC)
+        ax.plot(dist_mm[finite], h.HRC[finite], "-o", color=color, ms=4, lw=2.2, label=label)
+        # If the curve runs off the bottom of the HRC scale (soft tail), mark where.
+        if not np.all(finite) and np.any(finite):
+            last = dist_mm[finite][-1]
+            ax.annotate(f"{label} → soft ferrite-pearlite\n(off HRC scale, < {RELIABLE_HRC_MIN:.0f} HRC)",
+                        (last, h.HRC[finite][-1]), textcoords="offset points",
+                        xytext=(6, -28), fontsize=8, color=color,
+                        arrowprops=dict(arrowstyle="->", color=color, lw=1.0))
+
+    if references:
+        for label, (dist_mm, hrc) in references.items():
+            ax.plot(dist_mm, hrc, "s", color=STEEL_COLORS.get(label, "0.4"),
+                    mfc="none", ms=8, mew=1.6,
+                    label=f"{label} (published)")
+
+    ax.axhline(RELIABLE_HRC_MIN, color="0.7", ls=":", lw=1.0)
+    ax.text(ax.get_xlim()[1], RELIABLE_HRC_MIN + 0.4, "HRC scale floor (~20)",
+            va="bottom", ha="right", fontsize=8, color="0.5")
+
+    ax.set_xlabel("distance from quenched end  (mm)")
+    ax.set_ylabel("hardness  (HRC)")
+    ax.set_ylim(RELIABLE_HRC_MIN - 2.0, 66.0)
+    ax.set_xlim(left=0.0)
+    ax.grid(True, alpha=0.25)
+    ax.legend(loc="upper right", fontsize=9, framealpha=0.9)
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    fig.tight_layout()
+    return fig
 
 
 def four_curves_figure(

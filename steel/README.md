@@ -18,6 +18,10 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   `ccurve_for_steel` and `tests/test_hardenability.py`. Composition → a multiplicative
   `τ`-factor on the `CCurve`; `ccurve_for_steel(C, Mn, …)` is the entry point for a
   named steel (bundles A₁, Andrews Mₛ, and the shift).
+- **To work on the hardness map (Phase 2c):** `properties.py` + `tests/test_properties.py`
+  (the map) and `demo_jominy.py` + `tests/test_demo_jominy.py` (the Jominy artifact). It
+  consumes `pathint`'s fractions dict + carbon → HV (rule of mixtures) → HRC. The module
+  docstring is its contract.
 - **To use the diffusion/heat spine:** load `engines/diffusion/CONTRACT.md` only —
   the frozen one-pager. You never need the engine's internals.
 - The Fe-C boundaries here are **parametrized approximations** (linear between
@@ -38,8 +42,8 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 1 | `sweep.py`, `app.py`, `steel.ipynb` | experimentation surface (sweeps, Streamlit, notebook) | planned |
 | 2a | `jominy.py` | end-quench **spatial thermal** model (fin equation; frozen heat solver + lateral loss) → cooling-rate-vs-distance | **built ✓** (2026-06-08) |
 | 2b | `kinetics.py` (`hardenability_factor`, `ccurve_for_steel`) | alloy **hardenability** = a Grossmann-potency multiplicative C-curve time-shift (Mn/Cr/Mo → right; default identity) | **built ✓** (2026-06-08) |
-| 2c | `properties.py` + `jominy.py` | microstructure→hardness map → the Jominy **hardness**-vs-distance curve; 1045/4140 hardness benchmark | planned |
-| 3 | `properties.py`, `carburize.py` | microstructure → hardness (full); case-hardening gradient | planned |
+| 2c | `properties.py`, `demo_jominy.py` | microstructure→hardness map (rule of mixtures) → the Jominy **hardness**-vs-distance artifact; 1045/4140 hardness benchmark | **built ✓** (2026-06-08) |
+| 3 | `properties.py` (extend), `carburize.py` | hardness map + cooling-rate/alloy terms, tempering, strength/toughness; case-hardening gradient | planned |
 | 4 | `calphad_backend.py` | optional pycalphad equilibrium | planned |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
@@ -196,6 +200,67 @@ bar histories, 4140 stays martensitic far deeper (≈ 0.6 at 25 mm) than 1045 (g
 while both share the quenched end. **Scope:** the quenched-end hardness *number* and the
 Jominy hardness-vs-distance artifact + 1045/4140 hardness benchmark are Phase 2c; v1 uses one
 factor for pearlite+bainite (no separate bainite bay) and holds `T_eq` at the eutectoid A₁.
+
+## Phase 2c — microstructure → hardness + the Jominy artifact (`properties.py`, `demo_jominy.py`)
+
+The property model (a **minimal seed**; Phase 3 extends it) that closes the spatial
+chain. Hardness is a **rule of mixtures over the constituents** — `HV = Σ fᵢ·HVᵢ(C)`,
+exactly the structure of the **Maynier (1978)** Jominy-prediction method — computed in
+**Vickers** (linear, additive, defined for soft material) and converted to **HRC** only at
+the reporting boundary via an **ASTM E140** table, valid ~20–65 HRC (below 20 HRC Rockwell-C
+is undefined → `nan`, the honest output for a soft pearlitic tail).
+
+```python
+from projects.steel.jominy import solve_thermal_field, JominyBar, jominy_distances
+from projects.steel.kinetics import ccurve_for_steel
+from projects.steel import properties as prop
+f  = solve_thermal_field(JominyBar(), T0=850.0)                       # one shared thermal field
+cc = ccurve_for_steel(0.40, Mn=0.90, Cr=1.0, Mo=0.20, Si=0.25)       # 4140's C-curve (its M-shift)
+h  = prop.jominy_hardness(f, cc, 0.40, jominy_distances(16))         # → HV, HRC, fM vs distance
+```
+
+The discipline that keeps this *validating*, not curve-fitting: each constituent hardness is
+anchored to an **independent** dataset — martensite to the as-quenched-martensite-vs-%C curve
+(Hodge–Orehoski/Krauss), ferrite-pearlite to normalized plain-carbon hardness (ASM) — so the
+Jominy curve is a genuine cross-check. v1 drops Maynier's cooling-rate and minor-alloy terms
+(carbon-only constituents — the Phase-3 extension).
+
+**Validated** (`test_properties.py`) — the **third leg of the Phase-2 triad** (the analytical
++ conservation legs were banked thermally in 2a):
+- *The map in isolation.* HV→HRC pinned to E140 pairs; martensite hardness on the as-quenched
+  curve across **0.2–0.8 %C** (the slope, not one point — both benchmark steels are ~0.4 %C);
+  rule-of-mixtures exact at a pure phase, bounded, monotone in martensite fraction; and the
+  **50 %-martensite hardness criterion** (Hodge–Orehoski, ~43 HRC at 0.4 %C) — a *mixture*
+  anchor independent of both endpoints, read at fM = 0.5 *regardless of where it falls on a
+  bar*, so it validates the map in the transition decoupled from the kinetics.
+- *The benchmark / consequence.* 1045 and 4140 (both ~0.4 %C) **share the quenched-end
+  hardness** (~55–57 HRC — full martensite, so the hardness model alone speaks, the 2b shift
+  silent) and then **diverge with distance**. Precisely: **4140 is a quantitative match** to
+  its published deep-hardening plateau (~55 HRC at ½ in, ~49 at 1 in); **1045's endpoints and
+  the dramatic divergence match**, with its *knee ~2–3 mm deeper* than a lean published 1040 —
+  a *verified*-upstream artifact (re-running 1045 at `T_eq ≈ A₃ = 780` moves the knee shallower)
+  of the documented Phase-2b A₁-not-A₃ simplification, **not** a hardness-map error (the linear
+  rule cannot mismap the transition without breaking the validated quenched-end anchor).
+
+### The Jominy hardness artifact (`demo_jominy.py`)
+
+```powershell
+pip install -e .[viz]
+python -m projects.steel.demo_jominy
+```
+
+One ASTM A255 bar, two ~0.4 %C steels → the figure
+[`docs/figures/steel-jominy-hardness.png`](../../docs/figures/steel-jominy-hardness.png):
+hardness vs distance for plain-carbon 1045 and low-alloy 4140 overlaid on representative
+published points — they share the quenched end and diverge with depth (4140's deep plateau
+vs 1045's soft, off-HRC-scale tail).
+
+**Two follow-ups for a future session:** (1) `plots.py`'s `INDICATIVE_HARDNESS` placeholders
+(the four-curves figure's "~20/45/63 HRC") are now superseded by `properties.py` but still
+drive that figure — Phase 3 rewires the four-curves demo onto the real model (left as-is now to
+preserve the 2b byte-identity guarantee). (2) **D_I cross-check** (compute the ideal critical
+diameter *from* the finished model — ideal-quench a series of diameters, find the critical one
+— vs published `D_I`) is the immediate next step; it's *available*, not required, for the triad.
 
 ## Run the tests
 
