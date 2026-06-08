@@ -11,9 +11,13 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 - **To work on the kinetics (Phase 1c):** `kinetics.py` + `pathint.py` +
   `cooling.py` and their `tests/`; each module docstring is its contract. They
   consume `fe_c` (the A₁ driving force) and produce phase-fraction dicts.
-- **To work on Jominy (Phase 2):** `jominy.py` + `test_jominy.py`; it loads the
+- **To work on Jominy (Phase 2a):** `jominy.py` + `test_jominy.py`; it loads the
   frozen `engines/diffusion/CONTRACT.md` (heat mode) and reuses `cooling.py`
   constants + `pathint.py`. The module docstring is its contract.
+- **To work on hardenability (Phase 2b):** `kinetics.py`'s `hardenability_factor` +
+  `ccurve_for_steel` and `tests/test_hardenability.py`. Composition → a multiplicative
+  `τ`-factor on the `CCurve`; `ccurve_for_steel(C, Mn, …)` is the entry point for a
+  named steel (bundles A₁, Andrews Mₛ, and the shift).
 - **To use the diffusion/heat spine:** load `engines/diffusion/CONTRACT.md` only —
   the frozen one-pager. You never need the engine's internals.
 - The Fe-C boundaries here are **parametrized approximations** (linear between
@@ -33,7 +37,8 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 1 | `plots.py`, `demo_four_curves.py` | the anchor artifact (four rates → pearlite→martensite); needs `[viz]` extra | **built ✓** |
 | 1 | `sweep.py`, `app.py`, `steel.ipynb` | experimentation surface (sweeps, Streamlit, notebook) | planned |
 | 2a | `jominy.py` | end-quench **spatial thermal** model (fin equation; frozen heat solver + lateral loss) → cooling-rate-vs-distance | **built ✓** (2026-06-08) |
-| 2b/2c | `jominy.py` + `kinetics`/`properties.py` | hardenability alloy C-curve shift + microstructure→hardness → Jominy curve; 1045/4140 benchmark | planned |
+| 2b | `kinetics.py` (`hardenability_factor`, `ccurve_for_steel`) | alloy **hardenability** = a Grossmann-potency multiplicative C-curve time-shift (Mn/Cr/Mo → right; default identity) | **built ✓** (2026-06-08) |
+| 2c | `properties.py` + `jominy.py` | microstructure→hardness map → the Jominy **hardness**-vs-distance curve; 1045/4140 hardness benchmark | planned |
 | 3 | `properties.py`, `carburize.py` | microstructure → hardness (full); case-hardening gradient | planned |
 | 4 | `calphad_backend.py` | optional pycalphad equilibrium | planned |
 
@@ -159,6 +164,38 @@ deliberate: the mid-range knee (~5–25 mm) is where the cooling rate and the al
 thermal error. **Scope:** 2a banks the thermal spine and its analytical +
 conservation + thermal-benchmark legs; the hardenability alloy C-curve shift, the
 microstructure→hardness map, and the 1045/4140 *hardness* benchmark are Phase 2b/2c.
+
+## Phase 2b — alloy hardenability (the C-curve shift)
+
+Mn, Cr, Mo make a steel *hardenable*: they slide the whole TTT C-curve to longer times
+(right), so martensite survives a slower quench — and therefore reaches deeper into a
+section. `kinetics.hardenability_factor(Mn, Ni, Cr, Mo, Si)` returns the multiplicative
+time-shift `M` (`τ → M·τ`, shape- and nose-temperature-preserving); `ccurve_for_steel(C,
+Mn, …)` bundles it with the A₁ ceiling and Andrews Mₛ into a ready `CCurve` for a named steel.
+
+```python
+from projects.steel.kinetics import ccurve_for_steel
+cc_1045 = ccurve_for_steel(0.45, Mn=0.75, Si=0.22)                   # shallow-hardening, M ≈ 1
+cc_4140 = ccurve_for_steel(0.40, Mn=0.90, Cr=1.0, Mo=0.20, Si=0.25)  # deep-hardening,   M ≈ 8
+```
+
+`M` is the **Grossmann** alloy multiplying-factor product taken *relative to the 1080
+reference* (≈ 0.7 % Mn) and raised to one calibrated scale — Grossmann for the *relative*
+element potencies (Cr, Mo ≫ Ni), the scale set so 4140 lands ≈ 8× right (its deep-hardening
+band). Grossmann's own magnitude lives in ideal-critical-*diameter* space, which already
+convolves the thermal physics the fin solver models — so using it for *scale* would
+double-count the mid-range knee Phase 2a froze its thermal curve to protect; the magnitude
+is anchored to the pure-kinetic **TTT nose** instead. **Default identity:** a bare `CCurve`
+keeps `tau_factor = 1.0`, so the four-curves demo is byte-identical; the factory expects
+*real* compositions (for the demo's idealized carbon-only 1080, use the direct constructor).
+
+**Validated** (`test_hardenability.py`): the shift is a clean multiplicative scaling (nose
+*temperature* fixed, time × `M`); 4140 calibrated to band while **1045 falls out ≈ identity
+— a non-circular prediction**; and — the real check on the mechanism — fed the *same* Jominy
+bar histories, 4140 stays martensitic far deeper (≈ 0.6 at 25 mm) than 1045 (gone by ~13 mm)
+while both share the quenched end. **Scope:** the quenched-end hardness *number* and the
+Jominy hardness-vs-distance artifact + 1045/4140 hardness benchmark are Phase 2c; v1 uses one
+factor for pearlite+bainite (no separate bainite bay) and holds `T_eq` at the eutectoid A₁.
 
 ## Run the tests
 

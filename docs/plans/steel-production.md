@@ -409,19 +409,37 @@ the 2b hardenability calibration on purpose (below). The near end runs hot (`h_q
 is the one free thermal knob, martensite-saturated → hardness-irrelevant). 11 tests;
 full suite **139 green**.
 
-**Next: Phase 2b/2c** — the calibration-heavy half and the third triad leg.
-**2b:** hardenability = an alloy shift of the `CCurve` (Mn/Cr/Mo move it right;
-default identity so the 1080 demo stays byte-identical). **2c:** a
-microstructure→hardness map (seed a minimal `properties.py`; Phase 3 extends it) →
-the **Jominy hardness-vs-distance** artifact + the **1045/4140 benchmark**. To keep
-the benchmark *validating* rather than curve-fitting three knobs (h_water, τ-shift,
-hardness) against one curve, exploit the pair's structure — both are ~0.4 %C so they
-share a quenched-end hardness (validates the hardness model alone) and they diverge
-with distance (validates the hardenability shift alone) — and anchor each sub-model
-to its own published data. The subtler confound is that the **mid-range thermal
-accuracy** (not `h_quench`) is what the τ-shift could absorb — both act on the
-~5–25 mm knee — which is exactly why Phase 2a froze its thermal benchmark *before*
-this calibration begins. **Deferred from Phase 1c:** the experimentation surface
-(`sweep.py`, `app.py`, `steel.ipynb`) — the static-figure floor is banked; the
-interactive layer is the next viz increment. Nothing downstream touches the frozen
-solver's internals — only its `CONTRACT.md`.
+**Phase 2b is built ✓** (2026-06-08) — `kinetics.hardenability_factor` +
+`ccurve_for_steel`, the alloy **hardenability** C-curve shift. Mn/Cr/Mo slide the whole
+TTT curve to longer times by a single multiplicative factor `M` on `τ` (shape- *and*
+nose-temperature-preserving): `M` is the **Grossmann** alloy multiplying-factor product
+taken *relative to the 1080 reference composition* and raised to one calibrated scale —
+Grossmann used only for its **relative element potencies**, because its own magnitude lives
+in ideal-critical-*diameter* space (which already convolves the thermal physics the fin
+solver models, so using it for scale would double-count the very 5–25 mm knee Phase 2a
+froze its thermal curve to protect). The reference carries 1080's ~0.7 % Mn, so `M = 1` is
+the *calibrated reference steel* (default `tau_factor = 1.0` → the four-curves demo is
+byte-identical) and a medium-carbon plain steel (1045) is **not** spuriously over-shifted.
+The magnitude is calibrated to a defensible ≈ 8× shift for 4140 (its deep-hardening TTT
+band) under which **1045 falls out ≈ identity — a non-circular prediction**. What is
+*validated* (not merely calibrated) is the **mechanism**: fed the same Jominy bar's cooling
+histories, 4140 stays martensitic far deeper (still ~0.6 at 25 mm) than 1045 (gone by
+~13 mm) while both share the quenched-end martensite — the hardenability divergence, which
+nothing but the shift can produce. v1 simplifications flagged: one factor shifts
+pearlite+bainite together (no separate bainite bay), and `T_eq` is held at the eutectoid A₁
+for hypoeutectoid steels. 8-test triad (identity + shape-preservation, the 4140-band
+calibration + 1045 prediction, the divergence integration); full suite **147 green**.
+
+**Next: Phase 2c** — the third triad leg + the banked Phase-2 artifact. A
+microstructure→hardness map (seed a minimal `properties.py`; Phase 3 extends it) → the
+**Jominy hardness-vs-distance** curve + the **1045/4140 hardness benchmark**. The
+calibration stays *validating* rather than curve-fitting because the sub-models are anchored
+separately: 1045 and 4140 are both ~0.4 %C so they **share a quenched-end hardness**
+(validates the hardness model alone) while they **diverge with distance** (the Phase-2b
+hardenability shift, already validated). A clean downstream cross-check is also available —
+compute the ideal critical diameter `D_I` *from* the finished model (ideal-quench a series
+of diameters through the fin solver, find the critical one) and compare to published `D_I`;
+that direction is sound where `D_I → τ` would not be (see Phase 2b). **Deferred from
+Phase 1c:** the experimentation surface (`sweep.py`, `app.py`, `steel.ipynb`) — the
+static-figure floor is banked; the interactive layer is the next viz increment. Nothing
+downstream touches the frozen solver's internals — only its `CONTRACT.md`.
