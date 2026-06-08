@@ -557,6 +557,45 @@ critical one, vs published `D_I`) — still available. **Still deferred from Pha
 experimentation surface (`sweep.py`, `app.py`, `steel.ipynb`). Nothing downstream touched the frozen
 solver's internals — only its `CONTRACT.md`.
 
-**Next: Phase 4** `calphad_backend.py` — swap the parametrized Fe-C boundaries for pycalphad-computed
-multicomponent equilibria (the bounded deep end; stops hard at the phase-field scope ceiling). Or
-close out the deferred **experimentation surface** (`sweep.py`/`app.py`/`steel.ipynb`) first.
+**Phase 4 is built ✓** (2026-06-08) — `projects/steel/calphad_backend.py` + `calphad_reference.py` +
+`demo_calphad.py`, the **CALPHAD-backed equilibrium** (the bounded deep end). Phase 1b's `fe_c` drew
+the Fe-C diagram as **linear chords** between pinned invariant points; Phase 4 lets the boundaries
+*emerge* from a real **Gibbs-energy minimisation** (**pycalphad**, *consumed not reimplemented* — plan
+§2/§6) and **extends to multicomponent low-alloy steels** `fe_c` cannot represent. pycalphad is an
+**optional `[calphad]` extra**; thermodynamic databases are **never committed** (plan §6): the binary
+**Fe-C** assessment (`cfe_broshe.tdb`) ships *inside* the installed pycalphad, and the multicomponent
+**MatCalc steel database** (`mc_fe_v2.060.tdb`, **openly licensed ODbL 1.0** — TU Wien / Povoden-Karadeniz;
+[[matcalc-mc-fe-database-source]]) is fetched to a gitignored `data/tdb/` by `download_mc_fe()`. Runs on
+**Python 3.14** via two documented, physically-validated shims: overriding pycalphad's conservative
+`symengine<0.14` pin (only 0.14.1 has a 3.14 wheel) and a one-line `type(self).__annotations__` PEP-749
+fix to `Workspace.__init__` (idempotent, applied only when the bug is present — never edits site-packages).
+A minimal `load_clean_database` keeps only the TDB commands pycalphad's *own grammar* parses (dropping
+molar-volume/mobility params + MatCalc metadata + ~8 wildcard-`G` params on excluded auxiliary phases) and
+prunes constituent-less phases; the active phase set is curated and the **corrupted-not-absent**
+`BCC_DISL`/`SIGMA`/`PDMN_B2` (which lost a Gibbs term in preprocessing) are deliberately excluded.
+
+**Option C** (advisor) reconciles "no committed `.tdb`" with the validation-triad-must-be-green doctrine:
+a **frozen reference table** (`calphad_reference.REFERENCE`) is generated *from the exact functions the
+live test calls*, so the committed tests validate `fe_c` against it with **no pycalphad/database needed**
+(they run on a clean checkout — verified), while `importorskip`-gated **live tests** re-derive the table
+and assert it matches by construction (the binary half uses the bundled Fe-C DB → runs whenever pycalphad
+is installed; the multicomponent half skips unless the steel TDB is present). **The non-circularity split
+(advisor, mirrors 2b/2c/3b):** the **invariant points** *emerge* — eutectoid ≈ 726.6 °C / 0.757 %C, γ-max
+≈ 1148 °C / 2.04 %C — but `fe_c` **pins** them by construction, so agreeing there is only a **wiring
+smoke-test** (asserted *loose*); the leg with **teeth** is CALPHAD's *curved* A₃ vs `fe_c`'s *linear chord*
+(**the chord over-predicts by +15→+29 °C across the hypoeutectoid range, worst ~29 °C at 0.3 %C** — the
+quantified "what the parametrization got wrong", asserted in a 20–40 °C band) and the **multicomponent**
+A₁/A₃ that `fe_c` cannot produce: **4140 (Fe-C-Cr-Mn-Mo-Si) → A₁ 720.7 °C, A₃ 771.8 °C** cross-checked
+against the **independent Andrews Ae1/Ae3** empirical formulae (737/762 °C) within **loose ±20 °C bands** —
+*not* a directional claim (CALPHAD and Andrews **straddle** the plain-carbon 727 °C; an alloy A₁ amid stable
+**Cr-carbides** is not a sharp eutectoid). **Conservation:** recombining CALPHAD's phase amounts and per-phase
+compositions recovers the input carbon to **machine precision** (`Σ fᵢ·Cᵢ = C0` — a free check on the
+equilibrium output). Banked artifact: `docs/figures/steel-calphad.png` (two panels — the chord-vs-curve A₃
+overlay + 4140's phase-fractions-vs-T with the **M7C3 chromium carbide** `fe_c` has no key for). The cleaned
+database is cached by path+mtime so the live tests don't re-parse the 460 KB MatCalc file. 13 new tests
+(6 committed always-green + 4 live + 3 demo); full suite **217 green** (210 without the optional stack).
+
+**Next:** Steel's planned phases are complete. Remaining steel options are the long-deferred
+**experimentation surface** (`sweep.py`/`app.py`/`steel.ipynb`, §9) and the *available, not-required*
+**D_I** cross-check; otherwise the program's build order (ARCHITECTURE.md §4) advances to **Microchip**,
+which first **reuses the frozen `engines/diffusion` spine** (dopant profiles = the carbon-diffusion code).

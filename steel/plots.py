@@ -314,6 +314,105 @@ def vickers_to_rockwell_c_safe(HV: np.ndarray) -> np.ndarray:
     return np.asarray(vickers_to_rockwell_c(np.asarray(HV, dtype=float)), dtype=float)
 
 
+# Equilibrium-phase colours for the CALPHAD figure (distinct from the kinetic
+# product palette above — these are equilibrium constituents, not transformation products).
+EQ_PHASE_COLORS = {
+    "ferrite": "#5b8bbf",        # α (BCC) — soft, low-C
+    "austenite": "#e0a458",      # γ (FCC) — the high-T solvent
+    "cementite": "#7d3c98",      # Fe₃C
+    "carbide": "#2e8b57",        # alloy (Cr/Mo) carbides — what fe_c cannot represent
+}
+EQ_PHASE_LABELS = {
+    "ferrite": "ferrite (α)", "austenite": "austenite (γ)",
+    "cementite": "cementite (Fe₃C)", "carbide": "alloy carbide (M₇C₃/M₂₃C₆)",
+}
+
+
+def calphad_figure(binary: dict, alloy: dict | None = None) -> "plt.Figure":
+    """The banked **Phase-4 artifact**: real thermodynamics vs the parametrised diagram.
+
+    Two panels, both consuming plain arrays the demo computed upstream (ADR 0002):
+
+      * **Left — "what the linear chord got wrong".** The hypoeutectoid A₃ transus:
+        ``fe_c``'s straight chord (912 °C → eutectoid) vs the CALPHAD-computed *curved*
+        boundary, with their gap shaded. The chord systematically over-predicts A₃ by
+        tens of °C at mid-carbon — the quantified cost of the parametrisation.
+      * **Right — the multicomponent reach (optional).** Equilibrium phase fractions vs
+        temperature for a low-alloy steel (4140) — ferrite/austenite/cementite **plus a
+        chromium carbide**, across a ferrite+austenite region spanning A₁→A₃. ``fe_c``
+        has no representation for any of this; it is the "extend to low-alloy steels"
+        payoff. Drawn only if ``alloy`` data is supplied (needs the steel database).
+
+    ``binary`` keys: ``carbon`` (wt% array), ``a3_linear`` / ``a3_calphad`` (°C arrays),
+    ``eutectoid``/``gamma_max`` (``(T, C)`` tuples — fe_c-pinned), ``eutectoid_calphad``/
+    ``gamma_max_calphad`` (CALPHAD ``(T, C)``). ``alloy`` keys: ``label``, ``T`` (°C
+    array), ``fractions`` (``{phase: array}``), ``A1``/``A3`` (°C), ``andrews`` (``(Ae1,
+    Ae3)``).
+    """
+    ncols = 2 if alloy is not None else 1
+    fig, axes = plt.subplots(1, ncols, figsize=(13 if alloy else 7, 6),
+                             squeeze=False)
+    ax_d = axes[0][0]
+
+    # -- left panel: linear chord vs curved CALPHAD A₃ --------------------------- #
+    carbon = np.asarray(binary["carbon"])
+    a3_lin = np.asarray(binary["a3_linear"])
+    a3_cal = np.asarray(binary["a3_calphad"])
+    ax_d.fill_between(carbon, a3_cal, a3_lin, color="#d98880", alpha=0.35,
+                      label="parametrisation error")
+    ax_d.plot(carbon, a3_lin, "--", color="#b03a2e", lw=2.0,
+              label="fe_c A₃ (linear chord)")
+    ax_d.plot(carbon, a3_cal, "-", color="#1f4e79", lw=2.4,
+              label="CALPHAD A₃ (computed)")
+    # invariant points (fe_c-pinned filled, CALPHAD open) — the wiring smoke-test
+    T_eu, C_eu = binary["eutectoid"]
+    ax_d.plot([C_eu], [T_eu], "ks", ms=7, label="eutectoid (fe_c)")
+    if "eutectoid_calphad" in binary:
+        Tc, Cc = binary["eutectoid_calphad"]
+        ax_d.plot([Cc], [Tc], "o", mfc="none", mec="k", mew=1.6, ms=9,
+                  label="eutectoid (CALPHAD)")
+    imax = int(np.argmax(a3_lin - a3_cal))
+    ax_d.annotate(f"chord high by {a3_lin[imax] - a3_cal[imax]:.0f} °C",
+                  (carbon[imax], 0.5 * (a3_lin[imax] + a3_cal[imax])),
+                  textcoords="offset points", xytext=(12, 0), fontsize=9,
+                  color="#7b241c", va="center")
+    ax_d.set_xlabel("carbon  (wt %)")
+    ax_d.set_ylabel("temperature  (°C)")
+    ax_d.set_xlim(left=0.0)
+    ax_d.grid(True, alpha=0.25)
+    ax_d.legend(loc="upper right", fontsize=8.5, framealpha=0.9)
+    ax_d.set_title("Fe-C A₃ transus: linear chord vs CALPHAD", fontsize=11)
+
+    # -- right panel: 4140 equilibrium phase fractions vs T ---------------------- #
+    if alloy is not None:
+        ax_a = axes[0][1]
+        T = np.asarray(alloy["T"])
+        order = [p for p in ("ferrite", "austenite", "cementite", "carbide")
+                 if p in alloy["fractions"]]
+        ax_a.stackplot(T, *[np.asarray(alloy["fractions"][p]) for p in order],
+                       colors=[EQ_PHASE_COLORS[p] for p in order],
+                       labels=[EQ_PHASE_LABELS[p] for p in order])
+        for boundary, name, col in ((alloy["A1"], "A₁", "#444"), (alloy["A3"], "A₃", "#444")):
+            ax_a.axvline(boundary, color=col, ls=":", lw=1.2)
+            ax_a.text(boundary, 1.02, f"{name}\n{boundary:.0f} °C", ha="center",
+                      va="bottom", fontsize=8, color=col)
+        Ae1, Ae3 = alloy["andrews"]
+        ax_a.plot([Ae1, Ae3], [0.5, 0.5], "kv", ms=7,
+                  label=f"Andrews Ae₁/Ae₃ ({Ae1:.0f}/{Ae3:.0f} °C)")
+        ax_a.set_xlabel("temperature  (°C)")
+        ax_a.set_ylabel("mass fraction")
+        ax_a.set_ylim(0.0, 1.12)
+        ax_a.set_xlim(T.min(), T.max())
+        ax_a.legend(loc="center left", fontsize=8, framealpha=0.9)
+        ax_a.set_title(f"{alloy['label']} equilibrium phases (CALPHAD) — fe_c cannot reach this",
+                       fontsize=11)
+
+    fig.suptitle("Phase 4: CALPHAD thermodynamics vs the parametrised Fe-C diagram",
+                 fontsize=13, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    return fig
+
+
 def four_curves_figure(
     ccurve: CCurve, paths: list[CoolingPath], results: list[TransformResult],
     hardness: list[tuple[float, float]] | None = None,

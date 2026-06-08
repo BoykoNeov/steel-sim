@@ -39,8 +39,15 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   `kinetics`/`pathint`/`properties` for the gradient. The module docstring is its contract.
 - **To use the diffusion/heat spine:** load `engines/diffusion/CONTRACT.md` only —
   the frozen one-pager. You never need the engine's internals.
-- The Fe-C boundaries here are **parametrized approximations** (linear between
-  pinned invariant points). Phase 4 swaps them for CALPHAD; consumers are unaffected.
+- **To work on CALPHAD equilibrium (Phase 4):** `calphad_backend.py` (the optional
+  pycalphad wrapper) + `calphad_reference.py` (the frozen table) + `tests/test_calphad.py`
+  (committed-vs-live) and `demo_calphad.py` + `tests/test_demo_calphad.py` (the artifact).
+  Needs the `[calphad]` extra (+ a steel TDB via `download_mc_fe()` for the multicomponent
+  half); the committed tests run without it. The module docstring is its contract.
+- The Fe-C boundaries in `fe_c.py` are **parametrized approximations** (linear between
+  pinned invariant points). Phase 4 (`calphad_backend.py`) computes them from real
+  thermodynamics instead — `CalphadBackend().phase_fractions(C0, T)` is a drop-in for
+  `fe_c.phase_fractions` — and quantifies the parametrization's error.
 - **Viz is opt-in** (ADR 0002): `plots.py`/demos need `pip install -e .[viz]`
   (matplotlib); the compute core and the test suite stay headless.
 
@@ -61,7 +68,7 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 3a | `properties.py` (extend), `demo_four_curves.py` (rewire), `cooling.py` | Maynier **minor-alloy + cooling-rate** terms grafted on the 2c carbon baselines; four-curves demo on the **real** hardness model (placeholders retired) | **built ✓** (2026-06-08) |
 | 3b | `properties.py` (extend) | tempering (Hollomon–Jaffe master curve) + ISO-18265 strength + rough strength/toughness trade-off | **built ✓** (2026-06-08) |
 | 3c | `carburize.py`, `demo_carburize.py` | carburizing case-hardening: frozen engine in **mass mode** (erfc carbon profile) → microstructure + hardness gradient (gear-tooth artifact) | **built ✓** (2026-06-08) |
-| 4 | `calphad_backend.py` | optional pycalphad equilibrium | planned |
+| 4 | `calphad_backend.py`, `calphad_reference.py`, `demo_calphad.py` | CALPHAD-backed equilibrium (optional pycalphad): boundaries *emerge* from Gibbs-energy minimisation + multicomponent low-alloy steels; frozen reference table keeps the triad green pycalphad-free | **built ✓** (2026-06-08) |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
 
@@ -420,6 +427,55 @@ the hardness traverse (martensite potential over the as-quenched curve, with the
 band sitting honestly between them). **Scope named:** constant `D` (vs Tibbetts `D(C)`), Dirichlet
 constant potential (vs a Robin finite-surface-reaction / boost-diffuse ramp), and the high-carbon
 extrapolation. The **D_I cross-check** remains *available, not built* (not triad-required).
+
+## Phase 4 — CALPHAD-backed equilibrium (`calphad_backend.py`, `calphad_reference.py`, `demo_calphad.py`)
+
+The **bounded deep end**. Where `fe_c` *draws* the Fe-C diagram as straight chords between
+pinned invariant points, Phase 4 lets the boundaries **emerge** from a real Gibbs-energy
+minimisation (**pycalphad**, *consumed not reimplemented*) — and reaches **multicomponent
+low-alloy steels** `fe_c` cannot represent at all.
+
+```powershell
+pip install symengine==0.14.1; pip install "pycalphad>=0.11" --no-deps   # Py3.14: override the symengine pin
+pip install xarray pint tinydb runtype pandas
+python -c "from projects.steel.calphad_backend import download_mc_fe; download_mc_fe()"  # ODbL steel DB → data/tdb/
+python -m projects.steel.demo_calphad
+```
+
+```python
+from projects.steel.calphad_backend import CalphadBackend, default_steel_database_path
+be = CalphadBackend()                       # bundled Fe-C database
+be.phase_fractions(0.40, 760.0)             # → {ferrite, austenite, cementite} — a drop-in for fe_c
+be.eutectoid()                              # → (~726.6 °C, ~0.757 %C) — emerges, not pinned
+steel = CalphadBackend(default_steel_database_path())          # multicomponent (mc_fe)
+steel.alloy_transus({"C":0.40,"Cr":0.95,"Mn":0.875,"Mo":0.20,"Si":0.25})   # 4140 → (A1, A3)
+```
+
+**Optional, never-committed databases** (plan §6): the binary **Fe-C** (`cfe_broshe.tdb`) ships
+*inside* installed pycalphad; the multicomponent **MatCalc steel** database (`mc_fe_v2.060.tdb`,
+**ODbL 1.0** — openly licensed) is fetched to a gitignored `data/tdb/`. Two documented Python-3.14
+shims (a `symengine<0.14` override and a one-line PEP-749 `Workspace.__init__` fix, never editing
+site-packages) are *validated by the physical results*. `load_clean_database` keeps only the TDB
+commands pycalphad's grammar parses and prunes broken phases; the active phase set is curated and
+corrupted-not-absent phases are excluded.
+
+**Option C** keeps the triad green without a committed `.tdb`: a **frozen reference table**
+(`calphad_reference.REFERENCE`), generated from the exact functions the live test calls, lets the
+**committed tests validate `fe_c` with no pycalphad/database** (clean-checkout green), while
+`importorskip` **live tests** re-derive it and match by construction. **Validated** (`test_calphad.py`):
+- *Analytical limit (loose — a wiring check).* The eutectoid (726.6 °C/0.757 %C) and γ-max
+  (1148 °C/2.04 %C) **emerge** from the free energies near `fe_c`'s pinned values — but since `fe_c`
+  pins them, agreeing there is necessary, not probative.
+- *Conservation.* Recombining CALPHAD's phase amounts × per-phase compositions recovers the input
+  carbon to **machine precision** (`Σ fᵢ·Cᵢ = C0`).
+- *Benchmark — the leg with teeth.* `fe_c`'s **linear A₃ chord over-predicts** the CALPHAD curve by
+  +15→+29 °C (worst ~29 °C at 0.3 %C) — the quantified parametrization error; and **4140**'s A₁/A₃
+  (720.7/771.8 °C) brackets the independent **Andrews** Ae1/Ae3 (737/762 °C) within loose ±20 °C
+  bands (no directional claim — they straddle 727 °C, and the alloy A₁ sits amid stable Cr-carbides).
+
+The banked artifact [`docs/figures/steel-calphad.png`](../../docs/figures/steel-calphad.png) overlays
+the linear-chord-vs-curved A₃ (left) and 4140's equilibrium phase fractions vs temperature — with a
+**chromium carbide** `fe_c` has no key for (right).
 
 ## Run the tests
 
