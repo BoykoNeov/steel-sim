@@ -184,6 +184,7 @@ BigSim/
       diffusion1d.py                # the solver
       CONTRACT.md                   # the FROZEN one-page API (below)
       tests/                        # erfc, conservation, stability — the seal
+  viz/                              # shared viz toolkit (peer to engines/); seeded by rule-of-three
   projects/steel/
     fe_c.py                         # phase diagram + lever rule           (1b)
     kinetics.py                     # Avrami/TTT, additivity/CCT, KM, Andrews Ms (1c)
@@ -194,7 +195,10 @@ BigSim/
     jominy.py                       # end-quench hardenability               (Phase 2)
     carburize.py                    # case-hardening gradient                (Phase 3)
     calphad_backend.py              # optional pycalphad equilibrium         (Phase 4)
-    demo_four_curves.py             # the anchor artifact
+    plots.py                        # steel-local plot helpers (→ promote to viz/ by rule-of-three)
+    app.py                          # thin Streamlit what-if app (sliders → live re-run)
+    steel.ipynb                     # teaching notebook (narrative + ipywidgets sliders)
+    demo_four_curves.py             # the anchor artifact (static figure via plots.py)
     README.md                       # per-module map + per-session load pointer
     tests/
   pyproject.toml
@@ -308,7 +312,33 @@ the spine; they must stay green for any change anywhere downstream.
 
 ---
 
-## 9. Immediate next step (when implementation begins)
+## 9. Visualization & UX
+
+Per ARCHITECTURE.md §12 (and ADR 0002): compute stays headless; these views
+consume the engine's plain outputs.
+
+- **Floor (universal):** the §1 anchor figure — four cooling curves, four
+  microstructures, four hardness numbers — as a static matplotlib figure, the
+  banked Phase-1 artifact (testable against golden/numeric output).
+- **Mechanism view:** the cooling path **animated across the TTT/CCT C-curve**,
+  so the learner *sees* why a fast quench misses the nose and lands in
+  martensite — the "teach the mechanism" payoff (target #1), not a bare hardness
+  readout.
+- **Experimentation:** a `sweep.py`-backed what-if surface delivered two ways — a
+  **teaching notebook** (`steel.ipynb`, narrative + ipywidgets sliders for %C,
+  cooling rate, quench medium) and a **thin Streamlit app** (`app.py`, shareable
+  slider UI). Steel is the program's flagship, so it ships **both** as the
+  demonstrator; later sims build only the interactive surface their pedagogy
+  needs.
+- **Toolkit:** plot primitives start as steel-local `plots.py` and are promoted
+  to the shared `viz/` by rule-of-three (ARCHITECTURE.md §6), like `pathint.py`.
+
+Responsiveness is free here: Phase-1 compute is sub-second (ADR 0001 scope), so
+slider → re-run → re-plot needs no special engineering.
+
+---
+
+## 10. Immediate next step (when implementation begins)
 
 Build **Phase 1a** — `engines/diffusion/diffusion1d.py` plus its erfc /
 conservation / stability tests — and *freeze it*. That single sealed module is
