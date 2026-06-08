@@ -50,6 +50,14 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   `properties`) — no new physics — so its tests check *harness* correctness (cross-consistency,
   monotone trends, conservation passthrough), not new triad legs. The module docstring is its
   contract; `sweep.STEELS` ships the real compositions the surface defaults to.
+- **To work on the teaching notebook (§9 slice 1):** `steel.ipynb` + `tests/test_steel_notebook.py`.
+  A *thin skin* on `sweep`/`properties`/`fe_c` — each compute cell calls the harness **directly**
+  (a static figure per section, embedded in the committed `.ipynb`), with `ipywidgets.interact` as
+  sugar on top; the test executes it headless (`nbclient`) and asserts no cell errors (gated on the
+  `[notebook]` extra **and** a registered kernelspec — a clean checkout skips). Needs
+  `pip install -e .[viz,notebook]`. **Why the direct cells, not interact callbacks:** `interact`
+  captures exceptions in an `Output` widget, so a break in an interact callback never reaches the
+  test — the validated calls must live in plain cells (verified by deliberate break).
 - The Fe-C boundaries in `fe_c.py` are **parametrized approximations** (linear between
   pinned invariant points). Phase 4 (`calphad_backend.py`) computes them from real
   thermodynamics instead — `CalphadBackend().phase_fractions(C0, T)` is a drop-in for
@@ -68,7 +76,8 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 1c | `cooling.py` | cooling-path presets (`h` for furnace/air/oil/water) + Biot validity flag | **built ✓** |
 | 1 | `plots.py`, `demo_four_curves.py` | the anchor artifact (four rates → pearlite→martensite); needs `[viz]` extra | **built ✓** |
 | 1 | `sweep.py`, `demo_sweep.py`, `plots.py` | experimentation surface — the headless sweep/what-if harness (composition × cooling rate) + the comparison artifact | **built ✓** (2026-06-08) |
-| 1 | `app.py`, `steel.ipynb` | interactive surfaces (Streamlit, ipywidgets notebook) layered on the sweep harness | planned |
+| 1 | `steel.ipynb` | interactive **teaching notebook** (narrative + ipywidgets sliders) layered on the sweep harness — §9 **slice 1** | **built ✓** (2026-06-08) |
+| 1 | `app.py` | interactive **Streamlit** what-if app on the same harness — §9 **slice 2** | planned (next) |
 | 2a | `jominy.py` | end-quench **spatial thermal** model (fin equation; frozen heat solver + lateral loss) → cooling-rate-vs-distance | **built ✓** (2026-06-08) |
 | 2b | `kinetics.py` (`hardenability_factor`, `ccurve_for_steel`) | alloy **hardenability** = a Grossmann-potency multiplicative C-curve time-shift (Mn/Cr/Mo → right; default identity) | **built ✓** (2026-06-08) |
 | 2c | `properties.py`, `demo_jominy.py` | microstructure→hardness map (rule of mixtures) → the Jominy **hardness**-vs-distance artifact; 1045/4140 hardness benchmark | **built ✓** (2026-06-08) |
@@ -488,7 +497,7 @@ the linear-chord-vs-curved A₃ (left) and 4140's equilibrium phase fractions vs
 
 ARCHITECTURE.md §1 makes experimentation a core target and ties parameter sweeps to "the
 cheapest verification"; `sweep.py` is the headless harness that delivers it — the foundation
-the interactive surfaces (`app.py`, `steel.ipynb`, planned) import. It is **pure
+the interactive surfaces (`steel.ipynb` ✓, `app.py` planned) import. It is **pure
 re-composition** of the already-validated chain — *no new physics, no new calibration* —
 turning the §1 "cooling curve in, microstructure out" into a sweepable what-if over
 **cooling rate** and **composition**.
@@ -539,6 +548,30 @@ one line per steel, the deep-hardening 4140 staying martensitic down to far lowe
 hardenability), the lean 1045 needing a fast quench, both converging at the saturated ends.
 Right, the consequence — a hardness grid (HRC), soft cells flagged off-scale, severe-quench
 nodes ringed as beyond the 0-D Biot range.
+
+## Interactive surfaces — the teaching notebook (`steel.ipynb`, §9 slice 1)
+
+The *education* artifact (target #1): the sweep harness with the knobs exposed. A guided
+"cooling curve in, microstructure out" narrative — Fe-C endpoint → TTT C-curve → the four-curves
+anchor → composition × cooling-rate hardenability → tempering — with **ipywidgets sliders** (%C,
+grade, quench medium, section size, temper T/t) re-running `sweep`/`properties`/`fe_c` live.
+
+```powershell
+pip install -e .[viz,notebook]        # matplotlib (viz) + ipywidgets + the nbclient/ipykernel run stack
+jupyter lab projects/steel/steel.ipynb    # or: jupyter notebook
+```
+
+It is a **thin skin** (ADR 0002): every *compute* cell calls the validated harness **directly**
+(a static figure per section, embedded in the committed `.ipynb` so it reads on GitHub without a
+kernel), and `interact` is sugar layered on top. That split is load-bearing, not stylistic —
+`ipywidgets.interact` runs its callback inside an `Output` that **captures** exceptions, so a break
+inside an interact callback would never reach the smoke-test; the validated calls therefore live in
+plain cells (verified: a `raise` in a direct cell fails the test, the same `raise` in an interact
+callback does not). The test (`tests/test_steel_notebook.py`) executes the notebook headless
+(`nbclient`, `allow_errors=False`) and asserts **no cell errors** — *that it runs clean*, not a
+physics check (ADR 0002) — gated on the `[notebook]` stack **and a registered kernelspec**, so a
+headless/clean checkout skips rather than errors. The shareable **Streamlit** twin (`app.py`) is
+slice 2 (next).
 
 ## Run the tests
 

@@ -197,7 +197,7 @@ BigSim/
     calphad_backend.py              # optional pycalphad equilibrium         (Phase 4)
     plots.py                        # steel-local plot helpers (→ promote to viz/ by rule-of-three)
     app.py                          # thin Streamlit what-if app (sliders → live re-run)
-    steel.ipynb                     # teaching notebook (narrative + ipywidgets sliders)
+    steel.ipynb                     # teaching notebook (narrative + ipywidgets sliders)  ✓ slice 1
     demo_four_curves.py             # the anchor artifact (static figure via plots.py)
     README.md                       # per-module map + per-session load pointer
     tests/
@@ -358,18 +358,29 @@ existing figures (`four_curves_figure`, `sweep_comparison_figure`, `plot_ttt`). 
 the validation; a UI layer's test is an **execution smoke-test**, not new physics. Three
 slices, in order:
 
-1. **Slice 1 — `steel.ipynb` (the teaching notebook).** The *education* artifact (target #1):
-   a guided "cooling curve in, microstructure out" narrative — Fe-C endpoint → TTT C-curve →
-   the four-curves anchor → composition × cooling-rate hardenability → tempering — with
-   ipywidgets sliders (%C, alloy, quench medium, section size, temper T/t) re-running the
-   harness live. **Banks:** a committed, executable `.ipynb`. **Dep:** `ipywidgets` (a new
-   `[notebook]` extra; matplotlib already in `[viz]`). **Discipline:** every *compute* cell
-   calls a `sweep`/`properties` function directly (so the numbers are already-validated and
-   the notebook stays a thin widget skin); the **test** runs the notebook top-to-bottom
-   headless (`nbclient`/`nbconvert --execute`, `importorskip`-gated) and asserts no cell
-   errors — *that it executes clean*, not a physics check.
+1. **Slice 1 — `steel.ipynb` (the teaching notebook).** **Built ✓** (2026-06-08). The
+   *education* artifact (target #1): a guided "cooling curve in, microstructure out" narrative —
+   Fe-C endpoint → TTT C-curve → the four-curves anchor → composition × cooling-rate
+   hardenability → tempering — with ipywidgets sliders (%C, grade, quench medium, section size,
+   temper T/t) re-running the harness live. **Banked:** the committed, executed `.ipynb` (its
+   five static figures embedded so it reads on GitHub without a kernel). **Dep:** the new
+   `[notebook]` extra (`ipywidgets` + the `nbclient`/`nbformat`/`ipykernel` run machinery;
+   matplotlib stays in `[viz]`, so the runnable combo is `.[viz,notebook]`). **Discipline as
+   built:** every *compute* cell calls a `sweep`/`properties`/`fe_c` function **directly** (a
+   static figure per section), with `interact` layered on top as sugar — because
+   `ipywidgets.interact` runs its callback inside an `Output` that *captures* exceptions, so a
+   broken call inside an interact callback would never reach `nbclient`; the load-bearing compute
+   therefore lives in plain cells (verified empirically: a `raise` in a direct cell turns the
+   test red, the same `raise` in an interact callback stays green). The **test**
+   (`tests/test_steel_notebook.py`) executes the notebook top-to-bottom headless (`nbclient`,
+   `allow_errors=False`) and asserts no cell errors — gated on the `[notebook]` stack **and a
+   registered kernelspec** (separate from `pip install ipykernel`), so a clean/headless checkout
+   *skips*, never errors. The `%C` slider drives only the Fe-C *equilibrium* cell (where minor
+   alloy genuinely doesn't enter); the cooling/hardness/temper sections use the `STEELS` grade
+   dropdown to avoid the documented "leaner hypothetical" (`Mn = 0`) trap. *That it executes
+   clean*, not a physics check.
 
-2. **Slice 2 — `app.py` (the thin Streamlit what-if app).** The shareable slider UI — the same
+2. **Slice 2 — `app.py` (the thin Streamlit what-if app).** *Next.* The shareable slider UI — the same
    harness re-skinned for the web: sidebar sliders → the mechanism view (paths on the TTT), the
    microstructure bars, the hardness readout, the temper curve, and a two-steel side-by-side
    (`composition_sweep`/`sweep_grid`). Cheap after slice 1 (same compute wiring; only the widget
@@ -655,11 +666,30 @@ the harness tests assert (the near-tautological "exact re-composition" leg has t
 so steels **share the martensitic fast end and pearlitic slow end and diverge only in the middle**,
 hence the alloy-hardenability trend is read at an *intermediate* medium (oil), never the saturated
 ends; (3) trends asserted **in HV** (defined everywhere; HRC is `nan` on soft tails) and Biot
-carried per-`Outcome` with `warn_biot=False` (no per-node warning spew). 17 new tests; full suite
-**234 green** (226 without the optional pycalphad/viz stack). **Still planned (§9):** the
-*interactive* surfaces — `app.py` (Streamlit) and `steel.ipynb` (ipywidgets) — layered on this harness.
+carried per-`Outcome` with `warn_biot=False` (no per-node warning spew). 17 new tests.
 
-**Next:** Steel's planned phases (1–4) are complete and the experimentation surface is **begun**
-(`sweep.py` ✓; `app.py`/`steel.ipynb` remain). The *available, not-required* **D_I** cross-check is
-still open; otherwise the program's build order (ARCHITECTURE.md §4) advances to **Microchip**, which
-first **reuses the frozen `engines/diffusion` spine** (dopant profiles = the carbon-diffusion code).
+**§9 slice 1 — `steel.ipynb` (teaching notebook) built ✓** (2026-06-08) — `projects/steel/steel.ipynb`
++ `tests/test_steel_notebook.py` + the `[notebook]` extra. The *education* artifact (target #1): a
+guided narrative — Fe-C endpoint → TTT C-curve → four-curves anchor → composition × cooling-rate
+hardenability → tempering — with **ipywidgets** sliders (%C, grade, quench medium, section size,
+temper T/t) re-running the `sweep`/`properties`/`fe_c` harness live. It is a **thin skin** (ADR
+0002): each *compute* cell calls the validated harness **directly** (one static figure per section,
+executed-and-embedded so the `.ipynb` reads on GitHub without a kernel), with `interact` layered on
+top as sugar. **Crux (advisor):** `ipywidgets.interact` runs its callback inside an `Output` that
+**captures** exceptions, so a broken call inside an interact callback never reaches `nbclient` — the
+load-bearing compute therefore lives in *plain* cells (verified empirically: a `raise` in a direct
+cell fails the test, the same `raise` in an interact callback does not). The test executes the
+notebook **in a fresh subprocess** (process-isolation dodges a Windows pyzmq/asyncio Proactor-loop
+deadlock that a pre-existing in-process event loop can trigger; `subprocess.run(timeout=…)` wall-clocks
+a hang into a fast failure instead of wedging the suite) and asserts no cell errors — gated on the
+`[notebook]` stack **and a registered kernelspec** (so a clean/headless checkout *skips*, never
+errors). The `%C` slider drives only the Fe-C *equilibrium* cell; cooling/hardness/temper use the
+`STEELS` grade dropdown, dodging the documented `Mn = 0` "leaner-hypothetical" trap. 1 new test
+(execution smoke-test, not a physics check); full suite **235 green** (226 without the optional
+pycalphad/viz/notebook stack).
+
+**Next:** Steel's planned phases (1–4) are complete and the §9 surface is **2/3 done** (`sweep.py` ✓,
+`steel.ipynb` ✓ slice 1; **`app.py` Streamlit = slice 2**, next). The *available, not-required* **D_I**
+cross-check is still open; after slice 2 the program's build order (ARCHITECTURE.md §4) advances to
+**Microchip**, which first **reuses the frozen `engines/diffusion` spine** (dopant profiles = the
+carbon-diffusion code).
