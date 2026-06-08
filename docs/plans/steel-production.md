@@ -43,6 +43,13 @@ see §5 scope ceiling and §6 terms of use.
 > Microchip or Planet are allowed to depend on it. Its CONTRACT.md is the
 > one-page unit of context those projects load instead of this codebase.
 
+**Language & performance.** Default is Python + NumPy/SciPy. A profiled hotspot
+is accelerated in place (Numba/Cython, or JAX/CuPy on GPU); if an engine ever
+needs a compiled core it is reimplemented behind its frozen `CONTRACT.md`
+without touching consumers. Engine contracts stay data-oriented (arrays in/out)
+so that same boundary doubles as the seam for deferred heavy modules. Full
+rationale + alternatives: `docs/decisions/0001-language-and-performance.md`.
+
 ---
 
 ## 3. Phases — each a complete, demonstrable artifact
