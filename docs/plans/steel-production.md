@@ -460,14 +460,44 @@ quenched-end anchor, so the well-anchored claims are asserted tightly and the 10
 *position* loosely. 20-test file; full suite **167 green** (16 `test_properties` + 3
 `test_demo_jominy` + the figure `docs/figures/steel-jominy-hardness.png`).
 
-**Next: Phase 3** (structure→properties full + carburizing) — extend `properties.py` with the
-cooling-rate/minor-alloy terms (and **rewire `demo_four_curves` onto it**, retiring the
-`INDICATIVE_HARDNESS` placeholders now superseded but left in place to preserve 2b
-byte-identity), tempering, and a strength/toughness trade-off; then `carburize.py` reunites the
-mass-diffusion face of the spine. **Immediate available cross-check (not required for the
-triad):** the **D_I** downstream check — compute the ideal critical diameter *from* the finished
-model (ideal-quench a series of diameters, find the critical one) vs published `D_I`; that
-direction is sound where `D_I → τ` would not be (see Phase 2b). **Still deferred from Phase 1c:**
-the experimentation surface (`sweep.py`, `app.py`, `steel.ipynb`) — the static-figure floor is
-banked; the interactive layer is the next viz increment. Nothing downstream touches the frozen
-solver's internals — only its `CONTRACT.md`.
+**Phase 3a is built ✓** (2026-06-08) — `properties.py` extended with **Maynier's (1978)
+minor-alloy + cooling-rate terms**, and `demo_four_curves` **rewired** onto the real model
+(the `INDICATIVE_HARDNESS` placeholders retired). It is an honest **graft**, not a switch to
+"pure Maynier": 2c's *independently-anchored* carbon baselines (Hodge–Orehoski √C martensite;
+normalized-plain-carbon linear ferrite-pearlite — the latter is the load-bearing quenched-end
+anchor) are kept, and only Maynier's **non-carbon deltas** are bolted on — the minor-alloy
+contribution and the cooling-rate slope, the latter **reference-zeroed** about a normalizing
+`Vr` (the cooling rate at 700 °C, °C/h — one metric shared with `jominy` via
+`cooling.cooling_rate_through`). **The seam (advisor):** every constituent gains optional
+`comp`/`Vr` args whose defaults reproduce the 2c carbon-only value *byte-for-byte*, so the frozen
+2c benchmark is unchanged and the new terms fire only where a caller passes them (the demos, the
+case-hardening gradient). **What it buys** (validated in `test_properties.py`, anchored to the
+cited Maynier coefficients — Scand. J. Metall. 33:98, 2004): the **minor-alloy term on martensite
+closes the 4140≈1045 quenched-end gap** (was ~1.4 HRC, 4140 reading low on its 0.05 % less C;
+now ~0.5 HRC, matching published "≈ equal") and lifts 1045's soft tail from off-HRC-scale onto
+~20 HRC (≈ published 22). **Deliberate, measured honesty (advisor):** martensite is kept
+**cooling-rate-independent** (its small `21·log Vr` term dropped — protects the quenched-end
+anchor); the FP cooling-rate term is **small for plain carbon** (~10 HV/decade → furnace-vs-air
+pearlite differ only ~5 HV, *not* oversold as resolving coarse/fine — that is the kinetic
+`formation_T`); and **bainite's terms are deferred** (Maynier's bainite coefficients are large and
+fit against his own `−323+185C` base, so grafting them onto 2c's placeholder baseline gives
+unphysical `> martensite` hardness — bainite stays the least-anchored constituent). The four-curves
+figure now reports a **real ~29 → ~62 HRC** property span. The banked Jominy figure is kept
+**carbon-only** on purpose — it is a prior phase's deliverable (reworking it mid-3a is scope creep)
+and the alloy-lifted 1045 tail sits right on the 240 HV / 20 HRC scale floor, so a demo assertion
+there would be resolution-fragile; the gap-closing is validated in `test_properties` instead.
+*Domain limit named:* because FP gets the alloy boost but bainite is deferred, the m>b>fp ordering
+is guaranteed only for low-to-medium-alloy steels (a ~2 % Si steel could under-rank bainite). 9 new
+tests; full suite **176 green**.
+
+**Next: Phase 3b** (tempering + strength/toughness), then **Phase 3c** `carburize.py` — the
+mass-diffusion face of the spine: reuse the **frozen** `engines/diffusion` in mass mode for the
+surface-enriched erfc carbon profile, then feed position-dependent `%C` through the kinetics +
+property model → a case-hardened hardness gradient (the carburized gear-tooth artifact). 3c carries
+the plan's **named Phase-3 triad**: erfc case depth ∝ √(Dt) (exact for isothermal carburizing —
+constant `D`, Dirichlet surface), carbon mass uptake = ∫ surface flux dt (the engine's frozen
+`total`/`flux` identity), and published case-depth/surface-hardness tables. **Available cross-check
+(not triad-required):** the **D_I** downstream check (ideal-quench a series of diameters, find the
+critical one, vs published `D_I`) — sound where `D_I → τ` would not be (Phase 2b). **Still deferred
+from Phase 1c:** the experimentation surface (`sweep.py`, `app.py`, `steel.ipynb`). Nothing
+downstream touches the frozen solver's internals — only its `CONTRACT.md`.

@@ -45,14 +45,12 @@ MEDIUM_COLORS = {
     "water": "#2471a3",
 }
 
-# Indicative hardness by dominant constituent — a qualitative cue for the "four
-# materials" point, NOT a validated property model (that is Phase 3, properties.py).
-INDICATIVE_HARDNESS = {
-    "pearlite": "soft\n~20 HRC",
-    "bainite": "hard\n~45 HRC",
-    "martensite": "very hard\n~63 HRC",
-    "retained_austenite": "soft",
-}
+
+def _hardness_label(HV: float, HRC: float) -> str:
+    """Bar annotation: real Vickers + Rockwell-C (``off HRC`` where HRC is undefined)."""
+    if np.isfinite(HRC):
+        return f"{HV:.0f} HV\n{HRC:.0f} HRC"
+    return f"{HV:.0f} HV\n(off HRC)"
 
 
 def plot_ttt(
@@ -127,13 +125,16 @@ def plot_cooling_paths(
 
 
 def plot_microstructure_bars(
-    ax: "plt.Axes", paths: list[CoolingPath], results: list[TransformResult]
+    ax: "plt.Axes", paths: list[CoolingPath], results: list[TransformResult],
+    hardness: list[tuple[float, float]] | None = None,
 ) -> "plt.Axes":
     """Stacked phase-fraction bars per medium — the four resulting microstructures.
 
-    One stacked bar per cooling path (pearlite/bainite/martensite/retained γ); the
-    dominant constituent and its *indicative* hardness annotate each bar. Hardness
-    here is a qualitative cue only — Phase 3 (``properties.py``) is the real model.
+    One stacked bar per cooling path (pearlite/bainite/martensite/retained γ). If
+    ``hardness`` is supplied (a list of ``(HV, HRC)`` per path, from the validated
+    :mod:`properties` model — Phase 3), each bar is annotated with its **real** hardness;
+    otherwise the bars carry no hardness label (the figure still builds). Hardness is
+    computed upstream (ADR 0002: viz consumes validated numbers, never derives them).
     """
     order = ["pearlite", "bainite", "martensite", "retained_austenite"]
     names = [p.name for p in paths]
@@ -145,10 +146,10 @@ def plot_microstructure_bars(
                label=PHASE_LABELS[phase], width=0.7, edgecolor="white", linewidth=0.5)
         bottom += vals
 
-    for xi, r in zip(x, results):
-        dom = r.dominant()
-        ax.text(xi, 1.02, INDICATIVE_HARDNESS[dom], ha="center", va="bottom",
-                fontsize=7.5, color="0.25", rotation=0)
+    if hardness is not None:
+        for xi, (HV, HRC) in zip(x, hardness):
+            ax.text(xi, 1.02, _hardness_label(HV, HRC), ha="center", va="bottom",
+                    fontsize=7.5, color="0.2", rotation=0, fontweight="bold")
 
     ax.set_xticks(x)
     ax.set_xticklabels(names)
@@ -224,17 +225,19 @@ def jominy_hardness_figure(
 
 def four_curves_figure(
     ccurve: CCurve, paths: list[CoolingPath], results: list[TransformResult],
+    hardness: list[tuple[float, float]] | None = None,
     title: str = "One steel (AISI 1080), four cooling rates: soft pearlite → very-hard martensite",
 ) -> "plt.Figure":
     """Assemble the Phase-1 **anchor artifact**: paths-on-TTT + microstructure bars.
 
-    Left, the mechanism (cooling paths crossing the C-curve); right, the
-    consequence (the microstructures and their indicative hardness). The two panels
-    are the demo's whole thesis — same austenite, a spectrum of fates from soft
-    pearlite to file-hard martensite, set by which side of the nose the cooling path
-    falls. (Four cooling rates yield three distinct phase constitutions — furnace
-    and air both give pearlite, differing only in formation temperature/coarseness;
-    the title names the property span, which is the honest dramatic claim.)
+    Left, the mechanism (cooling paths crossing the C-curve); right, the consequence
+    (the microstructures and — Phase 3 — their **real** computed hardness, if ``hardness``
+    is supplied as ``(HV, HRC)`` per path from :mod:`properties`). The two panels are the
+    demo's whole thesis — same austenite, a spectrum of fates from soft pearlite to
+    file-hard martensite, set by which side of the nose the cooling path falls. (Four
+    cooling rates yield three distinct phase constitutions — furnace and air both give
+    pearlite, differing only in formation temperature/coarseness; the title names the
+    property span, which is the honest dramatic claim.)
     """
     fig, (ax_ttt, ax_bars) = plt.subplots(1, 2, figsize=(13, 6),
                                           gridspec_kw={"width_ratios": [1.6, 1.0]})
@@ -242,8 +245,8 @@ def four_curves_figure(
     plot_cooling_paths(ax_ttt, paths, results)
     ax_ttt.set_title("cooling paths across the TTT C-curve", fontsize=11)
 
-    plot_microstructure_bars(ax_bars, paths, results)
-    ax_bars.set_title("resulting microstructure", fontsize=11)
+    plot_microstructure_bars(ax_bars, paths, results, hardness=hardness)
+    ax_bars.set_title("resulting microstructure & hardness", fontsize=11)
 
     fig.suptitle(title, fontsize=13, fontweight="bold")
     fig.tight_layout(rect=(0, 0, 1, 0.96))

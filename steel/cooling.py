@@ -95,6 +95,33 @@ def lumped_time_constant(
     return rho * cp * L_c / h
 
 
+# Reference temperature for the cooling-rate metric (°C). 700 °C is the classic
+# read-off for the Jominy distance↔rate equivalence and Maynier's ``Vr`` (the
+# diffusional-transformation region just below A₁) — the same temperature
+# :meth:`jominy.ThermalField.cooling_rate` uses, so the 0-D and spatial models share
+# one cooling-rate definition (the Phase-3 property model's :math:`V_r`).
+COOLING_RATE_REF_T = 700.0
+
+
+def cooling_rate_through(t: np.ndarray, T: np.ndarray, T_ref: float = COOLING_RATE_REF_T) -> float:
+    """Cooling rate ``|dT/dt|`` (K/s) as a history ``(t, T)`` cools through ``T_ref`` (°C).
+
+    The crossing time is interpolated from the (monotone-cooling) history and the
+    variable-spacing derivative ``dT/dt`` read there — **the identical definition**
+    :meth:`projects.steel.jominy.ThermalField.cooling_rate` applies per spatial
+    position, so the 0-D demo paths and the Jominy bar report cooling rate the same
+    way (the single-metric discipline the Phase-3 property model needs). Returns
+    ``nan`` if the path never cools through ``T_ref`` (e.g. it started below it).
+    """
+    t = np.asarray(t, dtype=float)
+    T = np.asarray(T, dtype=float)
+    below = np.flatnonzero(T <= T_ref)
+    if below.size == 0 or below[0] == 0:
+        return float("nan")                  # never cooled through T_ref (or started below)
+    t_cross = float(np.interp(T_ref, T[::-1], t[::-1]))   # reverse to ascending for interp
+    return abs(float(np.interp(t_cross, t, np.gradient(T, t))))
+
+
 @dataclass(frozen=True)
 class CoolingPath:
     """A named cooling history: the ``(t, T)`` arrays plus the parameters behind them.
@@ -115,6 +142,15 @@ class CoolingPath:
     def lumped_valid(self) -> bool:
         """Whether the lumped-capacitance assumption holds (``Bi < 0.1``)."""
         return self.biot < 0.1
+
+    def cooling_rate(self, T_ref: float = COOLING_RATE_REF_T) -> float:
+        """Cooling rate ``|dT/dt|`` (K/s) as this path cools through ``T_ref`` (°C).
+
+        The Maynier/Jominy ``Vr`` metric (:func:`cooling_rate_through`), read off this
+        path's ``(t, T)`` history — what the Phase-3 property model consumes to apply
+        the cooling-rate hardness term. ``nan`` if the path never reaches ``T_ref``.
+        """
+        return cooling_rate_through(self.t, self.T, T_ref)
 
 
 def cooling_path(

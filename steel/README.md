@@ -22,6 +22,11 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   (the map) and `demo_jominy.py` + `tests/test_demo_jominy.py` (the Jominy artifact). It
   consumes `pathint`'s fractions dict + carbon → HV (rule of mixtures) → HRC. The module
   docstring is its contract.
+- **To work on the full property model (Phase 3a):** `properties.py` (the Maynier graft —
+  `MAYNIER_ALLOY`/`MAYNIER_VR_SLOPE` + the optional `comp`/`Vr` args on every constituent),
+  `cooling.py`'s `cooling_rate_through`/`CoolingPath.cooling_rate` (the `Vr` metric), and
+  `demo_four_curves.py` (`compute_hardness`, rewired onto the real model). Tests:
+  `tests/test_properties.py`'s Phase-3a section + `tests/test_demo_four_curves.py`.
 - **To use the diffusion/heat spine:** load `engines/diffusion/CONTRACT.md` only —
   the frozen one-pager. You never need the engine's internals.
 - The Fe-C boundaries here are **parametrized approximations** (linear between
@@ -43,7 +48,9 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 2a | `jominy.py` | end-quench **spatial thermal** model (fin equation; frozen heat solver + lateral loss) → cooling-rate-vs-distance | **built ✓** (2026-06-08) |
 | 2b | `kinetics.py` (`hardenability_factor`, `ccurve_for_steel`) | alloy **hardenability** = a Grossmann-potency multiplicative C-curve time-shift (Mn/Cr/Mo → right; default identity) | **built ✓** (2026-06-08) |
 | 2c | `properties.py`, `demo_jominy.py` | microstructure→hardness map (rule of mixtures) → the Jominy **hardness**-vs-distance artifact; 1045/4140 hardness benchmark | **built ✓** (2026-06-08) |
-| 3 | `properties.py` (extend), `carburize.py` | hardness map + cooling-rate/alloy terms, tempering, strength/toughness; case-hardening gradient | planned |
+| 3a | `properties.py` (extend), `demo_four_curves.py` (rewire), `cooling.py` | Maynier **minor-alloy + cooling-rate** terms grafted on the 2c carbon baselines; four-curves demo on the **real** hardness model (placeholders retired) | **built ✓** (2026-06-08) |
+| 3b | `properties.py` (extend) | tempering (Hollomon–Jaffe), strength/toughness trade-off | planned |
+| 3c | `carburize.py` | case-hardening carbon gradient (frozen mass-diffusion spine) → hardness traverse | planned |
 | 4 | `calphad_backend.py` | optional pycalphad equilibrium | planned |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
@@ -129,8 +136,11 @@ microstructures (the consequence). **Honest result:** four rates give **three**
 distinct phase constitutions — furnace & air both pearlite (differing only in
 formation temperature → coarseness), oil a bainite-dominant *mixture* (plain 1080
 resists clean continuous-cooling bainite; austempering would be needed), water
-martensite. The drama is the **property span** (~20 → ~63 HRC indicative). Coarse/
-fine pearlite resolution and real hardness numbers are Phase 3.
+martensite. **Phase 3a** put **real** `properties.py` hardness on the bars (the old
+indicative placeholders are retired): ~29–30 HRC pearlite → 52 HRC bainite-mixture →
+~62 HRC martensite, a ~30 HRC span. The furnace-vs-air pearlite difference is only
+~5 HV — the honest size of the plain-carbon cooling-rate term (the coarseness is the
+kinetic `formation_T`, not a big hardness gap).
 
 ## Phase 2a — Jominy spatial thermal model (`jominy.py`)
 
@@ -255,12 +265,41 @@ hardness vs distance for plain-carbon 1045 and low-alloy 4140 overlaid on repres
 published points — they share the quenched end and diverge with depth (4140's deep plateau
 vs 1045's soft, off-HRC-scale tail).
 
-**Two follow-ups for a future session:** (1) `plots.py`'s `INDICATIVE_HARDNESS` placeholders
-(the four-curves figure's "~20/45/63 HRC") are now superseded by `properties.py` but still
-drive that figure — Phase 3 rewires the four-curves demo onto the real model (left as-is now to
-preserve the 2b byte-identity guarantee). (2) **D_I cross-check** (compute the ideal critical
-diameter *from* the finished model — ideal-quench a series of diameters, find the critical one
-— vs published `D_I`) is the immediate next step; it's *available*, not required, for the triad.
+**Follow-ups:** (1) ~~`plots.py`'s `INDICATIVE_HARDNESS` placeholders drive the four-curves
+figure~~ — **done (Phase 3a):** the placeholders are retired and the four-curves demo now shows
+the real `properties.py` hardness. (2) **D_I cross-check** (compute the ideal critical diameter
+*from* the finished model — ideal-quench a series of diameters, find the critical one — vs
+published `D_I`) is still *available*, not required, for the triad.
+
+## Phase 3a — the full property model (Maynier minor-alloy + cooling-rate terms)
+
+2c's constituent hardnesses were the moderate-cooling-rate, **carbon-only** limit. Phase 3a
+adds the two terms Maynier's full method carries — a **minor-alloy** term (Si/Mn/Ni/Cr/Mo
+raise each constituent) and a **cooling-rate** term (faster cooling → finer product → harder,
+via `Vr`, the cooling rate at 700 °C). It is an honest **graft**, not a switch to "pure
+Maynier": we keep 2c's *independently-anchored* carbon baselines and bolt on only Maynier's
+*non-carbon* deltas (the cooling-rate one **reference-zeroed** about a normalizing rate). The
+new `comp`/`Vr` args are **optional and default to the 2c carbon-only value byte-for-byte**, so
+the frozen 2c benchmark is unchanged — the new terms fire only where a caller passes them.
+
+```python
+from projects.steel import properties as prop
+prop.vickers_martensite(0.40)                              # 2c value (carbon-only)
+prop.vickers_martensite(0.40, comp={"Mn": 0.9, "Cr": 1.0, "Si": 0.25})   # + Maynier alloy delta
+prop.vickers_ferrite_pearlite(0.80, Vr=80000.0)           # + cooling-rate term (°C/h at 700 °C)
+```
+
+What it buys (all validated in `test_properties.py`'s Phase-3a section, anchored to the cited
+Maynier coefficients): the **minor-alloy term on martensite closes the gap 2c flagged** — 4140's
+quenched end came out ~1 HRC below 1045's; with Cr/Mn it lands ~equal, matching published. The
+**cooling-rate term on ferrite-pearlite** is honestly *small* for plain carbon (~10 HV/decade →
+furnace-vs-air pearlite differ ~5 HV). Deliberate omissions: **martensite is kept
+cooling-rate-independent** (protects the validated quenched-end anchor), and **bainite's terms
+are deferred** (Maynier's bainite coefficients are too large to graft onto the placeholder
+baseline — it would exceed martensite). The banked Jominy figure stays **carbon-only** on
+purpose — it is a prior phase's deliverable (reworking it mid-3a is scope creep) and the
+alloy-lifted 1045 tail sits right on the 240 HV / 20 HRC scale floor, so a demo assertion
+there would be resolution-fragile (the gap-closing is validated in `test_properties` instead).
 
 ## Run the tests
 

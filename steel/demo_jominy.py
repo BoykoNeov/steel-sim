@@ -14,14 +14,19 @@ This is the banked Phase-2 artifact and the integration test of the whole spatia
 (``ccurve_for_steel``, the hardenability shift) → ``properties`` (microstructure →
 hardness) → ``plots``.
 
-Honest scope: the constituent hardnesses are carbon-only (Maynier's cooling-rate and
-minor-alloy terms are Phase 3), so 4140's quenched end reads ~1 HRC below 1045's (its
-0.05 % less carbon, with the Cr/Mn boost omitted) where published data has them ~equal —
-within the as-quenched curve's own spread. And the 1045 *knee* sits a few mm deeper than a
-lean published 1040: partly this 1045's 0.75 % Mn (genuinely more hardenable), partly the
-documented Phase-2b kinetics simplification (``T_eq`` held at the eutectoid A₁, not A₃, for
-hypoeutectoid steel). The robust, validated claims — the shared quenched end, the 4140
-deep-hardening plateau, and the dramatic divergence — are what the figure is for.
+Honest scope — and why this banked artifact stays **carbon-only**: it is the **banked Phase-2
+benchmark figure**, so reworking it mid-Phase-3a would be scope creep on a prior phase's
+deliverable. Phase 3a's Maynier minor-alloy term *does* improve these steels — it closes the
+4140≈1045 quenched-end gap (Cr/Mn boost; 4140 read ~1 HRC low on its 0.05 % less C) and lifts
+1045's soft tail from off-HRC-scale onto ~20 HRC (≈ published 22) — but those are validated as
+refinements in ``test_properties``, *not* folded in here, for two reasons: (1) the lifted 1045
+tail sits right on the 240 HV / 20 HRC E140 floor, so a demo assertion there would be
+**resolution-fragile** (nan vs ~20 HRC flips with cell count); and (2) keeping the figure
+carbon-only leaves its independent-anchor cross-check at its cleanest. The 1045 *knee* sitting a
+few mm deeper than a lean published 1040 is the documented Phase-2b kinetics simplification
+(``T_eq`` at the eutectoid A₁, not A₃, for hypoeutectoid steel). The robust, validated claims —
+the shared quenched end, the 4140 deep-hardening plateau, and the dramatic divergence — are what
+the figure is for.
 
 Run headless (saves the figure, prints the table):
 

@@ -66,22 +66,46 @@ validated against:
   * **Retained austenite** :data:`HV_RETAINED_AUSTENITE` — soft, a small constant; it
     is a minor fraction in these steels and carbon-insensitive at this fidelity.
 
-Known v1 simplifications (scope, not bugs — the Phase-3 extensions)
--------------------------------------------------------------------
-Maynier's full equations also carry a **cooling-rate** term (finer pearlite/lower
-bainite at faster cooling → harder) and **minor-alloy** terms (Si/Mn/Cr/Mo raise each
-constituent a little). Both are dropped in v1: the constituent hardnesses are the
-moderate-cooling-rate, carbon-only limit. Consequences, flagged honestly:
+The Phase-3 extension: Maynier's minor-alloy + cooling-rate terms (a graft)
+---------------------------------------------------------------------------
+2c's constituent hardnesses were the **moderate-cooling-rate, carbon-only** limit.
+Maynier's full equations also carry a **minor-alloy** term (Si/Mn/Ni/Cr/Mo raise each
+constituent) and a **cooling-rate** term (faster cooling → finer product → harder).
+Phase 3 adds them — but as an honest **graft**, not a wholesale switch to Maynier
+(see :func:`vickers_martensite` and the :data:`MAYNIER_ALLOY` block): we keep 2c's
+independently-anchored carbon baselines (the load-bearing martensite anchor especially)
+and bolt on only Maynier's *non-carbon* deltas, the cooling-rate one **reference-zeroed**
+so the 2c value is recovered exactly when no cooling rate is supplied. The new ``comp``
+and ``Vr`` arguments are **optional and default to the 2c carbon-only value byte-for-byte**
+— so every Phase-2c call (and its frozen benchmark) is unchanged; the new terms fire only
+where a caller passes composition / cooling rate (the demos, the case-hardening gradient).
+What this buys, flagged honestly:
 
-  * The two benchmark steels are **both ≈ 0.4 % C**, so neither exercises the *slope*
-    of HVᵢ(C); the slope is tested separately at 0.8 % C (1080 → ~65 HRC martensite).
-  * Dropping the minor-alloy terms makes 4140's quenched end come out ~1 HRC *below*
-    1045's (it has 0.05 % less C and the Cr/Mn boost is omitted), where published data
-    has them ~equal — within the as-quenched curve's own ±2 HRC spread, and exactly the
-    Phase-3 refinement.
-  * Coarse vs fine pearlite (the furnace-vs-air distinction :mod:`pathint` carries as
-    ``formation_T``) maps to *one* ferrite-pearlite hardness here — the cooling-rate
-    term is what would separate them. Phase 3.
+  * The **minor-alloy term on martensite** closes the gap 2c flagged: 4140's quenched
+    end came out ~1 HRC *below* 1045's (0.05 % less C, Cr/Mn boost omitted) where
+    published data has them ~equal. With Si/Mn/Cr added it lands ~equal — a concrete
+    benchmark *improvement*, not a refit (the carbon anchor is untouched).
+  * The **cooling-rate term on ferrite-pearlite** separates furnace- from air-pearlite
+    — but for *plain carbon* its slope is only ~10 HV/decade, so the effect is a few HV
+    (measured, reported honestly; the coarseness itself is the kinetic ``formation_T``
+    distinction, not a large hardness one). It matters more for the soft alloy tails.
+  * **Martensite is kept cooling-rate-independent** (its small Maynier ``21·log Vr`` term
+    dropped): as-quenched hardness is carbon-set above the critical rate, and this is
+    exactly what protects the validated Jominy quenched-end anchor.
+  * **Bainite's** alloy/Vr terms are **deferred**: Maynier's bainite coefficients are
+    large and fit against his own ``−323+185C`` base, so grafting them onto 2c's
+    placeholder baseline gives unphysical (> martensite) hardness. Bainite stays
+    carbon-only — still the least-anchored constituent.
+
+**Domain limit of the alloyed model (the bainite-deferral consequence).** Because
+ferrite-pearlite gets a minor-alloy boost but bainite does not, the physical ordering
+``martensite > bainite > ferrite-pearlite`` (the convex bound the rule of mixtures relies
+on) is only guaranteed for **low-to-medium-alloy continuous-cooling steels**. For a heavily
+alloyed steel — e.g. a ~2 % Si spring steel, whose FP alloy delta reaches ~130 HV — the
+boosted ferrite-pearlite can overtake the un-boosted bainite, under-ranking bainite. This
+cannot bite the four-curves demo (carbon-only 1080 → no FP boost) or the 1045/4140 benchmark
+(bainite-poor), which is why it is invisible in the green suite; it is the honest edge of the
+graft and is resolved only when bainite's own Maynier terms are added (a later phase).
 
 Units & conventions
 -------------------
@@ -125,54 +149,146 @@ BAIN_HV_SLOPE = 380.0
 # Retained austenite: soft, a small minor fraction; carbon-insensitive at this fidelity.
 HV_RETAINED_AUSTENITE = 250.0
 
+# --------------------------------------------------------------------------- #
+# 1b. Maynier (1978) minor-alloy + cooling-rate terms — the Phase-3 graft
+# --------------------------------------------------------------------------- #
+# The canonical Maynier (1978) Vickers equations (Vr = cooling rate at 700 °C in
+# °C/h; reproduced e.g. in Scand. J. Metallurgy 33:98, 2004):
+#
+#   HV_M   = 127 + 949C + 27Si + 11Mn + 8Ni + 16Cr + 21·log10(Vr)
+#   HV_B   = -323 + 185C + 330Si + 153Mn + 65Ni + 144Cr + 191Mo
+#                 + (89 + 53C - 55Si - 22Mn - 10Ni - 20Cr - 33Mo)·log10(Vr)
+#   HV_F+P = 42 + 223C + 53Si + 30Mn + 12.6Ni + 7Cr + 19Mo
+#                 + (10 - 19Si + 4Ni + 8Cr + 130V)·log10(Vr)
+#
+# THE GRAFT (honest scope — *not* "pure Maynier"): we keep 2c's INDEPENDENTLY-anchored
+# carbon baselines above (Hodge-Orehoski √C martensite; normalized-plain-carbon linear
+# ferrite-pearlite) and bolt on ONLY Maynier's *non-carbon* deltas — the minor-alloy
+# contribution and the cooling-rate slope. Maynier fit his alloy/Vr coefficients jointly
+# with his own (linear-in-C) carbon terms, so these deltas are borrowed, not derived: a
+# defensible teaching graft, not a self-consistent refit. The dicts below hold only the
+# non-carbon coefficients; the carbon coefficient is *not* used (our √C / linear baseline
+# is). Deliberate omissions (see the module docstring): martensite carries no Vr term
+# (cooling-rate-independent — protects the quenched-end anchor), and bainite carries
+# neither (its Maynier coefficients are too large to graft onto the placeholder baseline).
+MAYNIER_ALLOY = {            # non-carbon composition coefficients (HV per wt%)
+    "martensite":       {"Si": 27.0, "Mn": 11.0, "Ni": 8.0, "Cr": 16.0},
+    "ferrite_pearlite": {"Si": 53.0, "Mn": 30.0, "Ni": 12.6, "Cr": 7.0, "Mo": 19.0},
+}
+MAYNIER_VR_SLOPE = {         # cooling-rate slope (HV per decade of Vr); composition-dependent
+    "ferrite_pearlite": {"const": 10.0, "Si": -19.0, "Ni": 4.0, "Cr": 8.0, "V": 130.0},
+}
 
-def vickers_martensite(C: float) -> float:
-    """As-quenched martensite hardness ``HV = 92 + 828·√C`` (Vickers), carbon ``C`` (wt%).
+# The reference cooling rate (°C/h at 700 °C) the carbon baselines correspond to — a
+# representative **normalizing** (air-cool) rate, since the ferrite-pearlite baseline is
+# the *normalized* plain-carbon hardness. The Vr term is reference-zeroed about this, so
+# Vr = MAYNIER_VR_REF (or Vr = None) recovers the 2c baseline exactly. For plain carbon
+# the FP slope is only ~10 HV/decade, so an order-of-magnitude choice here shifts the soft
+# pearlite end by just a few HV — it does not manufacture drama.
+MAYNIER_VR_REF = 5000.0      # °C/h
+SECONDS_PER_HOUR = 3600.0    # K/s → °C/h for callers that measure dT/dt in K/s
+
+
+def _alloy_delta(constituent: str, comp: dict | None) -> float:
+    """Maynier minor-alloy hardness delta (HV) for ``constituent`` given a comp dict.
+
+    ``comp`` maps element symbol → wt% (Si/Mn/Ni/Cr/Mo). ``None`` or empty → 0.0 (the
+    2c carbon-only value). Only the elements with a coefficient for this constituent
+    contribute; missing elements are zero.
+    """
+    if not comp:
+        return 0.0
+    coeffs = MAYNIER_ALLOY.get(constituent, {})
+    return sum(coeffs.get(el, 0.0) * comp.get(el, 0.0) for el in coeffs)
+
+
+def _vr_delta(constituent: str, comp: dict | None, Vr: float | None) -> float:
+    """Maynier reference-zeroed cooling-rate delta (HV): ``slope·(log10 Vr − log10 Vr_ref)``.
+
+    ``Vr`` is the cooling rate at 700 °C in **°C/h**; ``None`` → 0.0 (no correction → the
+    2c baseline exactly). The slope is composition-dependent for ferrite-pearlite. A
+    constituent with no Vr slope (martensite, bainite — deliberately) → 0.0.
+    """
+    if Vr is None:
+        return 0.0
+    slope_coeffs = MAYNIER_VR_SLOPE.get(constituent)
+    if slope_coeffs is None:
+        return 0.0
+    comp = comp or {}
+    slope = slope_coeffs["const"] + sum(
+        c * comp.get(el, 0.0) for el, c in slope_coeffs.items() if el != "const"
+    )
+    return slope * (math.log10(Vr) - math.log10(MAYNIER_VR_REF))
+
+
+def vickers_martensite(C: float, comp: dict | None = None, Vr: float | None = None) -> float:
+    """As-quenched martensite hardness ``HV = 92 + 828·√C (+ Maynier alloy delta)`` (Vickers).
 
     The benchmark-critical constituent: at a Jominy quenched end the structure is fully
-    martensitic, so the hardness there *is* this value. A ``√C`` fit to the canonical
-    as-quenched-martensite-vs-carbon data (Hodge–Orehoski / Krauss) — an independent
-    dataset, so hitting the published Jominy J1 hardness is genuine cross-source
+    martensitic, so the hardness there *is* this value. The carbon term is a ``√C`` fit to
+    the canonical as-quenched-martensite-vs-carbon data (Hodge–Orehoski / Krauss) — an
+    independent dataset, so hitting the published Jominy J1 hardness is genuine cross-source
     agreement, not a refit. Saturating: ~56 HRC at 0.4 % C, ~65 HRC by 0.8 % C.
+
+    Phase 3 adds the optional **minor-alloy** delta (``comp`` → ``27Si + 11Mn + 8Ni + 16Cr``;
+    Maynier's non-carbon martensite coefficients) — this closes the documented 4140≈1045
+    quenched-end gap. ``Vr`` is **accepted but ignored**: as-quenched martensite hardness is
+    carbon-set above the critical cooling rate, and keeping it cooling-rate-independent is
+    what protects the validated quenched-end anchor. With ``comp=None`` the result is the 2c
+    carbon-only value exactly.
     """
     if C < 0.0:
         raise ValueError(f"carbon content must be ≥ 0, got {C}")
-    return MART_HV_BASE + MART_HV_SLOPE * math.sqrt(C)
+    return MART_HV_BASE + MART_HV_SLOPE * math.sqrt(C) + _alloy_delta("martensite", comp)
 
 
-def vickers_ferrite_pearlite(C: float) -> float:
-    """Ferrite-pearlite (diffusional product) hardness ``HV = 90 + 260·C``, ``C`` wt%.
+def vickers_ferrite_pearlite(C: float, comp: dict | None = None, Vr: float | None = None) -> float:
+    """Ferrite-pearlite hardness ``HV = 90 + 260·C (+ Maynier alloy + cooling-rate deltas)``.
 
-    A linear-in-carbon fit to **normalized plain-carbon steel** hardness (independent of
-    the Jominy data). :mod:`pathint` lumps the whole diffusional product as "pearlite";
-    for a hypoeutectoid steel that aggregate is ferrite + pearlite, which is what this
-    normalized hardness measures. The soft end of the Jominy bar — typically < 20 HRC,
-    where HRC is undefined and the result is reported off-scale.
+    The carbon term is a linear-in-carbon fit to **normalized plain-carbon steel** hardness
+    (independent of the Jominy data). :mod:`pathint` lumps the whole diffusional product as
+    "pearlite"; for a hypoeutectoid steel that aggregate is ferrite + pearlite, which is what
+    this normalized hardness measures.
+
+    Phase 3 adds two optional Maynier deltas: the **minor-alloy** term (``comp`` →
+    ``53Si + 30Mn + 12.6Ni + 7Cr + 19Mo``) and the **cooling-rate** term (``Vr`` in °C/h →
+    ``(10 − 19Si + 4Ni + 8Cr + 130V)·log10(Vr/Vr_ref)``, reference-zeroed about a normalizing
+    rate). For plain carbon the cooling-rate slope is only ~10 HV/decade. With ``comp=None``
+    and ``Vr=None`` the result is the 2c carbon-only value exactly — the soft end of the Jominy
+    bar, often < 20 HRC where HRC is undefined and the result reported off-scale.
     """
     if C < 0.0:
         raise ValueError(f"carbon content must be ≥ 0, got {C}")
-    return FP_HV_BASE + FP_HV_SLOPE * C
+    return (FP_HV_BASE + FP_HV_SLOPE * C
+            + _alloy_delta("ferrite_pearlite", comp)
+            + _vr_delta("ferrite_pearlite", comp, Vr))
 
 
-def vickers_bainite(C: float) -> float:
-    """Bainite hardness ``HV = 200 + 380·C`` (Vickers), carbon ``C`` (wt%).
+def vickers_bainite(C: float, comp: dict | None = None, Vr: float | None = None) -> float:
+    """Bainite hardness ``HV = 200 + 380·C`` (Vickers), carbon ``C`` (wt%) — carbon-only.
 
-    Intermediate between ferrite-pearlite and martensite. The least-anchored
-    constituent (barely exercised by the continuous-cooled 1045/4140 benchmark, which
-    go essentially martensite-or-pearlite); a defensible placeholder refined in Phase 3.
+    Intermediate between ferrite-pearlite and martensite. The least-anchored constituent
+    (barely exercised by the continuous-cooled 1045/4140 benchmark, which go essentially
+    martensite-or-pearlite). ``comp`` and ``Vr`` are **accepted but ignored**: Maynier's
+    bainite alloy/Vr coefficients are large and fit against his own ``−323+185C`` base, so
+    grafting them onto this placeholder baseline gives unphysical (> martensite) hardness —
+    so the bainite refinement is deliberately deferred (module docstring), and this stays the
+    carbon-only placeholder.
     """
     if C < 0.0:
         raise ValueError(f"carbon content must be ≥ 0, got {C}")
     return BAIN_HV_BASE + BAIN_HV_SLOPE * C
 
 
-# Registry: constituent name → hardness HV(C). Keys match pathint's fractions dict, so
-# the rule of mixtures iterates them in lockstep (a missing/extra key is a real error).
+# Registry: constituent name → hardness HV(C, comp, Vr). Keys match pathint's fractions
+# dict, so the rule of mixtures iterates them in lockstep (a missing/extra key is a real
+# error). All take the same (C, comp, Vr) signature so the rule of mixtures threads the
+# Phase-3 terms uniformly; retained austenite ignores them (a soft constant).
 CONSTITUENT_HV = {
     "pearlite": vickers_ferrite_pearlite,
     "bainite": vickers_bainite,
     "martensite": vickers_martensite,
-    "retained_austenite": lambda C: HV_RETAINED_AUSTENITE,
+    "retained_austenite": lambda C, comp=None, Vr=None: HV_RETAINED_AUSTENITE,
 }
 
 
@@ -208,31 +324,37 @@ def vickers_to_rockwell_c(HV: float | np.ndarray) -> float | np.ndarray:
 # --------------------------------------------------------------------------- #
 # 3. The rule of mixtures: phase fractions (+ carbon) → hardness
 # --------------------------------------------------------------------------- #
-def hardness_HV(fractions: dict, C: float) -> float:
-    """Rule-of-mixtures hardness ``HV = Σ fᵢ·HVᵢ(C)`` (Vickers) — the Maynier method.
+def hardness_HV(fractions: dict, C: float, comp: dict | None = None, Vr: float | None = None) -> float:
+    """Rule-of-mixtures hardness ``HV = Σ fᵢ·HVᵢ(C, comp, Vr)`` (Vickers) — the Maynier method.
 
     ``fractions`` is the constituent dict (:meth:`pathint.TransformResult.fractions`):
     pearlite / bainite / martensite / retained_austenite, summing to 1. Each constituent
-    contributes its carbon-dependent Vickers hardness weighted by its fraction. Computed
-    in HV (linear, additive, soft-defined); convert with :func:`vickers_to_rockwell_c`
-    or use :func:`hardness_HRC`. Unknown constituent keys raise (a fractions/registry
-    mismatch is a real error, not a silent zero).
+    contributes its Vickers hardness weighted by its fraction. Computed in HV (linear,
+    additive, soft-defined); convert with :func:`vickers_to_rockwell_c` or use
+    :func:`hardness_HRC`. Unknown constituent keys raise (a fractions/registry mismatch is
+    a real error, not a silent zero).
+
+    The optional Phase-3 ``comp`` (minor-alloy wt% dict: Si/Mn/Ni/Cr/Mo/V) and ``Vr``
+    (cooling rate at 700 °C, °C/h) thread through to each constituent's Maynier deltas.
+    Both default to the **carbon-only** value — so a 2c-style ``hardness_HV(fractions, C)``
+    call is byte-identical to before.
     """
     HV = 0.0
     for name, f in fractions.items():
         if name not in CONSTITUENT_HV:
             raise KeyError(f"no hardness model for constituent {name!r}")
-        HV += f * CONSTITUENT_HV[name](C)
+        HV += f * CONSTITUENT_HV[name](C, comp, Vr)
     return HV
 
 
-def hardness_HRC(fractions: dict, C: float) -> float:
+def hardness_HRC(fractions: dict, C: float, comp: dict | None = None, Vr: float | None = None) -> float:
     """Rule-of-mixtures hardness in **HRC** — :func:`hardness_HV` then ASTM E140.
 
     ``nan`` when the mixture is softer than ~20 HRC (a pearlitic Jominy tail) — HRC is
-    undefined there; read :func:`hardness_HV` for the soft end.
+    undefined there; read :func:`hardness_HV` for the soft end. ``comp``/``Vr`` are the
+    optional Phase-3 minor-alloy / cooling-rate terms (see :func:`hardness_HV`).
     """
-    return vickers_to_rockwell_c(hardness_HV(fractions, C))
+    return vickers_to_rockwell_c(hardness_HV(fractions, C, comp, Vr))
 
 
 # --------------------------------------------------------------------------- #
@@ -255,7 +377,10 @@ class JominyHardness:
     carbon: float
 
 
-def jominy_hardness(field, ccurve: CCurve, C: float, distances: np.ndarray | None = None) -> JominyHardness:
+def jominy_hardness(
+    field, ccurve: CCurve, C: float, distances: np.ndarray | None = None,
+    comp: dict | None = None, use_cooling_rate: bool = False, T_ref_rate: float = 700.0,
+) -> JominyHardness:
     """Hardness vs distance along a Jominy bar — compose thermal → kinetics → property.
 
     For each sampled distance, take that position's cooling history ``(t, T)`` from the
@@ -278,11 +403,24 @@ def jominy_hardness(field, ccurve: CCurve, C: float, distances: np.ndarray | Non
     distances
         Sample points (m) from the quenched end; defaults to the field's own cell
         centres. Nearest-cell histories are used (no thermal re-interpolation).
+    comp
+        Optional **Phase-3** minor-alloy composition (wt% dict: Si/Mn/Ni/Cr/Mo/V) for the
+        Maynier alloy term. ``None`` → the 2c carbon-only result, byte-identical.
+    use_cooling_rate
+        Optional **Phase-3** flag: thread each position's cooling rate at ``T_ref_rate``
+        (from ``field.cooling_rate``, K/s → °C/h) into the Maynier cooling-rate term.
+        ``False`` → no cooling-rate term (the 2c carbon-only result).
     """
     x = np.asarray(field.x, dtype=float)
     if distances is None:
         distances = x
     distances = np.asarray(distances, dtype=float)
+
+    rates_Cph = None
+    if use_cooling_rate:
+        # Same dT/dt-at-T_ref metric as the 0-D paths (cooling.cooling_rate_through);
+        # K/s → °C/h for Maynier's Vr. nan where a position never cools through T_ref.
+        rates_Cph = field.cooling_rate(T_ref_rate) * SECONDS_PER_HOUR
 
     HV = np.empty(distances.size)
     mart = np.empty(distances.size)
@@ -290,7 +428,8 @@ def jominy_hardness(field, ccurve: CCurve, C: float, distances: np.ndarray | Non
         j = int(np.argmin(np.abs(x - d)))          # nearest cell (the array seam)
         t, T = field.history(j)
         result = pathint.transform_along_path(t, T, ccurve)
-        HV[k] = hardness_HV(result.fractions(), C)
+        Vr = float(rates_Cph[j]) if (rates_Cph is not None and np.isfinite(rates_Cph[j])) else None
+        HV[k] = hardness_HV(result.fractions(), C, comp=comp, Vr=Vr)
         mart[k] = result.martensite
     return JominyHardness(
         distance=distances,

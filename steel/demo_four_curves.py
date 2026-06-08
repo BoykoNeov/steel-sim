@@ -12,8 +12,18 @@ integration test of every 1c module: ``fe_c`` (the A₁ driving force) → ``kin
 Honest scope: four cooling rates produce **three** distinct phase constitutions —
 pearlite, bainite, martensite. Furnace and air both give pearlite, differing only
 in *formation temperature* (and hence lamellar coarseness); the "four materials"
-drama is the property span (~20 → ~63 HRC), not four distinct phases. Coarse/fine
-pearlite resolution and the hardness numbers are Phase-3 (``properties.py``).
+drama is the property span, not four distinct phases.
+
+**Phase 3 (this rewire):** the hardness numbers are now the **real**, validated
+:mod:`properties` model (rule of mixtures over the constituents), not the retired
+``INDICATIVE_HARDNESS`` placeholder strings — furnace/air pearlite ≈ 29–30 HRC, oil's
+bainite-mixture ≈ 52 HRC, water martensite ≈ 61 HRC (a ~30 HRC span). Each path's
+hardness uses its **cooling rate at 700 °C** (Maynier's ``Vr``) for the ferrite-pearlite
+term. Honest finding: for *plain carbon* that cooling-rate term is small — furnace and air
+pearlite differ by only ~5 HV — so the coarse/fine distinction is mainly the kinetic
+``formation_T`` (lamellar spacing), not a large hardness gap. The 1080 here is the
+idealized **carbon-only** steel (no minor-alloy term — that face of the model is exercised
+by the 1045/4140 Jominy benchmark, ``test_properties``).
 
 Run headless (saves the figure, prints the table):
 
@@ -21,10 +31,12 @@ Run headless (saves the figure, prints the table):
 """
 from __future__ import annotations
 
+import math
 import warnings
 from pathlib import Path
 
 from . import fe_c
+from . import properties as prop
 from .kinetics import CCurve, andrews_Ms
 from .cooling import standard_media_paths
 from .pathint import transform_along_path
@@ -52,42 +64,65 @@ def compute():
     return ccurve, paths, results
 
 
-def print_summary(ccurve: CCurve, paths, results) -> None:
-    """Print the results table — the demo's payoff in text form."""
-    import math
+def compute_hardness(paths, results):
+    """Real per-path hardness ``[(HV, HRC), …]`` from the validated :mod:`properties` model.
 
+    The Phase-3 rewire: each path's microstructure (the rule-of-mixtures over its
+    constituent fractions) is evaluated at the demo steel's carbon, using that path's
+    **cooling rate at 700 °C** (``Vr``, the Maynier ferrite-pearlite term). Carbon-only —
+    the idealized 1080 carries no minor-alloy term. Returns Vickers + Rockwell-C (``HRC``
+    is ``nan`` for a structure softer than the ~20 HRC scale floor).
+    """
+    readings = []
+    for p, r in zip(paths, results):
+        rate_Ks = p.cooling_rate()                      # |dT/dt| at 700 °C (K/s); nan if never reached
+        Vr = rate_Ks * prop.SECONDS_PER_HOUR if math.isfinite(rate_Ks) else None
+        HV = prop.hardness_HV(r.fractions(), STEEL_CARBON, Vr=Vr)
+        readings.append((HV, prop.vickers_to_rockwell_c(HV)))
+    return readings
+
+
+def print_summary(ccurve: CCurve, paths, results, hardness) -> None:
+    """Print the results table — the demo's payoff in text form (now with real hardness)."""
     T_nose, t_nose = ccurve.nose(X=0.01)
     print(f"\nAISI 1080  (C = {STEEL_CARBON} wt%)   austenitized {AUSTENITIZE_T:.0f} °C → "
           f"bath {BATH_T:.0f} °C")
     print(f"  A₁ = {ccurve.T_eq:.0f} °C   Mₛ = {ccurve.Ms:.0f} °C   "
           f"C-curve nose ≈ {T_nose:.0f} °C / {t_nose:.1f} s\n")
-    hdr = (f"{'medium':8s} {'τ_th (s)':>9s} {'Biot':>6s} {'P':>5s} {'B':>5s} {'M':>5s} "
-           f"{'RA':>5s} {'formT':>6s}  {'microstructure':<14s}")
+    hdr = (f"{'medium':8s} {'Vr(°C/h)':>9s} {'P':>5s} {'B':>5s} {'M':>5s} {'RA':>5s} "
+           f"{'formT':>6s} {'HV':>5s} {'HRC':>5s}  {'microstructure':<14s}")
     print(hdr)
     print("-" * len(hdr))
-    for p, r in zip(paths, results):
+    for p, r, (HV, HRC) in zip(paths, results, hardness):
         f = r.fractions()
         flag = "" if p.lumped_valid else "  ⚠ Bi≥0.1 → Phase-2 spatial"
         form_t = f"{r.formation_T:6.0f}" if math.isfinite(r.formation_T) else "     —"
-        print(f"{p.name:8s} {p.tau_thermal:9.1f} {p.biot:6.3f} "
+        rate_Ks = p.cooling_rate()
+        Vr = f"{rate_Ks * prop.SECONDS_PER_HOUR:9.0f}" if math.isfinite(rate_Ks) else "        —"
+        hrc = f"{HRC:5.1f}" if math.isfinite(HRC) else "  off"
+        print(f"{p.name:8s} {Vr} "
               f"{f['pearlite']:5.2f} {f['bainite']:5.2f} {f['martensite']:5.2f} "
-              f"{f['retained_austenite']:5.2f} {form_t}  {r.dominant().replace('_', ' '):<14s}{flag}")
+              f"{f['retained_austenite']:5.2f} {form_t} {HV:5.0f} {hrc}  "
+              f"{r.dominant().replace('_', ' '):<14s}{flag}")
     print("\n(P pearlite · B bainite · M martensite · RA retained austenite · "
-          "formT = mean formation temp, °C)")
+          "formT = mean formation temp, °C · Vr = cooling rate at 700 °C · HV/HRC from properties.py)")
+    span_lo = min(h[1] for h in hardness if math.isfinite(h[1]))
+    span_hi = max(h[1] for h in hardness if math.isfinite(h[1]))
     print("Four cooling rates, three phase constitutions: furnace & air both give "
-          "PEARLITE (differing\nonly in formation T → coarseness), oil a BAINITE-dominant "
-          "*mixture* (1080 resists clean bainite\nin continuous cooling — austempering "
-          "would be needed), water MARTENSITE. The drama is the\nproperty span (~20 → "
-          "~63 HRC), set by which side of the C-curve nose each path falls.")
+          "PEARLITE (differing\nonly in formation T → coarseness — only ~5 HV apart, "
+          "the honest size of the cooling-rate term\nfor plain carbon), oil a BAINITE-dominant "
+          "*mixture*, water MARTENSITE. The drama is the\n"
+          f"real property span ({span_lo:.0f} → {span_hi:.0f} HRC), set by which side of the "
+          "C-curve nose each path falls.")
 
 
-def save_figure(ccurve, paths, results) -> Path:
+def save_figure(ccurve, paths, results, hardness) -> Path:
     """Render and save the anchor figure (needs the optional ``viz`` extra)."""
     import matplotlib
     matplotlib.use("Agg")                        # headless
     from .plots import four_curves_figure
 
-    fig = four_curves_figure(ccurve, paths, results)
+    fig = four_curves_figure(ccurve, paths, results, hardness=hardness)
     for target in (DOCS_FIGURE, OUTPUT_FIGURE):
         target.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(target, dpi=130)
@@ -102,9 +137,10 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8")
 
     ccurve, paths, results = compute()
-    print_summary(ccurve, paths, results)
+    hardness = compute_hardness(paths, results)
+    print_summary(ccurve, paths, results, hardness)
     try:
-        saved = save_figure(ccurve, paths, results)
+        saved = save_figure(ccurve, paths, results, hardness)
         print(f"\nFigure saved → {saved.relative_to(_REPO_ROOT)}")
     except ImportError:
         print("\n(matplotlib not installed — install the viz extra to render the figure: "

@@ -27,6 +27,8 @@ end-quench curve is a genuine cross-check rather than a refit. That shapes this 
   a hardness-map error — so the well-anchored claims (quenched-end, the 4140 plateau, the
   divergence) are asserted tightly and the 1045 knee *position* loosely.
 """
+import math
+
 import numpy as np
 import pytest
 
@@ -250,3 +252,116 @@ def test_jominy_hardness_arrays_consistent():
     assert np.array_equal(np.isnan(h.HRC), ~finite)
     assert np.allclose(h.HRC[finite], expected[finite])
     assert h.carbon == STEEL_4140["C"]
+
+
+# =========================================================================== #
+# Phase 3a — Maynier minor-alloy + cooling-rate graft on the 2c carbon baselines.
+#
+# The graft keeps 2c's independently-anchored carbon baselines and bolts on only
+# Maynier's *non-carbon* deltas, reference-zeroed. The discipline these tests pin:
+#   (1) the seam — defaults reproduce the 2c carbon-only value byte-for-byte, so the
+#       frozen 2c benchmark above is unchanged (it stays carbon-only by signature);
+#   (2) the deltas match Maynier's published coefficients (anchored, not invented);
+#   (3) the new terms are the *improvements* 2c flagged as Phase-3 work — the
+#       minor-alloy term closes the 4140≈1045 quenched-end gap; the cooling-rate term
+#       is honestly small for plain carbon; the constituent ordering is preserved.
+# =========================================================================== #
+# 1045's / 4140's minor-alloy comp dicts (carbon excluded — it rides the baseline).
+COMP_1045 = {"Mn": 0.75, "Si": 0.22}
+COMP_4140 = {"Mn": 0.90, "Cr": 1.0, "Mo": 0.20, "Si": 0.25}
+
+
+def test_defaults_reproduce_2c_carbon_only_byte_for_byte():
+    # THE SEAM (advisor): the optional comp/Vr default to the exact 2c value, so every
+    # frozen 2c call above is unchanged. Assert the constituent functions and the rule of
+    # mixtures are identical with the args omitted vs explicitly None.
+    for C in (0.20, 0.45, 0.80):
+        # math.sqrt (not C**0.5) to match the source exactly — pow isn't correctly-rounded,
+        # so == against C**0.5 could flake 1 ULP for reasons unrelated to the graft.
+        assert prop.vickers_martensite(C) == prop.MART_HV_BASE + prop.MART_HV_SLOPE * math.sqrt(C)
+        assert prop.vickers_martensite(C, comp=None, Vr=None) == prop.vickers_martensite(C)
+        assert prop.vickers_ferrite_pearlite(C) == prop.FP_HV_BASE + prop.FP_HV_SLOPE * C
+        assert prop.vickers_ferrite_pearlite(C, comp=None, Vr=None) == prop.vickers_ferrite_pearlite(C)
+    frac = {"martensite": 0.5, "pearlite": 0.3, "bainite": 0.15, "retained_austenite": 0.05}
+    assert prop.hardness_HV(frac, 0.45, comp=None, Vr=None) == prop.hardness_HV(frac, 0.45)
+
+
+def test_martensite_alloy_delta_matches_maynier_coefficients():
+    # Anchored, not invented: the martensite minor-alloy delta IS Maynier's non-carbon
+    # martensite coefficients 27Si + 11Mn + 8Ni + 16Cr (HV per wt%).
+    delta = prop.vickers_martensite(0.40, comp=COMP_4140) - prop.vickers_martensite(0.40)
+    expected = 27.0 * 0.25 + 11.0 * 0.90 + 16.0 * 1.0          # Si, Mn, Cr (Ni=Mo=0 here)
+    assert delta == pytest.approx(expected, abs=1e-9)
+
+
+def test_minor_alloy_term_closes_4140_1045_quenched_end_gap():
+    # The headline Phase-3 improvement, on the constituent directly (decoupled from the
+    # kinetics): at the fully-martensitic quenched end, carbon-only the leaner-carbon 4140
+    # (0.40 %C) reads BELOW 1045 (0.45 %C) by >1 HRC — the gap 2c flagged. The Maynier
+    # minor-alloy term (4140's Cr/Mn) closes it to ~equal, matching published data.
+    hrc = prop.vickers_to_rockwell_c
+    gap_carbon = hrc(prop.vickers_martensite(0.45)) - hrc(prop.vickers_martensite(0.40))
+    gap_alloy = (hrc(prop.vickers_martensite(0.45, comp=COMP_1045))
+                 - hrc(prop.vickers_martensite(0.40, comp=COMP_4140)))
+    assert gap_carbon > 1.0                                   # 2c: 1045 ~1.4 HRC above 4140
+    assert abs(gap_alloy) < 1.0                               # Phase 3: ~equal (gap closed)
+    assert gap_alloy < gap_carbon                             # the term moved them together
+
+
+def test_ferrite_pearlite_alloy_delta_matches_maynier_coefficients():
+    # The FP minor-alloy delta IS Maynier's non-carbon FP coefficients
+    # 53Si + 30Mn + 12.6Ni + 7Cr + 19Mo (with Vr omitted, so no cooling-rate term).
+    delta = prop.vickers_ferrite_pearlite(0.45, comp=COMP_4140) - prop.vickers_ferrite_pearlite(0.45)
+    expected = 53.0 * 0.25 + 30.0 * 0.90 + 7.0 * 1.0 + 19.0 * 0.20
+    assert delta == pytest.approx(expected, abs=1e-9)
+
+
+def test_ferrite_pearlite_cooling_rate_term_direction_and_honest_magnitude():
+    # The cooling-rate term: faster cooling → finer → harder pearlite, and it vanishes at
+    # the reference rate (recovering the 2c baseline). HONEST magnitude (advisor #3): for
+    # PLAIN CARBON the slope is only ~10 HV/decade, so a furnace→air step (~0.5 decade) is
+    # only ~5 HV — a few HV, not a dramatic gap. We assert that smallness, not inflate it.
+    base = prop.vickers_ferrite_pearlite(0.80)
+    assert prop.vickers_ferrite_pearlite(0.80, Vr=prop.MAYNIER_VR_REF) == pytest.approx(base, abs=1e-9)
+    fast = prop.vickers_ferrite_pearlite(0.80, Vr=10.0 * prop.MAYNIER_VR_REF)
+    slow = prop.vickers_ferrite_pearlite(0.80, Vr=0.1 * prop.MAYNIER_VR_REF)
+    assert fast > base > slow                                 # monotone in cooling rate
+    assert fast - base == pytest.approx(10.0, abs=1e-9)       # plain-carbon slope ~10 HV/decade
+    assert (fast - slow) < 25.0                               # ~2 decades → ~20 HV: a small effect
+
+
+def test_bainite_alloy_and_cooling_rate_are_deferred():
+    # Bainite stays carbon-only: its Maynier coefficients are too large to graft onto the
+    # placeholder baseline (would exceed martensite), so comp/Vr are accepted but ignored.
+    for C in (0.2, 0.45, 0.8):
+        assert prop.vickers_bainite(C, comp=COMP_4140, Vr=1e6) == prop.vickers_bainite(C)
+
+
+def test_constituent_ordering_preserved_with_alloy_terms():
+    # Adding the minor-alloy deltas must not break the physical ordering martensite >
+    # bainite > ferrite-pearlite (the bound the rule of mixtures relies on). FP gets a
+    # delta and bainite does not, so this is the case that could invert — check it holds.
+    for C in (0.2, 0.4, 0.6, 0.8):
+        m = prop.vickers_martensite(C, comp=COMP_4140)
+        b = prop.vickers_bainite(C, comp=COMP_4140)
+        fp = prop.vickers_ferrite_pearlite(C, comp=COMP_4140, Vr=prop.MAYNIER_VR_REF)
+        assert m > b > fp
+
+
+def test_jominy_hardness_alloy_term_closes_gap_and_lifts_1045_tail():
+    # The threaded path the new terms actually fire through (advisor #2). With the full
+    # composition, jominy_hardness closes the quenched-end gap AND lifts the 1045 soft tail
+    # from off-HRC-scale (the 2c result) onto ~20 HRC — matching the published ~22 HRC tail.
+    f = solve_thermal_field(JominyBar(), T0=850.0, n_cells=200, per_decade=120)
+    d = jominy_distances(16)
+    # carbon-only (byte-identical to 2c): 1045 tail is off-scale (nan).
+    h45_c = prop.jominy_hardness(f, ccurve_for_steel(**STEEL_1045), STEEL_1045["C"], d)
+    assert np.isnan(h45_c.HRC[-1])
+    # with minor-alloy comp: gap closes and the 1045 tail lands on the HRC scale.
+    h45 = prop.jominy_hardness(f, ccurve_for_steel(**STEEL_1045), STEEL_1045["C"], d,
+                               comp=COMP_1045, use_cooling_rate=True)
+    h41 = prop.jominy_hardness(f, ccurve_for_steel(**STEEL_4140), STEEL_4140["C"], d,
+                               comp=COMP_4140, use_cooling_rate=True)
+    assert abs(h45.HRC[0] - h41.HRC[0]) < 1.0                 # quenched-end gap closed
+    assert 18.0 <= h45.HRC[-1] <= 24.0                        # tail lifted onto scale (~published 22)
+    assert h41.HV[-1] - h45.HV[-1] > 200.0                    # still the dramatic divergence

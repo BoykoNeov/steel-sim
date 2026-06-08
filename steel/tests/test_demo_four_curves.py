@@ -10,9 +10,11 @@ The figure itself is **not** in the correctness path (ADR 0002): rendering is
 checked only for "builds without error", and is skipped where the optional viz
 extra is absent — the core suite stays matplotlib-free.
 """
+import math
+
 import pytest
 
-from projects.steel.demo_four_curves import compute
+from projects.steel.demo_four_curves import compute, compute_hardness
 
 
 def test_demo_pipeline_spans_pearlite_to_martensite():
@@ -51,6 +53,24 @@ def test_demo_martensite_rises_monotonically_with_quench_severity():
     _, _, results = compute()
     martensite = [r.martensite for r in results]
     assert martensite == sorted(martensite)
+
+
+def test_demo_real_hardness_spans_and_orders():
+    # Phase 3 rewire: the demo now reports the REAL properties-model hardness (the retired
+    # INDICATIVE_HARDNESS placeholders are gone). The dramatic axis end-to-end, in real
+    # numbers: hardness rises monotonically furnace → water and spans soft pearlite to hard
+    # martensite. All four are on the HRC scale here (eutectoid pearlite ~30 HRC, not nan).
+    _, paths, results = compute()
+    hardness = compute_hardness(paths, results)
+    HV = [hv for hv, _ in hardness]
+    HRC = [hrc for _, hrc in hardness]
+    assert all(math.isfinite(h) for h in HRC)                 # all on-scale (≥ 20 HRC)
+    assert HV == sorted(HV)                                   # furnace ≤ air < oil < water
+    furnace, air, oil, water = HRC
+    assert 26.0 <= furnace <= 32.0 and 26.0 <= air <= 32.0    # pearlite, ~29–30 HRC
+    assert abs(air - furnace) < 2.0                           # honest: cooling-rate term is small
+    assert water > 58.0                                       # martensite, file-hard
+    assert water - furnace > 25.0                             # the dramatic property span
 
 
 def test_anchor_figure_builds():
