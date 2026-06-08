@@ -490,14 +490,52 @@ there would be resolution-fragile; the gap-closing is validated in `test_propert
 is guaranteed only for low-to-medium-alloy steels (a ~2 % Si steel could under-rank bainite). 9 new
 tests; full suite **176 green**.
 
-**Next: Phase 3b** (tempering + strength/toughness), then **Phase 3c** `carburize.py` — the
-mass-diffusion face of the spine: reuse the **frozen** `engines/diffusion` in mass mode for the
-surface-enriched erfc carbon profile, then feed position-dependent `%C` through the kinetics +
-property model → a case-hardened hardness gradient (the carburized gear-tooth artifact). 3c carries
-the plan's **named Phase-3 triad**: erfc case depth ∝ √(Dt) (exact for isothermal carburizing —
-constant `D`, Dirichlet surface), carbon mass uptake = ∫ surface flux dt (the engine's frozen
-`total`/`flux` identity), and published case-depth/surface-hardness tables. **Available cross-check
-(not triad-required):** the **D_I** downstream check (ideal-quench a series of diameters, find the
-critical one, vs published `D_I`) — sound where `D_I → τ` would not be (Phase 2b). **Still deferred
-from Phase 1c:** the experimentation surface (`sweep.py`, `app.py`, `steel.ipynb`). Nothing
-downstream touches the frozen solver's internals — only its `CONTRACT.md`.
+**Phase 3b is built ✓** (2026-06-08) — `properties.py` extended (section 5) with **tempering**
+(the **Hollomon–Jaffe** parameter `P = T(C_hj + log₁₀ t)`, T in kelvin / t in hours) plus the
+**ISO-18265 hardness→tensile-strength** conversion and a **rough strength/toughness trade-off** —
+all *additive*, leaving the as-quenched model and the frozen 2c/3a/four-curves/Jominy benchmarks
+byte-identical. Tempered-martensite hardness is a decreasing master curve `HV(P)` running between
+two **independently-anchored** endpoints: the Phase-3a as-quenched martensite and the
+ferrite-pearlite/spheroidite floor — so only the *transition* is calibrated, the same
+anchored-endpoints + calibrated-transition shape as the 2c rule of mixtures. **The non-circularity
+split (advisor, the crux — mirrors 2b/2c):** what is *validated* (asserted tightly) is the
+parameter's **form** — the **time–temperature equivalence** (two `(T,t)` on the same `P` soften to
+the same hardness; **convention-independent**, holding for any carbon and any `C_hj` because the
+hardness depends on `(T,t)` only through `P`), the monotone softening in both `T` and `t`, and the
+endpoint bound (a sub-onset temper returns the as-quenched value *exactly* — the seam; a deep
+over-temper bottoms out on the floor *exactly*); what is *calibrated* (flagged, **not** dressed as
+validation) is the value of `C_hj` (≈ 20, a **cited** low-alloy-steel constant — [[hollomon-jaffe-tempering-source]] — defaulted not fitted; its mild carbon-dependence left as an optional caller
+override rather than baked in with unverifiable coefficients) and the softening **magnitude** (two
+`P` breakpoints, the Phase-3b analogue of 2b's `HARDENABILITY_SCALE`), asserted only with **loose
+sanity bands** the way the 1045 knee position was — calibrated so ~0.4 %C martensite tempered 1 h
+follows the known Grange/ASM response (high-50s HRC as-quenched → low-40s at 400 °C → ~25 HRC at
+600 °C). **Emergent (not a fitted term):** threading `comp` through *both* endpoints makes an alloy
+steel **resist tempering softening** — 4140 stays harder than plain 0.4 %C at every temper (starts
+harder *and* floors higher), matching published 4140 1 h data (~56→47→32 HRC at 200/400/600 °C).
+**Strength** is the published **ISO 18265 / ASTM A370** conversion as an interpolated table (like
+E140), valid ~150–550 HV with `nan` outside — it **degrades above ~550 HV** (untempered martensite
+is exactly where the linear hardness–strength relation is least valid), the honest band edge; yield
+is *not* returned (Tabor's `H≈3σ` is flow stress, not yield — reporting it would over-claim).
+**Toughness** is a deliberately **rough, relative** dimensionless direction opposite to hardness —
+**no Charpy-J is invented** because real impact toughness is steel/heat-specific and **non-monotone**
+through the **tempered-martensite (~260–370 °C)** and **temper-embrittlement (~375–575 °C, alloy)**
+troughs (the named scope ceiling). Tempering is **martensite-only** (pearlite barely tempers; a mixed
+Jominy traverse would temper per-constituent — deferred). **The triad's benchmark leg (advisor):**
+the plain-carbon bands are self-consistency (they were calibrated to), so the *independent* benchmark
+is **4140's predicted 1 h tempering response** — calibrated only on plain-carbon breakpoints + the
+Maynier-anchored (3a) comp deltas threaded through both endpoints, nothing fit to 4140 tempering data
+— matching published ASM/Bhadeshia (~55 HRC @200 °C → ~45 @400 °C → ~33 @600 °C, loose ±~4 HRC), the
+inverse of 2b's "calibrate 4140, 1045 falls out". No new figure (3b is a `properties.py` extension;
+the test triad carries it). 10 new tests; full suite **186 green**.
+
+**Next: Phase 3c** `carburize.py` — the mass-diffusion face of the spine: reuse the **frozen**
+`engines/diffusion` in mass mode for the surface-enriched erfc carbon profile, then feed
+position-dependent `%C` through the kinetics + property model → a case-hardened hardness gradient
+(the carburized gear-tooth artifact). 3c carries the plan's **named Phase-3 triad**: erfc case depth
+∝ √(Dt) (exact for isothermal carburizing — constant `D`, Dirichlet surface), carbon mass uptake =
+∫ surface flux dt (the engine's frozen `total`/`flux` identity), and published case-depth/surface-
+hardness tables. **Available cross-check (not triad-required):** the **D_I** downstream check
+(ideal-quench a series of diameters, find the critical one, vs published `D_I`) — sound where
+`D_I → τ` would not be (Phase 2b). **Still deferred from Phase 1c:** the experimentation surface
+(`sweep.py`, `app.py`, `steel.ipynb`). Nothing downstream touches the frozen solver's internals —
+only its `CONTRACT.md`.

@@ -27,6 +27,11 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   `cooling.py`'s `cooling_rate_through`/`CoolingPath.cooling_rate` (the `Vr` metric), and
   `demo_four_curves.py` (`compute_hardness`, rewired onto the real model). Tests:
   `tests/test_properties.py`'s Phase-3a section + `tests/test_demo_four_curves.py`.
+- **To work on tempering + strength/toughness (Phase 3b):** `properties.py`'s section 5
+  (`hollomon_jaffe_parameter` / `tempered_martensite_HV` / `tensile_strength_MPa` /
+  `toughness_index`) + `tests/test_properties.py`'s Phase-3b section. Additive on the
+  as-quenched model — tempers a martensitic structure between two anchored endpoints (3a
+  martensite + the FP floor); the frozen 2c/3a benchmarks are untouched.
 - **To use the diffusion/heat spine:** load `engines/diffusion/CONTRACT.md` only —
   the frozen one-pager. You never need the engine's internals.
 - The Fe-C boundaries here are **parametrized approximations** (linear between
@@ -49,7 +54,7 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 2b | `kinetics.py` (`hardenability_factor`, `ccurve_for_steel`) | alloy **hardenability** = a Grossmann-potency multiplicative C-curve time-shift (Mn/Cr/Mo → right; default identity) | **built ✓** (2026-06-08) |
 | 2c | `properties.py`, `demo_jominy.py` | microstructure→hardness map (rule of mixtures) → the Jominy **hardness**-vs-distance artifact; 1045/4140 hardness benchmark | **built ✓** (2026-06-08) |
 | 3a | `properties.py` (extend), `demo_four_curves.py` (rewire), `cooling.py` | Maynier **minor-alloy + cooling-rate** terms grafted on the 2c carbon baselines; four-curves demo on the **real** hardness model (placeholders retired) | **built ✓** (2026-06-08) |
-| 3b | `properties.py` (extend) | tempering (Hollomon–Jaffe), strength/toughness trade-off | planned |
+| 3b | `properties.py` (extend) | tempering (Hollomon–Jaffe master curve) + ISO-18265 strength + rough strength/toughness trade-off | **built ✓** (2026-06-08) |
 | 3c | `carburize.py` | case-hardening carbon gradient (frozen mass-diffusion spine) → hardness traverse | planned |
 | 4 | `calphad_backend.py` | optional pycalphad equilibrium | planned |
 
@@ -300,6 +305,54 @@ baseline — it would exceed martensite). The banked Jominy figure stays **carbo
 purpose — it is a prior phase's deliverable (reworking it mid-3a is scope creep) and the
 alloy-lifted 1045 tail sits right on the 240 HV / 20 HRC scale floor, so a demo assertion
 there would be resolution-fragile (the gap-closing is validated in `test_properties` instead).
+
+## Phase 3b — tempering (Hollomon–Jaffe) + the strength/toughness trade-off
+
+Everything in 2c/3a is the **as-quenched** model. Phase 3b adds the step every real
+quench-hardened part takes — **tempering** — and closes the loop to engineering
+properties. The **Hollomon–Jaffe** parameter `P = T·(C_hj + log₁₀ t)` (T in kelvin,
+t in hours) collapses tempering temperature and time into one number; tempered-martensite
+hardness is a decreasing master curve `HV(P)` running between two **independently-anchored**
+endpoints — the Phase-3a as-quenched martensite and the ferrite-pearlite/spheroidite floor.
+
+```python
+from projects.steel import properties as prop
+prop.tempered_martensite_HV(0.40, 400.0, 1.0)                       # plain 0.4%C, 1 h @ 400 °C → ~425 HV (~43 HRC)
+prop.tempered_martensite_HV(0.40, 400.0, 1.0, comp={"Cr":1.0,"Mn":0.9,"Mo":0.2,"Si":0.25})  # 4140 → ~466 HV (resists)
+prop.tensile_strength_MPa(425.0)                                    # ISO 18265: ~1370 MPa
+prop.toughness_index(425.0)                                        # relative toughness ~0.44 (rises as you temper)
+```
+
+What is **validated** (asserted tightly) vs **calibrated** (flagged, loose) — the same
+non-circularity discipline as 2c/2b:
+- *Validated — the parameter's form.* The **time–temperature equivalence** (two `(T, t)`
+  on the same `P` give the same hardness — *convention-independent*, so it holds for any
+  carbon and any `C_hj`); the monotone softening in both `T` and `t`; and the bound between
+  the two anchored endpoints (a sub-onset temper returns the as-quenched value exactly; a
+  deep over-temper bottoms out on the floor). Threading `comp` through both endpoints makes
+  an **alloy steel resist tempering softening as an emergent consequence** (4140 stays harder
+  than plain 0.4 %C at every temper — it starts harder *and* floors higher).
+- *Calibrated — the magnitude.* The value of `C_hj` (≈ 20, a **cited** low-alloy-steel
+  constant, defaulted not fitted) and the two `P` breakpoints that set the softening size —
+  the Phase-3b analogue of Phase-2b's `HARDENABILITY_SCALE`. Calibrated so ~0.4 %C martensite
+  tempered 1 h follows the known response (high-50s HRC as-quenched → low-40s at 400 °C → ~25
+  HRC at 600 °C, Grange/ASM charts); asserted only with **loose sanity bands**, not dressed
+  as a validation.
+- *Benchmark leg — a prediction.* Because the plain-carbon bands are self-consistency (the
+  breakpoints were calibrated to them), the **independent** benchmark is **4140's 1 h tempering
+  response** (~55 HRC @ 200 °C → ~45 @ 400 °C → ~33 @ 600 °C, ASM/Bhadeshia): calibrated only on
+  plain-carbon breakpoints + the Maynier-anchored (3a) `comp` deltas through both endpoints, with
+  *nothing* fit to 4140 tempering data — the inverse of Phase-2b's "calibrate 4140, 1045 falls out".
+
+Strength is read from the published **ISO 18265 / ASTM A370** hardness→tensile-strength
+conversion (an interpolated table like the E140 one, valid ~150–550 HV — it degrades above
+~550 HV, i.e. untempered martensite, returning `nan` there honestly). Toughness is a
+deliberately **rough, relative** direction opposite to hardness — *no Charpy-J is invented*,
+because real impact toughness is steel/heat-specific and **non-monotone** through the
+tempered-martensite (~260–370 °C) and temper-embrittlement (~375–575 °C, alloy) troughs (the
+named scope ceiling). Tempering is **martensite-only** here (pearlite barely tempers; a mixed
+traverse would temper per-constituent — deferred). No new figure: 3b is a `properties.py`
+extension validated by the test triad.
 
 ## Run the tests
 

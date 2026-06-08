@@ -33,7 +33,7 @@ import numpy as np
 import pytest
 
 from projects.steel import properties as prop
-from projects.steel.kinetics import ccurve_for_steel
+from projects.steel.kinetics import ccurve_for_steel, ABS_ZERO
 from projects.steel.jominy import solve_thermal_field, JominyBar, jominy_distances
 
 # The two benchmark steels (as in the Phase-2b hardenability test): a medium-carbon
@@ -365,3 +365,150 @@ def test_jominy_hardness_alloy_term_closes_gap_and_lifts_1045_tail():
     assert abs(h45.HRC[0] - h41.HRC[0]) < 1.0                 # quenched-end gap closed
     assert 18.0 <= h45.HRC[-1] <= 24.0                        # tail lifted onto scale (~published 22)
     assert h41.HV[-1] - h45.HV[-1] > 200.0                    # still the dramatic divergence
+
+
+# =========================================================================== #
+# Phase 3b — tempering (Hollomon–Jaffe) + the strength/toughness trade-off.
+#
+# The non-circularity discipline (advisor), mirroring 2c/2b: VALIDATE the parameter's
+# *form* (the time–temperature equivalence — convention-independent; the monotone
+# softening; the bound between two INDEPENDENTLY-anchored endpoints) tightly, and treat
+# the value of C_hj (a cited constant) and the softening MAGNITUDE (the two P breakpoints)
+# as CALIBRATED — asserted only with loose sanity bands, not dressed as a validation.
+# =========================================================================== #
+def _equal_hollomon_jaffe_pair(T1=540.0, t1=1.0, T2=480.0, C_hj=prop.HJ_CONSTANT):
+    """Two tempers ``(T °C, t h)`` constructed to share the *same* Hollomon–Jaffe P exactly."""
+    P1 = prop.hollomon_jaffe_parameter(T1, t1, C_hj=C_hj)
+    t2 = 10.0 ** (P1 / (T2 + ABS_ZERO) - C_hj)               # invert P = T_K·(C_hj + log10 t)
+    return (T1, t1), (T2, t2), P1
+
+
+def test_hollomon_jaffe_parameter_form():
+    # The parameter's FORM (the validated part): P = T_K·(C_hj + log10 t), exact at a point,
+    # and rising with BOTH temperature and time (more of either → more tempering).
+    T, t = 500.0, 2.0
+    assert prop.hollomon_jaffe_parameter(T, t) == pytest.approx((T + ABS_ZERO) * (prop.HJ_CONSTANT + math.log10(t)))
+    assert prop.hollomon_jaffe_parameter(600.0, 1.0) > prop.hollomon_jaffe_parameter(400.0, 1.0)  # ↑ with T
+    assert prop.hollomon_jaffe_parameter(500.0, 10.0) > prop.hollomon_jaffe_parameter(500.0, 1.0)  # ↑ with t
+    with pytest.raises(ValueError):
+        prop.hollomon_jaffe_parameter(500.0, 0.0)            # t must be > 0 (log10)
+
+
+def test_tempering_time_temperature_equivalence():
+    # THE HEADLINE analytical leg (the whole point of the parameter): two (T, t) on the same
+    # Hollomon–Jaffe P soften to the SAME tempered hardness — a low-T/long-t temper trades for
+    # a high-T/short-t one. It is CONVENTION-INDEPENDENT: holds for any carbon and any C_hj
+    # (the function depends on (T, t) only through P), so vary both and it must still hold.
+    for C in (0.30, 0.45, 0.80):
+        for C_hj in (18.0, prop.HJ_CONSTANT, 22.0):
+            (T1, t1), (T2, t2), P1 = _equal_hollomon_jaffe_pair(C_hj=C_hj)
+            assert prop.hollomon_jaffe_parameter(T2, t2, C_hj=C_hj) == pytest.approx(P1)
+            h1 = prop.tempered_martensite_HV(C, T1, t1, C_hj=C_hj)
+            h2 = prop.tempered_martensite_HV(C, T2, t2, C_hj=C_hj)
+            assert h1 == pytest.approx(h2, abs=1e-6)
+
+
+def test_tempered_hardness_monotone_in_temperature_and_time():
+    # Tempered hardness only ever FALLS with more tempering — strictly decreasing in both T
+    # (fixed t) and t (fixed T) across the active window. (Ranges chosen so g is unclamped.)
+    C = 0.45
+    by_T = [prop.tempered_martensite_HV(C, T, 1.0) for T in np.linspace(200.0, 650.0, 12)]
+    by_t = [prop.tempered_martensite_HV(C, 400.0, t) for t in np.linspace(0.1, 100.0, 12)]
+    assert np.all(np.diff(by_T) < 0)
+    assert np.all(np.diff(by_t) < 0)
+
+
+def test_tempered_hardness_bounded_by_independent_endpoints():
+    # The bound that keeps the model non-circular: tempered hardness lives BETWEEN two
+    # INDEPENDENTLY-anchored endpoints — the Phase-3a as-quenched martensite (ceiling) and
+    # the ferrite-pearlite/spheroidite floor — recovering each in its limit. A negligible
+    # temper (P below onset) returns the as-quenched value EXACTLY (the seam); a heavy
+    # over-temper (P above the breakpoint) returns the floor exactly.
+    for C in (0.20, 0.45, 0.80):
+        aq = prop.vickers_martensite(C)
+        floor = prop.vickers_ferrite_pearlite(C)
+        # the seam: a sub-onset temper (100 °C/1 h) is byte-for-byte the as-quenched model.
+        assert prop.tempered_martensite_HV(C, 100.0, 1.0) == aq
+        # a deep over-temper (750 °C/10 h) bottoms out exactly on the floor.
+        assert prop.tempered_martensite_HV(C, 750.0, 10.0) == pytest.approx(floor, abs=1e-9)
+        # everything in between is bounded by the two anchors.
+        for T in (250.0, 400.0, 550.0, 650.0):
+            hv = prop.tempered_martensite_HV(C, T, 1.0)
+            assert floor - 1e-9 <= hv <= aq + 1e-9
+
+
+def test_alloy_steel_resists_tempering_softening():
+    # EMERGENT (not a fitted term): threading comp through BOTH endpoints makes an alloy
+    # steel start harder AND keep a higher floor — so it stays harder than a plain steel of
+    # the same carbon at every temper. The real alloy temper-resistance, for free.
+    for T in (300.0, 450.0, 600.0):
+        plain = prop.tempered_martensite_HV(0.40, T, 1.0)
+        alloy = prop.tempered_martensite_HV(0.40, T, 1.0, comp=COMP_4140)
+        assert alloy > plain
+
+
+def test_tempered_hardness_plain_carbon_self_consistency():
+    # SELF-CONSISTENCY (not the benchmark leg): the two P breakpoints were CALIBRATED to this
+    # plain-carbon 0.4 %C 1 h response (Grange/ASM tempering charts) — high-50s HRC as-quenched,
+    # low-40s at 400 °C, ~25 HRC band by 600 °C — so asserting it back is a regression guard on
+    # the calibration, not an independent validation (the 4140 test below is the genuine leg).
+    # Held loosely the way the 1045 knee position was; in HV to dodge the nan-at-HRC-floor edge.
+    assert 555.0 <= prop.tempered_martensite_HV(0.40, 200.0, 1.0) <= 605.0   # ~579 HV (~54 HRC)
+    assert 400.0 <= prop.tempered_martensite_HV(0.40, 400.0, 1.0) <= 455.0   # ~425 HV (~43 HRC)
+    assert 250.0 <= prop.tempered_martensite_HV(0.40, 600.0, 1.0) <= 300.0   # ~272 HV (~25 HRC)
+
+
+def test_benchmark_4140_tempering_response_is_a_prediction():
+    # THE BENCHMARK LEG (advisor): 4140's tempering response is NON-CIRCULAR — the P breakpoints
+    # were calibrated only to *plain-carbon* data, and 4140's curve falls out of the plain-carbon
+    # master curve + the *independently anchored* (Maynier, Phase-3a) comp deltas threaded through
+    # BOTH endpoints. Nothing here was fit to 4140 tempering data, so matching its published 1 h
+    # response (ASM/Bhadeshia tempering charts: ~57 HRC as-quenched → ~55 @200 °C → ~45 @400 °C →
+    # ~33 @600 °C) is a genuine prediction — the inverse of Phase-2b's "calibrate 4140, 1045 falls
+    # out". Loose ±~4 HRC bands (the benchmark's own inter-source spread + the recall caveat).
+    hrc = lambda T: prop.vickers_to_rockwell_c(prop.tempered_martensite_HV(0.40, T, 1.0, comp=COMP_4140))
+    assert 50.0 <= hrc(200.0) <= 58.0                        # low-temp temper, barely softened
+    assert 41.0 <= hrc(400.0) <= 49.0                        # mid temper (~published 45 HRC)
+    assert 28.0 <= hrc(600.0) <= 37.0                        # high temper (~published 33 HRC)
+    assert hrc(200.0) > hrc(400.0) > hrc(600.0)              # and monotone, as published
+
+
+def test_tensile_strength_matches_iso18265_table():
+    # Strength via the ISO 18265 / ASTM A370 steel hardness→UTS conversion, pinned to table
+    # points (~3.3·HV across the band) — accuracy, not just monotonicity.
+    for HV, MPa in [(300.0, 950.0), (400.0, 1290.0), (500.0, 1660.0)]:
+        assert prop.tensile_strength_MPa(HV) == pytest.approx(MPa, abs=1.0)
+    assert 3.0 <= prop.tensile_strength_MPa(400.0) / 400.0 <= 3.5      # the ≈3.3·HV rule of thumb
+    HV = np.linspace(prop.RELIABLE_UTS_HV_MIN, prop.RELIABLE_UTS_HV_MAX, 50)
+    assert np.all(np.diff(prop.tensile_strength_MPa(HV)) > 0)          # monotone in the band
+
+
+def test_tensile_strength_nan_outside_validity_band():
+    # The correlation degrades above ~550 HV — untempered martensite is exactly where it is
+    # least valid — so the table returns nan there (and below ~150 HV), the honest "out of
+    # range", not a clamp. A fully-martensitic 0.4 %C quenched end (~616 HV) is off-band.
+    assert np.isnan(prop.tensile_strength_MPa(100.0))                 # too soft for the table
+    assert np.isnan(prop.tensile_strength_MPa(700.0))                 # untempered-martensite range
+    assert np.isnan(prop.tensile_strength_MPa(prop.vickers_martensite(0.40)))  # ~616 HV → off-band
+    arr = prop.tensile_strength_MPa(np.array([100.0, 400.0, 700.0]))
+    assert np.isnan(arr[0]) and np.isfinite(arr[1]) and np.isnan(arr[2])
+
+
+def test_strength_toughness_trade_off():
+    # The Phase-3b payoff: strength and toughness move in OPPOSITE directions as a steel is
+    # tempered. toughness_index is monotone-decreasing in hardness (a relative direction,
+    # not a Charpy J); over a tempering sweep, hardness and strength fall while toughness
+    # rises — the trade-off tempering exploits.
+    assert prop.toughness_index(200.0) == pytest.approx(1.0)          # soft → fully tough
+    assert prop.toughness_index(600.0) == pytest.approx(0.0)          # hard → brittle
+    assert prop.toughness_index(400.0) == pytest.approx(0.5)          # linear between, clamped
+    tough = prop.toughness_index(np.linspace(200.0, 600.0, 20))
+    assert np.all(np.diff(tough) < 0)                                 # ↓ with hardness
+    # A real tempering sweep (T over a range where UTS is in-band): hardness ↓, so strength ↓
+    # and toughness ↑ — the anti-correlation, the headline trade-off.
+    HV = np.array([prop.tempered_martensite_HV(0.45, T, 1.0) for T in np.linspace(300.0, 650.0, 10)])
+    strength = prop.tensile_strength_MPa(HV)
+    toughness = prop.toughness_index(HV)
+    assert np.all(np.diff(HV) < 0)                                    # tempering softens
+    assert np.all(np.diff(strength) < 0)                             # strength falls
+    assert np.all(np.diff(toughness) > 0)                            # toughness rises (opposite)

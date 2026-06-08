@@ -107,6 +107,29 @@ cannot bite the four-curves demo (carbon-only 1080 → no FP boost) or the 1045/
 (bainite-poor), which is why it is invisible in the green suite; it is the honest edge of the
 graft and is resolved only when bainite's own Maynier terms are added (a later phase).
 
+Phase 3b: tempering (Hollomon–Jaffe) + the strength/toughness trade-off
+-----------------------------------------------------------------------
+Everything above is the **as-quenched** property model. Phase 3b adds the next step every
+real quench-hardened part takes — **tempering** — and closes the loop to engineering
+properties (section 5 of the code below). The **Hollomon–Jaffe** parameter
+``P = T·(C_hj + log10 t)`` (T in kelvin, t in hours) collapses tempering temperature and
+time into one number; tempered-martensite hardness is a decreasing master curve ``HV(P)``
+running between two **independently-anchored** endpoints — the Phase-3a as-quenched
+martensite and the ferrite-pearlite/spheroidite floor — so only the *transition* is
+calibrated (the two ``P`` breakpoints, the Phase-3b analogue of Phase-2b's calibrated
+``HARDENABILITY_SCALE``). The **validated** content is the parameter's *form*: the
+time–temperature **equivalence** (same ``P`` → same hardness, convention-independent), the
+monotone softening, and the endpoint bound; the value of ``C_hj`` and the softening
+magnitude are *cited / calibrated*, flagged as such (not dressed as a validation). Threading
+``comp`` through both endpoints makes an alloy steel resist tempering softening as an
+*emergent* consequence (it starts harder and floors higher). Strength is read from the
+published **ISO 18265** hardness→tensile-strength conversion (a table, like the E140 one, with
+a validity band — it breaks down above ~550 HV, i.e. untempered martensite); toughness is a
+deliberately **rough, relative** direction opposite to hardness (no Charpy-J is invented — real
+toughness is non-monotone through the tempered-martensite/temper-embrittlement troughs, the
+named scope ceiling). Tempering is **martensite-only** here (pearlite barely tempers; a mixed
+traverse would temper per-constituent — deferred).
+
 Units & conventions
 -------------------
 * **Hardness** internally **HV** (Vickers, kgf/mm²); reported **HRC** (Rockwell-C)
@@ -122,7 +145,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from . import pathint
-from .kinetics import CCurve
+from .kinetics import CCurve, ABS_ZERO
 
 # --------------------------------------------------------------------------- #
 # 1. Constituent hardnesses HVᵢ(C) — each anchored to an independent dataset
@@ -438,3 +461,196 @@ def jominy_hardness(
         martensite=mart,
         carbon=C,
     )
+
+
+# --------------------------------------------------------------------------- #
+# 5. Tempering (Hollomon–Jaffe) + the strength/toughness trade-off (Phase 3b)
+# --------------------------------------------------------------------------- #
+# As-quenched martensite is hard but brittle; almost every quench-hardened part is
+# then **tempered** — reheated to a moderate temperature for a hold time — to trade
+# hardness back for toughness. The **Hollomon–Jaffe (1945)** tempering parameter
+# collapses the (temperature, time) trade-off into a SINGLE number:
+#
+#     P = T·(C_hj + log10 t)            T in KELVIN, t in HOURS
+#
+# so that any two (T, t) on the same P soften the steel to the *same* hardness — the
+# **time–temperature equivalence** that is the whole point of the parameter (a low-T/
+# long-t temper substitutes for a high-T/short-t one). Tempered hardness is then a
+# master curve HV(P), monotonically **decreasing** in P.
+#
+# WHAT IS VALIDATED vs WHAT IS CALIBRATED (the non-circularity discipline, as in 2c/2b):
+#   * VALIDATED — the parameter's *form*: the equivalence (same P → same hardness), which
+#     is **convention-independent** (holds for any carbon and any C_hj); the monotone
+#     decrease in both T and t; and the bound between two **independently-anchored
+#     endpoints** — as-quenched = the Phase-3a martensite model, the over-tempered floor =
+#     the ferrite-pearlite/spheroidite baseline. Only the *transition between* them is
+#     calibrated, exactly as the rule of mixtures had anchored endpoints + an independent
+#     50 %-martensite criterion for its transition.
+#   * CALIBRATED — the value of C_hj (a *cited* literature constant ≈ 20 for low-alloy
+#     steel, T in K / t in h — defaulted, not fitted; Hollomon & Jaffe 1945) and the
+#     softening *magnitude* (the two P breakpoints below). These are the Phase-3b analogue
+#     of Phase-2b's HARDENABILITY_SCALE: a calibrated knob, NOT a fit dressed as a
+#     validation. The breakpoints are set so the curve reproduces the well-known 1 h
+#     tempering response of ~0.4 %C martensite (Grange/ASM tempering charts: high-50s HRC
+#     as-quenched → low-40s at 400 °C → ~30 at 600 °C) — asserted only with *loose* sanity
+#     bands, the calibrated claim held loosely the way the 1045 knee position was.
+#
+# Strength & toughness close the property loop (plan §3, "a rough strength/toughness
+# trade-off"): tensile strength is read from the published hardness↔strength conversion;
+# toughness is the *opposite* of hardness — a deliberately ROUGH, relative direction (no
+# Charpy-J number is invented — real toughness is steel/heat-specific and non-monotone,
+# see :func:`toughness_index`).
+
+# The Hollomon–Jaffe constant C_hj (T in K, t in hours). ≈ 20 for low-alloy steels — a
+# CITED literature value (Hollomon & Jaffe 1945), defaulted not fitted. It is mildly
+# carbon-dependent in the original work; that is left to the caller as an optional C_hj
+# override rather than baked in with unverifiable coefficients (only the parameter's
+# *form* is validated here, not the value of the constant).
+HJ_CONSTANT = 20.0
+
+# The two CALIBRATED breakpoints of the fractional-softening master curve g(P). Below
+# onset the structure is essentially as-quenched (g = 1); above the over-tempered point
+# it has softened to the spheroidized floor (g = 0). Chosen (~150 °C and ~700 °C at 1 h)
+# so the curve matches the well-known ~0.4 %C tempering response — a calibrated magnitude,
+# the Phase-3b analogue of HARDENABILITY_SCALE, NOT a benchmark fit.
+P_TEMPER_ONSET = 8500.0       # ≈ 150 °C / 1 h — softening begins
+P_OVERTEMPERED = 19500.0      # ≈ 700 °C / 1 h — fully over-tempered (spheroidite floor)
+
+
+def hollomon_jaffe_parameter(T_temper: float, t_hours: float, C_hj: float = HJ_CONSTANT) -> float:
+    """Hollomon–Jaffe tempering parameter ``P = T·(C_hj + log10 t)`` (``T`` in **kelvin**).
+
+    ``T_temper`` is the tempering temperature in **°C** (converted to kelvin internally —
+    the Arrhenius-like form needs absolute ``T``); ``t_hours`` the hold time in **hours**;
+    ``C_hj`` the Hollomon–Jaffe constant (≈ 20 for low-alloy steel — a cited value,
+    defaulted not fitted). The load-bearing property is the **time–temperature
+    equivalence**: two (T, t) with equal ``P`` give equal tempered hardness, so a
+    high-T/short-t temper trades for a low-T/long-t one. ``P`` rises with both ``T`` and
+    ``t``; larger ``P`` ⇒ more tempering ⇒ softer.
+    """
+    if t_hours <= 0.0:
+        raise ValueError(f"tempering time must be > 0 hours, got {t_hours}")
+    T_K = T_temper + ABS_ZERO
+    if T_K <= 0.0:
+        raise ValueError(f"tempering temperature must be above absolute zero, got {T_temper} °C")
+    return T_K * (C_hj + math.log10(t_hours))
+
+
+def _temper_softening(P: float) -> float:
+    """Fractional retained hardening ``g(P) ∈ [0, 1]`` — the master curve (1 = as-quenched, 0 = floor).
+
+    Linear in ``P`` between the calibrated onset / over-tempered breakpoints, clamped. The
+    *shape* (linear) is a teaching approximation; the validated content is the
+    **equivalence** — that ``g`` depends on ``(T, t)`` only through ``P`` — not this curve's
+    exact form.
+    """
+    g = (P_OVERTEMPERED - P) / (P_OVERTEMPERED - P_TEMPER_ONSET)
+    return min(1.0, max(0.0, g))
+
+
+def tempered_martensite_HV(
+    C: float, T_temper: float, t_hours: float, comp: dict | None = None,
+    C_hj: float = HJ_CONSTANT,
+) -> float:
+    """Tempered-martensite hardness (HV) after tempering ``t_hours`` h at ``T_temper`` °C.
+
+    Tempers a **fully martensitic** as-quenched structure (the practically relevant case:
+    quench to martensite, then temper). The hardness moves down the master curve between
+    two **independently-anchored** endpoints:
+
+        HV(P) = HV_floor + (HV_aq − HV_floor)·g(P)
+
+      * ``HV_aq``   — as-quenched martensite (:func:`vickers_martensite`, the Phase-3a model),
+      * ``HV_floor`` — the over-tempered / spheroidized floor, taken as the ferrite-pearlite
+        baseline (:func:`vickers_ferrite_pearlite`); spheroidite is in fact a little softer,
+        so this is a slightly **conservative** (won't over-soften) floor,
+      * ``g(P)``    — the calibrated fractional-softening master curve (:func:`_temper_softening`),
+        with ``P`` the Hollomon–Jaffe parameter (:func:`hollomon_jaffe_parameter`).
+
+    Both endpoints carry the optional ``comp`` minor-alloy term, so an alloy steel both
+    **starts harder and keeps a higher floor** — it resists tempering softening, the real
+    alloy temper-resistance, as an *emergent consequence* of the two anchored endpoints (not
+    a separate fitted term). With ``comp=None`` it is the plain-carbon response.
+
+    **Scope (deliberate):** martensite-only. Pearlite/ferrite are near-equilibrium and barely
+    temper, so a *mixed* Jominy traverse would have to be tempered **per-constituent** (soften
+    the martensite, leave the pearlite) — that integration is deferred. This models the
+    quench-and-temper part, not 'tempered pearlite'.
+    """
+    HV_aq = vickers_martensite(C, comp=comp)
+    HV_floor = vickers_ferrite_pearlite(C, comp=comp)
+    P = hollomon_jaffe_parameter(T_temper, t_hours, C_hj=C_hj)
+    g = _temper_softening(P)
+    # Return the anchored endpoints *exactly* in the clamped regions (g is exactly 1.0 below
+    # onset / 0.0 above the over-tempered breakpoint) — so the seam "a negligible temper is
+    # byte-for-byte the as-quenched model" is exact by construction, not float round-trip luck.
+    if g >= 1.0:
+        return HV_aq
+    if g <= 0.0:
+        return HV_floor
+    return HV_floor + (HV_aq - HV_floor) * g
+
+
+# --------------------------------------------------------------------------- #
+# 5b. Strength: the published hardness → tensile-strength conversion (ISO 18265)
+# --------------------------------------------------------------------------- #
+# ISO 18265 / ASTM A370 hardness↔tensile-strength conversion for steel (HV → UTS MPa),
+# interpolated exactly like the E140 hardness table above. The standard correlation
+# ``UTS[MPa] ≈ 3.3·HV`` holds across the soft-to-medium range but **degrades above
+# ~550 HV** — as-quenched, untempered martensite is precisely where the linear hardness–
+# strength relation is least valid — so the table stops there and returns ``nan`` outside
+# its band (the honest "out of the correlation's range", mirroring
+# :func:`vickers_to_rockwell_c`). Published reference facts, interpolated, not redistributed.
+_UTS_HV = np.array([150.0, 200.0, 250.0, 300.0, 350.0, 400.0, 450.0, 500.0, 550.0])
+_UTS_MPA = np.array([480.0, 640.0, 800.0, 950.0, 1115.0, 1290.0, 1465.0, 1660.0, 1845.0])
+
+RELIABLE_UTS_HV_MIN = 150.0
+RELIABLE_UTS_HV_MAX = 550.0
+
+
+def tensile_strength_MPa(HV: float | np.ndarray) -> float | np.ndarray:
+    """Ultimate tensile strength (MPa) from Vickers ``HV`` via the ISO 18265 steel table.
+
+    Linear interpolation over the standard steel hardness↔strength conversion (≈ ``3.3·HV``
+    across the band). Returns ``nan`` below ~150 HV and above ~550 HV — outside the
+    correlation's validity: above ~550 HV (untempered martensite) the linear relation breaks
+    down, so a ``nan`` there is the honest "this conversion does not apply", not a clamp.
+    Scalar or array in/out.
+
+    Yield strength is **not** returned: it is a rough ~0.6–0.9·UTS for tempered steels and is
+    not a clean function of hardness (Tabor's ``H ≈ 3σ`` relates hardness to *flow stress*,
+    not yield) — reporting it as a function would over-claim.
+    """
+    HV_arr = np.asarray(HV, dtype=float)
+    out = np.interp(HV_arr, _UTS_HV, _UTS_MPA, left=np.nan, right=np.nan)
+    return float(out) if out.ndim == 0 else out
+
+
+# --------------------------------------------------------------------------- #
+# 5c. Toughness: the rough strength/toughness trade-off (a relative direction)
+# --------------------------------------------------------------------------- #
+# Toughness rises as hardness/strength falls — the strength/toughness trade-off tempering
+# exploits. This maps HV onto a dimensionless, RELATIVE index in [0, 1] (1 = soft & tough,
+# 0 = fully hard & brittle), linearly between two reference hardnesses. It is deliberately a
+# *direction*, not an absolute Charpy energy: a real impact-toughness curve is steel/heat-
+# specific AND **non-monotone** — tempered-martensite embrittlement (~260–370 °C) and
+# temper embrittlement (~375–575 °C, alloy steels) cut toughness troughs this monotone proxy
+# does not model. That non-monotonicity is the named scope ceiling of the trade-off here.
+TOUGH_HV_TOUGH = 200.0        # ≲ this HV: soft, fully tough (index → 1)
+TOUGH_HV_BRITTLE = 600.0      # ≳ this HV: fully hard, brittle (index → 0)
+
+
+def toughness_index(HV: float | np.ndarray) -> float | np.ndarray:
+    """Relative toughness — dimensionless ``[0, 1]``, **high when soft, low when hard**.
+
+    The strength/toughness trade-off as a *direction*: ``1`` at/below ~200 HV (soft,
+    tough), ``0`` at/above ~600 HV (fully hard, brittle), linear between (clamped). This is
+    **not** a Charpy energy — no absolute J value is invented, because real impact toughness
+    is steel/heat-specific and, crucially, **non-monotone** (the embrittlement troughs named
+    above). Use it for the *trade-off* (it must move opposite to :func:`tensile_strength_MPa`
+    as a steel is tempered), not as a quantitative toughness. Scalar or array in/out.
+    """
+    HV_arr = np.asarray(HV, dtype=float)
+    idx = (TOUGH_HV_BRITTLE - HV_arr) / (TOUGH_HV_BRITTLE - TOUGH_HV_TOUGH)
+    out = np.clip(idx, 0.0, 1.0)
+    return float(out) if out.ndim == 0 else out
