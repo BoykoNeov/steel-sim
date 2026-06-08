@@ -11,6 +11,9 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 - **To work on the kinetics (Phase 1c):** `kinetics.py` + `pathint.py` +
   `cooling.py` and their `tests/`; each module docstring is its contract. They
   consume `fe_c` (the A₁ driving force) and produce phase-fraction dicts.
+- **To work on Jominy (Phase 2):** `jominy.py` + `test_jominy.py`; it loads the
+  frozen `engines/diffusion/CONTRACT.md` (heat mode) and reuses `cooling.py`
+  constants + `pathint.py`. The module docstring is its contract.
 - **To use the diffusion/heat spine:** load `engines/diffusion/CONTRACT.md` only —
   the frozen one-pager. You never need the engine's internals.
 - The Fe-C boundaries here are **parametrized approximations** (linear between
@@ -29,8 +32,9 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 1c | `cooling.py` | cooling-path presets (`h` for furnace/air/oil/water) + Biot validity flag | **built ✓** |
 | 1 | `plots.py`, `demo_four_curves.py` | the anchor artifact (four rates → pearlite→martensite); needs `[viz]` extra | **built ✓** |
 | 1 | `sweep.py`, `app.py`, `steel.ipynb` | experimentation surface (sweeps, Streamlit, notebook) | planned |
-| 2 | `jominy.py` | end-quench hardenability (heat solver, spatial) | planned |
-| 3 | `properties.py`, `carburize.py` | microstructure → hardness; case-hardening gradient | planned |
+| 2a | `jominy.py` | end-quench **spatial thermal** model (fin equation; frozen heat solver + lateral loss) → cooling-rate-vs-distance | **built ✓** (2026-06-08) |
+| 2b/2c | `jominy.py` + `kinetics`/`properties.py` | hardenability alloy C-curve shift + microstructure→hardness → Jominy curve; 1045/4140 benchmark | planned |
+| 3 | `properties.py`, `carburize.py` | microstructure → hardness (full); case-hardening gradient | planned |
 | 4 | `calphad_backend.py` | optional pycalphad equilibrium | planned |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
@@ -118,6 +122,43 @@ formation temperature → coarseness), oil a bainite-dominant *mixture* (plain 1
 resists clean continuous-cooling bainite; austempering would be needed), water
 martensite. The drama is the **property span** (~20 → ~63 HRC indicative). Coarse/
 fine pearlite resolution and real hardness numbers are Phase 3.
+
+## Phase 2a — Jominy spatial thermal model (`jominy.py`)
+
+The first *spatial* reuse of the frozen heat solver. The standard end-quench bar
+(ASTM A255) is modelled as the **transient fin equation** — axial conduction *plus*
+lateral convection to air — because a timescale check (`√(αt) ≈ 8 mm at 10 s`) shows
+a bar with adiabatic sides cannot cool its far half on the transformation timescale;
+the lateral air loss is what produces the real Jominy gradient. A strong Robin
+(water jet) cools the quenched end; the tip is insulated.
+
+The frozen engine solves pure conduction, so the lateral sink (which depends on the
+live `T`, not expressible as the engine's `S(x,t)` source) is composed *around* it by
+**Strang operator splitting**: an analytic-exponential lateral half-step (exact,
+unconditionally stable) on either side of one frozen implicit conduction step — the
+engine is never modified (the ADR-0001 array seam working as intended).
+
+```python
+from projects.steel.jominy import JominyBar, solve_thermal_field, jominy_distances
+f = solve_thermal_field(JominyBar(), T0=850.0)          # T(x,t) over the bar
+cr = f.cooling_rate_at(jominy_distances(16), T_ref=700) # K/s vs distance (the Jominy metric)
+t, T = f.history(0)                                      # the (t,T) path at a depth → pathint (2b)
+```
+
+**Validated** (`test_jominy.py`): the thermally-thin limit (Bi < 0.1) reduces exactly
+to `cooling.py`'s 0-D Newton cooling (`τ_lat = ρc_p·(d/4)/h` — the same `L_c`); a
+both-ends Robin slab pins the engine's `h_eng = h_phys/(ρc_p)` unit convention; and
+energy balances over the bar's *two* sinks (`Δ∫T dx = end-flux + lateral-loss`) to
+machine precision. The **thermal benchmark**: the cooling-rate-vs-distance curve
+tracks the published Jominy distance↔rate equivalence at 700 °C (mean ratio ~0.92,
+mid-range within the ~±25 % literature spread) and is **resolution-converged**
+(< 1.2 % under 2× cells × 2× time) — fin physics, not a discretization artifact.
+Freezing this thermal curve *before* the Phase-2b hardenability calibration is
+deliberate: the mid-range knee (~5–25 mm) is where the cooling rate and the alloy
+τ-shift both act, so a validated thermal curve stops the τ-shift from absorbing
+thermal error. **Scope:** 2a banks the thermal spine and its analytical +
+conservation + thermal-benchmark legs; the hardenability alloy C-curve shift, the
+microstructure→hardness map, and the 1045/4140 *hardness* benchmark are Phase 2b/2c.
 
 ## Run the tests
 

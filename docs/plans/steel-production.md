@@ -386,9 +386,42 @@ both give pearlite, separated only by formation temperature (coarseness); the §
 "four microstructures" phrasing was an idealization, and coarse/fine pearlite +
 real hardness numbers are Phase 3.
 
-**Next: Phase 2 — Jominy hardenability** (the spatial step): `engines/diffusion`
-in heat mode + an end-quench Robin BC → cooling-rate-vs-distance → CCT → hardness
-vs distance. **Deferred from Phase 1c:** the experimentation surface (`sweep.py`,
-`app.py`, `steel.ipynb`) — the static-figure floor is banked; the interactive
-layer is the next viz increment. Nothing downstream touches the frozen solver's
-internals — only its `CONTRACT.md`.
+**Phase 2a is built ✓** (2026-06-08) — `projects/steel/jominy.py`, the first
+*spatial* reuse of the frozen heat solver. The end-quench bar is the **transient
+fin equation** (axial conduction + lateral air convection), *not* pure axial
+conduction: a timescale check (`√(αt) ≈ 8 mm at 10 s`) shows adiabatic sides leave
+the far half uncooled for ~25 min, so lateral loss is what makes the real Jominy
+gradient. Robin (water jet) at the quenched end, insulated tip. The frozen
+`source` can't carry the lateral sink (it depends on the live `T`), so it is
+composed *around* the engine by **Strang operator splitting** — an analytic-
+exponential lateral half-step (exact, unconditionally stable) on either side of one
+frozen implicit conduction step; the sealed engine is never touched (the ADR-0001
+array seam as designed). Subtle unit pinned by test: engine Robin `h_eng =
+h_phys/(ρc_p)`. Two triad legs banked: the **analytical limit** (thermally-thin
+`Bi < 0.1` reduces to `cooling.py`'s 0-D Newton cooling, `τ_lat = ρc_p(d/4)/h` —
+matched to 1e-12; a both-ends-Robin slab pins the h-conversion) and **conservation**
+(two-sink energy balance `Δ∫T dx = end-flux + lateral-loss` to ~1e-11), plus a
+**thermal benchmark**: cooling-rate-vs-distance tracks the published Jominy
+distance↔rate equivalence at 700 °C (mean ratio ~0.92, mid-range within the ~±25 %
+literature spread) and is **resolution-converged** (< 1.2 % under 2× refinement) — so
+it's fin physics, not a discretization artifact. This thermal curve is frozen *before*
+the 2b hardenability calibration on purpose (below). The near end runs hot (`h_quench`
+is the one free thermal knob, martensite-saturated → hardness-irrelevant). 11 tests;
+full suite **139 green**.
+
+**Next: Phase 2b/2c** — the calibration-heavy half and the third triad leg.
+**2b:** hardenability = an alloy shift of the `CCurve` (Mn/Cr/Mo move it right;
+default identity so the 1080 demo stays byte-identical). **2c:** a
+microstructure→hardness map (seed a minimal `properties.py`; Phase 3 extends it) →
+the **Jominy hardness-vs-distance** artifact + the **1045/4140 benchmark**. To keep
+the benchmark *validating* rather than curve-fitting three knobs (h_water, τ-shift,
+hardness) against one curve, exploit the pair's structure — both are ~0.4 %C so they
+share a quenched-end hardness (validates the hardness model alone) and they diverge
+with distance (validates the hardenability shift alone) — and anchor each sub-model
+to its own published data. The subtler confound is that the **mid-range thermal
+accuracy** (not `h_quench`) is what the τ-shift could absorb — both act on the
+~5–25 mm knee — which is exactly why Phase 2a froze its thermal benchmark *before*
+this calibration begins. **Deferred from Phase 1c:** the experimentation surface
+(`sweep.py`, `app.py`, `steel.ipynb`) — the static-figure floor is banked; the
+interactive layer is the next viz increment. Nothing downstream touches the frozen
+solver's internals — only its `CONTRACT.md`.
