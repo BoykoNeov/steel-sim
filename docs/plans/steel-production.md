@@ -31,7 +31,7 @@ and it is *simultaneously* the integration test for every Phase-1 module.
 
 | Engine | Status here | Contract pointer |
 |---|---|---|
-| **Diffusion/heat (Fick / erfc)** — the program spine | **`[to build & freeze here]`** | `engines/diffusion/CONTRACT.md` (drafted in §4). This is *the* deliverable other projects inherit: Chip's dopant profiles = the carbon-diffusion code; Planet's EBM heat transport = the heat-conduction instantiation. |
+| **Diffusion/heat (Fick / erfc)** — the program spine | **`[FROZEN ✓ — Phase 1a, 2026-06-08]`** | `engines/diffusion/CONTRACT.md` (now the real frozen contract; §4 below is the original draft). This is *the* deliverable other projects inherit: Chip's dopant profiles = the carbon-diffusion code; Planet's EBM heat transport = the heat-conduction instantiation. |
 | **ODE / path-integrator (minimal)** | `[build minimal here — steel-local]` | `projects/steel/pathint.py`. The lightweight piece Steel needs: marching the Scheil additivity integral and Avrami fraction along a cooling path, plus an optional lumped-capacitance 0-D cooler. Kept in `projects/steel/`, **not** `engines/` — only steel uses it, so per invariant 5 / rule-of-three it is *not* promoted to the shared toolkit until a stabilized interface has ≥3 uses. The heavy symplectic/RK4 family (jet, star, galaxy) is not built here. |
 
 No other shared engine is touched. CALPHAD (Phase 4) is consumed as a
@@ -209,7 +209,19 @@ BigSim/
 
 This is the cross-cutting interface the whole program hinges on; it is specified
 here precisely because a vague contract is the one mistake that propagates to
-Chip and Planet (ARCHITECTURE.md §5–6). Draft of `engines/diffusion/CONTRACT.md`:
+Chip and Planet (ARCHITECTURE.md §5–6).
+
+> **Built & frozen (Phase 1a, 2026-06-08).** The authoritative contract now lives
+> in `engines/diffusion/CONTRACT.md`; the draft below is preserved as the
+> planning record. Two deliberate refinements made during the build: (1) the
+> engine is kept **generic / D-agnostic** — the Arrhenius `D₀,Q` (and `α,h`) are
+> the *consumer's* and are validated in steel's mass/heat usage, not in 1a, so
+> the frozen seal promises a correct generic solver, not specific constants; and
+> (2) the per-method stability guarantee is made explicit (backward-Euler is the
+> unconditionally-stable *and monotone* default; Crank–Nicolson can oscillate at
+> large dt). A `source`-term seal was added since `S` is part of the frozen API.
+
+Draft of `engines/diffusion/CONTRACT.md`:
 
 - **Solves** the conservative 1-D parabolic PDE
   `∂u/∂t = ∂/∂x( D(x,…) ∂u/∂x ) + S(x,t)` on `x∈[0,L]`, where `u` is a generic
@@ -338,9 +350,16 @@ slider → re-run → re-plot needs no special engineering.
 
 ---
 
-## 10. Immediate next step (when implementation begins)
+## 10. Immediate next step
 
-Build **Phase 1a** — `engines/diffusion/diffusion1d.py` plus its erfc /
-conservation / stability tests — and *freeze it*. That single sealed module is
-the diffusion spine the entire trio inherits; everything else in this plan, and
-much of Microchip and Planet, is recomposition on top of it.
+**Phase 1a is built and frozen ✓** (2026-06-08) — `engines/diffusion/` (solver +
+`CONTRACT.md` + a 5-file test seal: erfc/2nd-order convergence, exact no-flux
+conservation, per-method stability, source-augmented conservation, heat-mode
+Robin + flux bookkeeping). The diffusion spine the entire trio inherits is sealed.
+
+**Next: Phase 1b — Fe-C equilibrium** (`projects/steel/fe_c.py`). Metastable
+Fe–Fe₃C boundaries (A₁=727 °C; A₃, A_cm; eutectoid 0.76 % C) + the **lever rule**
+→ equilibrium phase fractions, validated against the exact invariant points (§3).
+Then 1c (Avrami/TTT + Scheil additivity + KM/Andrews) and the four-curves anchor
+demo. Nothing downstream touches the frozen solver's internals — only its
+`CONTRACT.md`.
