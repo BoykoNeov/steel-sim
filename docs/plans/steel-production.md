@@ -368,10 +368,27 @@ mass balance `Σ fᵢCᵢ=C0` + constituent↔phase consistency (conservation), 
 1045/1080 published facts (benchmark). Full suite green (60 tests). The 727 °C
 isotherm convention is documented + pinned.
 
-**Next: Phase 1c — transformation kinetics** (`kinetics.py` + `pathint.py` +
-`cooling.py`). Isothermal **JMAK/Avrami** → TTT; **Scheil additivity** ∫dt/τ=1 →
-CCT; **Koistinen–Marburger** martensite with **Andrews** `M_s` from composition;
-a lumped/0-D cooler (or 1a in heat mode) supplies `T(t)`. The undercooling below
-`fe_c`'s `A1`/`A3` is the driving force. Then the four-curves anchor demo
-(`sweep.py` + `plots.py` + `demo_four_curves.py`). Nothing downstream touches the
-frozen solver's internals — only its `CONTRACT.md`.
+**Phase 1c is built ✓** (2026-06-08) — `kinetics.py` + `pathint.py` + `cooling.py`
++ the banked anchor demo. Isothermal **JMAK/Avrami** with a **TTT C-curve** whose
+nose is the *driving-force × mobility* product (`τ=τ₀·exp(Q/RT)·exp(K_N/(T·ΔT²))`,
+ΔT the undercooling below `fe_c`'s A₁, abs T in kelvin); **Scheil additivity**
+∫dt/τ=1 → CCT start (reduces to the isothermal τ under a hold — the consistency
+leg); **Koistinen–Marburger** athermal martensite with **Andrews** `M_s`, applied
+to the *retained* austenite so the products sum to 1 exactly; a 0-D lumped Newton
+cooler supplies `T(t)`, each path flagged by **Biot number** (water exceeds the
+lumped-validity 0.1 → the honest hand-off to Phase-2's spatial solve). Calibrated
+1080 nose ≈ 550 °C / 1.0 s (matches published TTT). 68-test triad; full suite
+**128 green**. The anchor figure (`docs/figures/steel-four-curves.png`, via the
+opt-in `[viz]` extra) shows one 1080 cooled four ways: a **property span from soft
+pearlite (~20 HRC) to very-hard martensite (~63 HRC)**. *Honest scope note:* the
+four rates yield **three** distinct phase constitutions, not four — furnace and air
+both give pearlite, separated only by formation temperature (coarseness); the §1
+"four microstructures" phrasing was an idealization, and coarse/fine pearlite +
+real hardness numbers are Phase 3.
+
+**Next: Phase 2 — Jominy hardenability** (the spatial step): `engines/diffusion`
+in heat mode + an end-quench Robin BC → cooling-rate-vs-distance → CCT → hardness
+vs distance. **Deferred from Phase 1c:** the experimentation surface (`sweep.py`,
+`app.py`, `steel.ipynb`) — the static-figure floor is banked; the interactive
+layer is the next viz increment. Nothing downstream touches the frozen solver's
+internals — only its `CONTRACT.md`.

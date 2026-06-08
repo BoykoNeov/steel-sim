@@ -1,0 +1,187 @@
+"""Steel-local plot helpers — the render layer (Steel Phase 1c; ADR 0002).
+
+The **viz floor**: static matplotlib figures that *consume* the plain arrays the
+compute modules produce. Per ADR 0002 this layer is strictly downstream of
+correctness — a figure draws already-validated numbers, it is never evidence of
+validity (the triad tests do that). It is also the only place in steel that
+imports a plotting library; :mod:`kinetics`/:mod:`pathint`/:mod:`cooling` stay
+headless, so the test suite never needs matplotlib.
+
+The headline view is the **mechanism** one ADR 0002 §5 calls for: the four cooling
+paths drawn *across* the TTT C-curve, so a learner sees *why* a fast quench misses
+the nose and lands in martensite while a slow cool runs into pearlite. These
+helpers start project-local; a primitive earns promotion to a shared ``viz/`` only
+by rule-of-three (ARCHITECTURE.md §6), like :mod:`pathint`.
+
+Requires the optional ``viz`` extra (``pip install -e .[viz]``).
+"""
+from __future__ import annotations
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+from .kinetics import CCurve
+from .pathint import TransformResult
+from .cooling import CoolingPath
+
+# Stable colours so the legend reads the same across every figure.
+PHASE_COLORS = {
+    "pearlite": "#e8833a",            # warm — diffusional, slow, soft
+    "bainite": "#4a9b5e",
+    "martensite": "#3b6db5",          # cool — athermal, fast, hard
+    "retained_austenite": "#9aa0a6",
+}
+PHASE_LABELS = {
+    "pearlite": "pearlite",
+    "bainite": "bainite",
+    "martensite": "martensite",
+    "retained_austenite": "retained γ",
+}
+MEDIUM_COLORS = {
+    "furnace": "#b03a2e",
+    "air": "#e67e22",
+    "oil": "#1e8449",
+    "water": "#2471a3",
+}
+
+# Indicative hardness by dominant constituent — a qualitative cue for the "four
+# materials" point, NOT a validated property model (that is Phase 3, properties.py).
+INDICATIVE_HARDNESS = {
+    "pearlite": "soft\n~20 HRC",
+    "bainite": "hard\n~45 HRC",
+    "martensite": "very hard\n~63 HRC",
+    "retained_austenite": "soft",
+}
+
+
+def plot_ttt(
+    ax: "plt.Axes", ccurve: CCurve, n_pts: int = 400,
+    t_lim: tuple[float, float] = (0.1, 1e6), T_top: float = 880.0,
+) -> "plt.Axes":
+    """Draw the TTT C-curve (start + finish) with the A₁ ceiling, Mₛ floor, and nose.
+
+    ``T`` on the vertical axis, **log time** on the horizontal — the standard TTT
+    layout. The C opens rightward because ``τ(T)`` is shortest at the nose. Active
+    window only (``Mₛ < T < A₁``); above A₁ there is no driving force, below Mₛ
+    martensite governs. The axes are bounded explicitly: near A₁ the start time
+    diverges to ~1e18 s (vanishing driving force), which would otherwise hand the
+    log locator a pathological range.
+    """
+    temps = np.linspace(ccurve.Ms + 2.0, ccurve.T_eq - 2.0, n_pts)
+    t_start = np.array([ccurve.time_to_fraction(float(T), 0.01) for T in temps])
+    t_finish = np.array([ccurve.time_to_fraction(float(T), 0.99) for T in temps])
+    # Keep only points that fall within the plotted window (drops the near-A₁ blow-up).
+    keep = np.isfinite(t_start) & np.isfinite(t_finish) & (t_finish < t_lim[1])
+
+    ax.plot(t_start[keep], temps[keep], "k-", lw=2.0, label="start (1 %)")
+    ax.plot(t_finish[keep], temps[keep], "k--", lw=1.6, label="finish (99 %)")
+    ax.fill_betweenx(temps[keep], t_start[keep], t_finish[keep],
+                     color="0.85", alpha=0.6, zorder=0)
+
+    ax.set_xscale("log")
+    ax.set_xlim(*t_lim)
+    ax.set_ylim(0.0, T_top)
+
+    ax.axhline(ccurve.T_eq, color="0.4", ls=":", lw=1.2)
+    ax.axhline(ccurve.Ms, color="#3b6db5", ls=":", lw=1.2)
+    ax.text(t_lim[0] * 1.3, ccurve.T_eq + 6, "A₁", va="bottom", ha="left",
+            color="0.3", fontsize=9)
+    ax.text(t_lim[0] * 1.3, ccurve.Ms + 6, "Mₛ", va="bottom", ha="left",
+            color="#3b6db5", fontsize=9)
+
+    T_nose, t_nose = ccurve.nose(X=0.01)
+    ax.plot([t_nose], [T_nose], "ko", ms=5)
+    ax.annotate(f"nose\n{T_nose:.0f} °C, {t_nose:.1f} s", (t_nose, T_nose),
+                textcoords="offset points", xytext=(8, -26), fontsize=8, color="0.2")
+
+    ax.set_xlabel("time  (s)")
+    ax.set_ylabel("temperature  (°C)")
+    return ax
+
+
+def plot_cooling_paths(
+    ax: "plt.Axes", paths: list[CoolingPath], results: list[TransformResult] | None = None
+) -> "plt.Axes":
+    """Overlay cooling histories ``T(t)`` on a TTT axis (call after :func:`plot_ttt`).
+
+    Each path is a coloured curve falling left→right across the C-curve; the legend
+    labels it with its medium and (if ``results`` given) the dominant product, so
+    the figure reads as *medium → where it crosses → what it becomes*.
+    """
+    for i, p in enumerate(paths):
+        m = p.t > 0.0                              # drop t=0 for the log axis
+        label = p.name
+        if results is not None:
+            r = results[i]
+            dom = r.dominant()
+            label = f"{p.name} → {dom.replace('_', ' ')}"
+            # For a diffusional product, show *where on the C-curve* it formed — the
+            # kinetic cue that separates furnace- from air-pearlite (higher = coarser).
+            if dom in ("pearlite", "bainite") and np.isfinite(r.formation_T):
+                label += f"  (~{r.formation_T:.0f} °C)"
+        ax.plot(p.t[m], p.T[m], color=MEDIUM_COLORS.get(p.name, f"C{i}"),
+                lw=2.0, label=label)
+    ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
+    return ax
+
+
+def plot_microstructure_bars(
+    ax: "plt.Axes", paths: list[CoolingPath], results: list[TransformResult]
+) -> "plt.Axes":
+    """Stacked phase-fraction bars per medium — the four resulting microstructures.
+
+    One stacked bar per cooling path (pearlite/bainite/martensite/retained γ); the
+    dominant constituent and its *indicative* hardness annotate each bar. Hardness
+    here is a qualitative cue only — Phase 3 (``properties.py``) is the real model.
+    """
+    order = ["pearlite", "bainite", "martensite", "retained_austenite"]
+    names = [p.name for p in paths]
+    x = np.arange(len(names))
+    bottom = np.zeros(len(names))
+    for phase in order:
+        vals = np.array([r.fractions()[phase] for r in results])
+        ax.bar(x, vals, bottom=bottom, color=PHASE_COLORS[phase],
+               label=PHASE_LABELS[phase], width=0.7, edgecolor="white", linewidth=0.5)
+        bottom += vals
+
+    for xi, r in zip(x, results):
+        dom = r.dominant()
+        ax.text(xi, 1.02, INDICATIVE_HARDNESS[dom], ha="center", va="bottom",
+                fontsize=7.5, color="0.25", rotation=0)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(names)
+    ax.set_ylim(0, 1.18)
+    ax.set_ylabel("mass fraction")
+    ax.set_xlabel("quench medium")
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.32), ncol=4, fontsize=8,
+              frameon=False)
+    return ax
+
+
+def four_curves_figure(
+    ccurve: CCurve, paths: list[CoolingPath], results: list[TransformResult],
+    title: str = "One steel (AISI 1080), four cooling rates: soft pearlite → very-hard martensite",
+) -> "plt.Figure":
+    """Assemble the Phase-1 **anchor artifact**: paths-on-TTT + microstructure bars.
+
+    Left, the mechanism (cooling paths crossing the C-curve); right, the
+    consequence (the microstructures and their indicative hardness). The two panels
+    are the demo's whole thesis — same austenite, a spectrum of fates from soft
+    pearlite to file-hard martensite, set by which side of the nose the cooling path
+    falls. (Four cooling rates yield three distinct phase constitutions — furnace
+    and air both give pearlite, differing only in formation temperature/coarseness;
+    the title names the property span, which is the honest dramatic claim.)
+    """
+    fig, (ax_ttt, ax_bars) = plt.subplots(1, 2, figsize=(13, 6),
+                                          gridspec_kw={"width_ratios": [1.6, 1.0]})
+    plot_ttt(ax_ttt, ccurve)
+    plot_cooling_paths(ax_ttt, paths, results)
+    ax_ttt.set_title("cooling paths across the TTT C-curve", fontsize=11)
+
+    plot_microstructure_bars(ax_bars, paths, results)
+    ax_bars.set_title("resulting microstructure", fontsize=11)
+
+    fig.suptitle(title, fontsize=13, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    return fig
