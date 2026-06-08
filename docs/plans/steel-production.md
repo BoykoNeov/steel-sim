@@ -32,7 +32,7 @@ and it is *simultaneously* the integration test for every Phase-1 module.
 | Engine | Status here | Contract pointer |
 |---|---|---|
 | **Diffusion/heat (Fick / erfc)** — the program spine | **`[to build & freeze here]`** | `engines/diffusion/CONTRACT.md` (drafted in §4). This is *the* deliverable other projects inherit: Chip's dopant profiles = the carbon-diffusion code; Planet's EBM heat transport = the heat-conduction instantiation. |
-| **ODE / path-integrator (minimal)** | `[build minimal here]` | `engines/odeint/CONTRACT.md`. Only the lightweight piece Steel needs: marching the Scheil additivity integral and Avrami fraction along a cooling path, plus an optional lumped-capacitance 0-D cooler. The heavy symplectic/RK4 family (jet, star, galaxy) is **not** built here — deliberate non-scope to avoid over-engineering a one-use need. |
+| **ODE / path-integrator (minimal)** | `[build minimal here — steel-local]` | `projects/steel/pathint.py`. The lightweight piece Steel needs: marching the Scheil additivity integral and Avrami fraction along a cooling path, plus an optional lumped-capacitance 0-D cooler. Kept in `projects/steel/`, **not** `engines/` — only steel uses it, so per invariant 5 / rule-of-three it is *not* promoted to the shared toolkit until a stabilized interface has ≥3 uses. The heavy symplectic/RK4 family (jet, star, galaxy) is not built here. |
 
 No other shared engine is touched. CALPHAD (Phase 4) is consumed as a
 **validation reference and optional backend** (pycalphad), *not* reimplemented —
@@ -69,7 +69,11 @@ downstream until 1a is frozen.
   boundary approximations (A₁ = 727 °C; A₃ from 912 °C → 727 °C; A_cm to
   1147 °C / 2.11 % C; eutectoid 0.76 % C). **Lever rule** → equilibrium phase
   fractions (pro-eutectoid ferrite/cementite + pearlite). This is the *endpoint*
-  and the thermodynamic driving force for kinetics.
+  and the thermodynamic driving force for kinetics. *Note:* the pro-eutectoid
+  lever-rule teaching moment is **degenerate on eutectoid 1080** (pro-eutectoid
+  fraction ≈ 0 — there the lever rule is just the ferrite/cementite split
+  *within* pearlite); show the dramatic pro-eutectoid split on a **hypoeutectoid
+  1045** instead.
 - **1c — Transformation kinetics.** Isothermal **JMAK/Avrami** `X(t)=1−exp(−k(T)tⁿ)`
   → TTT diagram (the C-curve nose from the driving-force × mobility product).
   **Scheil additivity** `∫dt/τ(T(t))=1` bridges isothermal → continuous cooling
@@ -90,7 +94,11 @@ downstream until 1a is frozen.
   diagram (ASM-style, used as *reference facts*, not redistributed); `M_s` from
   Andrews vs published values.
 
-**Banked artifact:** script/notebook → the anchor figure of §1.
+**Banked artifact:** the anchor figure of §1, produced through a small
+**sweep / what-if harness** (`sweep.py`) — parameter sweeps over cooling rate
+and composition are a *named Phase-1 feature*, not a one-off script (program §1
+makes experimentation a core target and ties sweeps to "the cheapest
+verification").
 
 ### Phase 2 — Jominy hardenability (the spatial step)
 
@@ -169,14 +177,12 @@ BigSim/
       diffusion1d.py                # the solver
       CONTRACT.md                   # the FROZEN one-page API (below)
       tests/                        # erfc, conservation, stability — the seal
-    odeint/
-      pathint.py                    # additivity ∫dt/τ + Avrami-along-path + lumped cooler
-      CONTRACT.md
-      tests/
   projects/steel/
     fe_c.py                         # phase diagram + lever rule           (1b)
     kinetics.py                     # Avrami/TTT, additivity/CCT, KM, Andrews Ms (1c)
+    pathint.py                      # steel-local path-integrator: additivity ∫dt/τ + Avrami-along-path + 0-D cooler
     cooling.py                      # cooling-path presets (h for air/oil/water/furnace)
+    sweep.py                        # sweep / what-if harness — parameter sweeps → side-by-side comparison
     properties.py                   # microstructure → hardness/strength    (Phase 3)
     jominy.py                       # end-quench hardenability               (Phase 2)
     carburize.py                    # case-hardening gradient                (Phase 3)
