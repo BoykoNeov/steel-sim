@@ -348,6 +348,47 @@ consume the engine's plain outputs.
 Responsiveness is free here: Phase-1 compute is sub-second (ADR 0001 scope), so
 slider → re-run → re-plot needs no special engineering.
 
+### Slice plan — the interactive surfaces (on the built `sweep.py` harness)
+
+`sweep.py` (the headless harness) is **built ✓** (2026-06-08). The two interactive
+layers are thin surfaces on it — both just wire sliders to `sweep.evaluate` /
+`cooling_rate_sweep` / `composition_sweep` / `sweep_grid` / `temper_sweep` and reuse the
+existing figures (`four_curves_figure`, `sweep_comparison_figure`, `plot_ttt`). They extend
+*reach*, not correctness: per ADR 0002 the static figures + the `sweep`/properties triads are
+the validation; a UI layer's test is an **execution smoke-test**, not new physics. Three
+slices, in order:
+
+1. **Slice 1 — `steel.ipynb` (the teaching notebook).** The *education* artifact (target #1):
+   a guided "cooling curve in, microstructure out" narrative — Fe-C endpoint → TTT C-curve →
+   the four-curves anchor → composition × cooling-rate hardenability → tempering — with
+   ipywidgets sliders (%C, alloy, quench medium, section size, temper T/t) re-running the
+   harness live. **Banks:** a committed, executable `.ipynb`. **Dep:** `ipywidgets` (a new
+   `[notebook]` extra; matplotlib already in `[viz]`). **Discipline:** every *compute* cell
+   calls a `sweep`/`properties` function directly (so the numbers are already-validated and
+   the notebook stays a thin widget skin); the **test** runs the notebook top-to-bottom
+   headless (`nbclient`/`nbconvert --execute`, `importorskip`-gated) and asserts no cell
+   errors — *that it executes clean*, not a physics check.
+
+2. **Slice 2 — `app.py` (the thin Streamlit what-if app).** The shareable slider UI — the same
+   harness re-skinned for the web: sidebar sliders → the mechanism view (paths on the TTT), the
+   microstructure bars, the hardness readout, the temper curve, and a two-steel side-by-side
+   (`composition_sweep`/`sweep_grid`). Cheap after slice 1 (same compute wiring; only the widget
+   framework differs). **Banks:** a runnable `app.py` (`streamlit run`). **Dep:** `streamlit` (a
+   new `[app]` extra). **Discipline:** keep all compute in importable helpers that call `sweep`
+   directly, Streamlit calls confined to `main()`; the **test** imports the module and exercises
+   the compute helpers (the UI itself is not unit-tested — ADR 0002).
+
+3. **Slice 3 — D_I cross-check *or* begin Microchip (decide on arrival).** After slices 1–2 the
+   experimentation surface is complete, so **all of Steel's planned work (Phases 1–4 + the §9
+   flagship surface) is done**. *Recommendation: begin **Microchip**.* It is the program's core
+   thesis (reuse the frozen `engines/diffusion` spine — Phase 1a = dopant erfc profiles, a fast
+   validated win), and starting it from a 100 %-complete Steel is the clean program move
+   (ARCHITECTURE.md §4). The **D_I** cross-check (ideal-quench diameters → critical one, vs
+   published `D_I`) stays the *available, not-required* alternative — it adds only modest marginal
+   validation to an already heavily-benchmarked Steel and blocks nothing, so it is the
+   "button Steel up 100 %, including the optional benchmark, before leaving" option, not the
+   priority. Appetite-driven; revisit when slices 1–2 land.
+
 ---
 
 ## 10. Immediate next step
