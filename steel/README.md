@@ -32,6 +32,11 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   `toughness_index`) + `tests/test_properties.py`'s Phase-3b section. Additive on the
   as-quenched model — tempers a martensitic structure between two anchored endpoints (3a
   martensite + the FP floor); the frozen 2c/3a benchmarks are untouched.
+- **To work on carburizing (Phase 3c):** `carburize.py` + `tests/test_carburize.py`
+  (the mass-mode triad) and `demo_carburize.py` + `tests/test_demo_carburize.py` (the
+  gear-tooth artifact). It loads the frozen `engines/diffusion/CONTRACT.md` (**mass mode**:
+  Dirichlet surface / Neumann core) for the erfc carbon profile, then reuses
+  `kinetics`/`pathint`/`properties` for the gradient. The module docstring is its contract.
 - **To use the diffusion/heat spine:** load `engines/diffusion/CONTRACT.md` only —
   the frozen one-pager. You never need the engine's internals.
 - The Fe-C boundaries here are **parametrized approximations** (linear between
@@ -55,7 +60,7 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 2c | `properties.py`, `demo_jominy.py` | microstructure→hardness map (rule of mixtures) → the Jominy **hardness**-vs-distance artifact; 1045/4140 hardness benchmark | **built ✓** (2026-06-08) |
 | 3a | `properties.py` (extend), `demo_four_curves.py` (rewire), `cooling.py` | Maynier **minor-alloy + cooling-rate** terms grafted on the 2c carbon baselines; four-curves demo on the **real** hardness model (placeholders retired) | **built ✓** (2026-06-08) |
 | 3b | `properties.py` (extend) | tempering (Hollomon–Jaffe master curve) + ISO-18265 strength + rough strength/toughness trade-off | **built ✓** (2026-06-08) |
-| 3c | `carburize.py` | case-hardening carbon gradient (frozen mass-diffusion spine) → hardness traverse | planned |
+| 3c | `carburize.py`, `demo_carburize.py` | carburizing case-hardening: frozen engine in **mass mode** (erfc carbon profile) → microstructure + hardness gradient (gear-tooth artifact) | **built ✓** (2026-06-08) |
 | 4 | `calphad_backend.py` | optional pycalphad equilibrium | planned |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
@@ -353,6 +358,68 @@ tempered-martensite (~260–370 °C) and temper-embrittlement (~375–575 °C, a
 named scope ceiling). Tempering is **martensite-only** here (pearlite barely tempers; a mixed
 traverse would temper per-constituent — deferred). No new figure: 3b is a `properties.py`
 extension validated by the test triad.
+
+## Phase 3c — carburizing case-hardening (`carburize.py`, `demo_carburize.py`)
+
+The **mass-diffusion face of the spine**. Phase 2 reused the frozen `engines/diffusion`
+in *heat* mode (the Jominy bar); 3c reunites the other face — the *same* sealed engine in
+**mass mode**, diffusing carbon into the surface of a low-carbon part (≈ 8620, 0.2 %C core)
+held at 925 °C in a 0.8 %C-potential atmosphere. Constant `D` + a Dirichlet surface give the
+textbook **erfc** carbon profile; the position-dependent `%C` then feeds the *same*
+`kinetics`/`pathint`/`properties` chain → a **case-hardened gradient**: a hard (~65 HRC)
+martensite case over a tougher, softer (~48 HRC) core.
+
+```python
+from projects.steel import carburize as cb
+p  = cb.solve_carburize(C_surface=0.8, C_core=0.2, T_carburize=925.0, t_hours=8.0)  # erfc C(x)
+p.case_depth(0.4)                       # effective case depth to 0.4 %C  (~0.66 mm)
+tr = cb.carburized_traverse(p)          # 8620, oil quench → fractions + hardness vs depth
+tr.HRC[0], tr.HRC[-1]                   # ~66 HRC case, ~48 HRC core
+```
+
+This is the **cleanest validation triad in the project**, because its two headline legs are
+the frozen engine's *own* guarantees re-instantiated — no new calibration:
+
+- *Analytical limit.* The numeric profile matches **erfc** in the interior, and the case
+  depth scales **exactly** as `√(Dt)` (the self-similar variable `x/2√(Dt)`). The scaling is
+  asserted *tightly*; the *absolute* case depth is asserted *loosely* — carbon potential and
+  case-depth definition vary across sources, and the cited constant-`D` (vs the concentration-
+  enhanced Tibbetts `D(C)`) under-predicts the absolute depth, a **named** scope limitation.
+- *Conservation.* `Δ∫C dx` equals the integrated surface flux `Σ dt·flux(left)` to machine
+  precision — the engine's exact backward-Euler flux identity (confirmed for the **Dirichlet**
+  surface, the core being no-flux), plus the semi-infinite tie `Δ∫C dx = 2(Cs−C0)√(Dt/π)`.
+- *Benchmark — genuine cross-checks.* The 50-HRC effective case depth (~1.4 mm at 925 °C/8 h)
+  lands in the published rule-of-thumb band, and the surface hardness cross-checks the
+  independently-anchored martensite curve (~65 HRC for ~0.8 %C). Both are cross-checks because
+  `D0, Q` are **cited diffusion data** (not fit to case depth) and the martensite hardness is
+  anchored to Hodge–Orehoski (not to carburizing).
+
+**The retained-austenite fork (advisor).** Running the full kinetics to room temperature at the
+high-carbon surface predicts substantial **retained austenite** (low surface `Ms`) — real
+heavy-case physics, *and* where Andrews `Ms` / KM / the √C martensite curve are pushed past their
+~0.8 %C anchor. So the **surface-hardness benchmark** is anchored to the martensite **potential**
+(`tr.HV` — the case as designed, what a published spec represents), while the RA is reported as the
+microstructure gradient (`tr.retained_austenite`) and an honest as-quenched curve (`tr.HV_as_quenched`,
+which dips below the potential *only* near the surface) — **not** asserted against the published band.
+This is the carbon-gradient story isolated: a **single** quench is applied at every depth, so the
+case's hardness gradient is **carbon-driven** (the thin case is thermally near-uniform on the
+transformation timescale) — the complement to the *cooling-rate*-driven gradients of 1c/2.
+
+### The carburized gear-tooth artifact (`demo_carburize.py`)
+
+```powershell
+pip install -e .[viz]
+python -m projects.steel.demo_carburize
+```
+
+One carburized 8620 section → the figure
+[`docs/figures/steel-carburize-gradient.png`](../../docs/figures/steel-carburize-gradient.png):
+three panels sharing the depth axis — the carbon profile (numeric + erfc overlay + case-depth
+marker), the microstructure gradient (martensite case, retained-γ rising into the surface), and
+the hardness traverse (martensite potential over the as-quenched curve, with the published surface
+band sitting honestly between them). **Scope named:** constant `D` (vs Tibbetts `D(C)`), Dirichlet
+constant potential (vs a Robin finite-surface-reaction / boost-diffuse ramp), and the high-carbon
+extrapolation. The **D_I cross-check** remains *available, not built* (not triad-required).
 
 ## Run the tests
 

@@ -528,14 +528,35 @@ Maynier-anchored (3a) comp deltas threaded through both endpoints, nothing fit t
 inverse of 2b's "calibrate 4140, 1045 falls out". No new figure (3b is a `properties.py` extension;
 the test triad carries it). 10 new tests; full suite **186 green**.
 
-**Next: Phase 3c** `carburize.py` — the mass-diffusion face of the spine: reuse the **frozen**
-`engines/diffusion` in mass mode for the surface-enriched erfc carbon profile, then feed
-position-dependent `%C` through the kinetics + property model → a case-hardened hardness gradient
-(the carburized gear-tooth artifact). 3c carries the plan's **named Phase-3 triad**: erfc case depth
-∝ √(Dt) (exact for isothermal carburizing — constant `D`, Dirichlet surface), carbon mass uptake =
-∫ surface flux dt (the engine's frozen `total`/`flux` identity), and published case-depth/surface-
-hardness tables. **Available cross-check (not triad-required):** the **D_I** downstream check
-(ideal-quench a series of diameters, find the critical one, vs published `D_I`) — sound where
-`D_I → τ` would not be (Phase 2b). **Still deferred from Phase 1c:** the experimentation surface
-(`sweep.py`, `app.py`, `steel.ipynb`). Nothing downstream touches the frozen solver's internals —
-only its `CONTRACT.md`.
+**Phase 3c is built ✓** (2026-06-08) — `projects/steel/carburize.py` + `demo_carburize.py`, the
+**mass-diffusion face of the spine**. The *same* frozen `engines/diffusion` that cooled the Jominy
+bar in heat mode now runs in **mass mode**: carbon diffuses into a low-carbon part (≈ 8620, 0.2 %C
+core) held at 925 °C in a 0.8 %C-potential atmosphere — a **Dirichlet** surface at the carbon
+potential and a **Neumann(0)** core (symmetry plane *and* semi-infinite far field), constant `D`
+from a *cited* (Callister) carbon-in-austenite Arrhenius, so the profile is the textbook **erfc**.
+Position-dependent `%C(x)` then feeds the *same* `kinetics`/`pathint`/`properties` chain → the
+**case-hardened gradient** (hard ~65 HRC martensite case over a softer ~48 HRC core; the banked
+gear-tooth figure `docs/figures/steel-carburize-gradient.png`). This is the **cleanest triad in the
+project**: its two headline legs are the frozen engine's own guarantees re-instantiated with **no
+new calibration** — (analytical) the interior erfc match + case depth ∝ √(Dt) *exact* (asserted
+tight; the *absolute* depth loose — constant-`D` under-predicts vs Tibbetts `D(C)`, a named scope
+limit); (conservation) `Δ∫C dx = Σ dt·flux(left)` to machine precision (the engine's exact
+backward-Euler flux identity, re-confirmed for the **Dirichlet** surface, core no-flux) + the
+semi-infinite tie `2(Cs−C0)√(Dt/π)`; (benchmark) the 50-HRC effective case depth (~1.4 mm) in the
+published band and the surface hardness cross-checking the independently-anchored martensite curve
+(~65 HRC) — genuine cross-checks because `D0,Q` are cited diffusion data, not fit to case depth.
+**The retained-austenite fork (advisor):** full kinetics at the high-carbon surface predicts heavy
+retained austenite (low `Ms`; also past the ~0.8 %C anchor of Andrews/KM/√C-martensite), so the
+surface-hardness benchmark is anchored to the martensite **potential** (the case as designed) while
+RA is *reported* as the microstructure gradient + an honest as-quenched curve, **not** asserted vs
+the published band. One quench is applied at all depths on purpose — the gradient is **carbon-driven**
+(the complement to the cooling-rate-driven gradients of 1c/2; the thin case is thermally near-uniform
+on the transformation timescale). 18 new tests; full suite **204 green**. **Available cross-check
+(not triad-required):** the **D_I** downstream check (ideal-quench a series of diameters, find the
+critical one, vs published `D_I`) — still available. **Still deferred from Phase 1c:** the
+experimentation surface (`sweep.py`, `app.py`, `steel.ipynb`). Nothing downstream touched the frozen
+solver's internals — only its `CONTRACT.md`.
+
+**Next: Phase 4** `calphad_backend.py` — swap the parametrized Fe-C boundaries for pycalphad-computed
+multicomponent equilibria (the bounded deep end; stops hard at the phase-field scope ceiling). Or
+close out the deferred **experimentation surface** (`sweep.py`/`app.py`/`steel.ipynb`) first.

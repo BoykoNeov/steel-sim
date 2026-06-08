@@ -24,6 +24,7 @@ from .kinetics import CCurve
 from .pathint import TransformResult
 from .cooling import CoolingPath
 from .properties import JominyHardness, RELIABLE_HRC_MIN
+from .carburize import CarburizedProfile, CarburizedTraverse
 
 # Stable colours so the legend reads the same across every figure.
 PHASE_COLORS = {
@@ -221,6 +222,96 @@ def jominy_hardness_figure(
     ax.set_title(title, fontsize=12, fontweight="bold")
     fig.tight_layout()
     return fig
+
+
+def carburize_figure(
+    profile: CarburizedProfile,
+    traverse: CarburizedTraverse,
+    surface_hardness_band: tuple[float, float] = (62.0, 65.0),
+    title: str = "Carburized case-hardened gradient (8620, 925 °C → oil quench)",
+) -> "plt.Figure":
+    """The banked **Phase-3c artifact**: a carburized cross-section, surface → core.
+
+    Three stacked panels sharing the depth axis — *carbon profile → microstructure →
+    hardness*, all from the **same** frozen solver in mass mode:
+
+      1. **Carbon profile** ``C(x)`` (the numeric solve) with the analytic **erfc** overlay
+         and the effective-case-depth (0.4 %C) marker — the analytical-limit leg made visible.
+      2. **Microstructure gradient** — phase fractions vs depth (stacked). Retained austenite
+         rises toward the high-carbon surface (the documented heavy-case effect).
+      3. **Hardness traverse** — the martensite **potential** (the case as designed, the
+         benchmark-bearing curve) over the full as-quenched rule of mixtures (dashed; it dips
+         below the potential near the surface — the retained-austenite drag). A shaded band
+         marks the published carburized-surface hardness for comparison.
+
+    All numbers are computed upstream (ADR 0002: viz consumes validated arrays, never derives).
+    """
+    depth_mm = traverse.depth * 1000.0
+    fig, (ax_c, ax_phase, ax_h) = plt.subplots(
+        3, 1, figsize=(9, 10), sharex=True,
+        gridspec_kw={"height_ratios": [1.0, 1.0, 1.1]},
+    )
+
+    # -- panel 1: carbon profile + erfc overlay + case-depth marker -------------- #
+    pdepth_mm = profile.x * 1000.0
+    ax_c.plot(pdepth_mm, profile.C, "-", color="#3b6db5", lw=2.2, label="numeric  C(x)")
+    ax_c.plot(pdepth_mm, profile.erfc_profile(), "k--", lw=1.4, label="analytic  erfc")
+    ax_c.axhline(profile.C_core, color="0.6", ls=":", lw=1.0)
+    ecd = profile.case_depth() * 1000.0
+    if np.isfinite(ecd):
+        ax_c.axvline(ecd, color="#b03a2e", ls="-.", lw=1.3)
+        ax_c.annotate(f"effective case depth\n(0.4 %C)  {ecd:.2f} mm", (ecd, 0.5),
+                      textcoords="offset points", xytext=(8, 0), fontsize=8, color="#b03a2e",
+                      va="center")
+    ax_c.set_ylabel("carbon  (wt %)")
+    ax_c.set_ylim(0.0, profile.C_surface * 1.12)
+    ax_c.legend(loc="upper right", fontsize=8.5, framealpha=0.9)
+    ax_c.set_title("carbon diffuses in (erfc) → microstructure → hardness, all from one solver",
+                   fontsize=10.5)
+
+    # -- panel 2: microstructure gradient (stacked phase fractions) -------------- #
+    order = ["martensite", "bainite", "pearlite", "retained_austenite"]
+    bands = {
+        "martensite": traverse.martensite, "bainite": traverse.bainite,
+        "pearlite": traverse.pearlite, "retained_austenite": traverse.retained_austenite,
+    }
+    ax_phase.stackplot(
+        depth_mm, *[bands[p] for p in order],
+        colors=[PHASE_COLORS[p] for p in order],
+        labels=[PHASE_LABELS[p] for p in order],
+    )
+    ax_phase.set_ylabel("mass fraction")
+    ax_phase.set_ylim(0.0, 1.0)
+    ax_phase.legend(loc="lower right", fontsize=8, ncol=2, framealpha=0.9)
+
+    # -- panel 3: hardness traverse (potential vs as-quenched) + published band -- #
+    pot_hrc = traverse.HRC
+    aq_hrc = vickers_to_rockwell_c_safe(traverse.HV_as_quenched)
+    fp, fa = np.isfinite(pot_hrc), np.isfinite(aq_hrc)
+    ax_h.plot(depth_mm[fp], pot_hrc[fp], "-o", color="#b03a2e", ms=3.5, lw=2.2,
+              label="martensite potential (case as designed)")
+    ax_h.plot(depth_mm[fa], aq_hrc[fa], "--", color="#7d3c98", lw=1.8,
+              label="as-quenched (incl. retained γ)")
+    lo, hi = surface_hardness_band
+    ax_h.axhspan(lo, hi, color="0.7", alpha=0.35)
+    ax_h.text(depth_mm[-1], 0.5 * (lo + hi), "published\nsurface band", ha="right",
+              va="center", fontsize=7.5, color="0.35")
+    ax_h.set_ylabel("hardness  (HRC)")
+    ax_h.set_xlabel("depth from surface  (mm)")
+    ax_h.set_ylim(RELIABLE_HRC_MIN, 68.0)
+    ax_h.set_xlim(left=0.0)
+    ax_h.grid(True, alpha=0.25)
+    ax_h.legend(loc="upper right", fontsize=8.5, framealpha=0.9)
+
+    fig.suptitle(title, fontsize=12.5, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    return fig
+
+
+def vickers_to_rockwell_c_safe(HV: np.ndarray) -> np.ndarray:
+    """HV→HRC for an array, returning ``nan`` off-scale (a thin wrapper over the E140 table)."""
+    from .properties import vickers_to_rockwell_c
+    return np.asarray(vickers_to_rockwell_c(np.asarray(HV, dtype=float)), dtype=float)
 
 
 def four_curves_figure(
