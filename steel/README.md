@@ -58,6 +58,18 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   `pip install -e .[viz,notebook]`. **Why the direct cells, not interact callbacks:** `interact`
   captures exceptions in an `Output` widget, so a break in an interact callback never reaches the
   test — the validated calls must live in plain cells (verified by deliberate break).
+- **To work on the Streamlit app (§9 slice 2):** `app.py` + `tests/test_app.py`. A *thin skin*
+  on `sweep` in three layers: **compute helpers** (pure `sweep` re-composition, streamlit/
+  matplotlib-free → unit-tested **always-green**), **figure builders** (lazy-import wrappers over
+  `plots.py`'s `four_curves_figure`/`sweep_comparison_figure`), and **`main()`** (the *only* place
+  `import streamlit` lives; not unit-tested — ADR 0002). Two non-obvious points: (1) the module
+  bootstraps the repo root onto `sys.path` and imports **absolutely**, because `streamlit run
+  app.py` runs the file as a top-level script (no package parent, `projects/steel/` — not repo root
+  — on the path) where relative imports fail; verify with `python projects/steel/app.py` (it must
+  reach `import streamlit` inside `main()` and die only there). (2) `main()` is kept paper-thin so
+  only `st.*` calls can raise — every value is computed/formatted in a tested helper. Needs
+  `pip install -e .[viz,app]`. The temper view uses streamlit-native `st.line_chart`, one chart per
+  quantity (HV/HRC/UTS/toughness live on different scales).
 - The Fe-C boundaries in `fe_c.py` are **parametrized approximations** (linear between
   pinned invariant points). Phase 4 (`calphad_backend.py`) computes them from real
   thermodynamics instead — `CalphadBackend().phase_fractions(C0, T)` is a drop-in for
@@ -77,7 +89,7 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 1 | `plots.py`, `demo_four_curves.py` | the anchor artifact (four rates → pearlite→martensite); needs `[viz]` extra | **built ✓** |
 | 1 | `sweep.py`, `demo_sweep.py`, `plots.py` | experimentation surface — the headless sweep/what-if harness (composition × cooling rate) + the comparison artifact | **built ✓** (2026-06-08) |
 | 1 | `steel.ipynb` | interactive **teaching notebook** (narrative + ipywidgets sliders) layered on the sweep harness — §9 **slice 1** | **built ✓** (2026-06-08) |
-| 1 | `app.py` | interactive **Streamlit** what-if app on the same harness — §9 **slice 2** | planned (next) |
+| 1 | `app.py` | interactive **Streamlit** what-if app on the same harness — §9 **slice 2** | **built ✓** (2026-06-09) |
 | 2a | `jominy.py` | end-quench **spatial thermal** model (fin equation; frozen heat solver + lateral loss) → cooling-rate-vs-distance | **built ✓** (2026-06-08) |
 | 2b | `kinetics.py` (`hardenability_factor`, `ccurve_for_steel`) | alloy **hardenability** = a Grossmann-potency multiplicative C-curve time-shift (Mn/Cr/Mo → right; default identity) | **built ✓** (2026-06-08) |
 | 2c | `properties.py`, `demo_jominy.py` | microstructure→hardness map (rule of mixtures) → the Jominy **hardness**-vs-distance artifact; 1045/4140 hardness benchmark | **built ✓** (2026-06-08) |
@@ -497,7 +509,7 @@ the linear-chord-vs-curved A₃ (left) and 4140's equilibrium phase fractions vs
 
 ARCHITECTURE.md §1 makes experimentation a core target and ties parameter sweeps to "the
 cheapest verification"; `sweep.py` is the headless harness that delivers it — the foundation
-the interactive surfaces (`steel.ipynb` ✓, `app.py` planned) import. It is **pure
+the interactive surfaces (`steel.ipynb` ✓, `app.py` ✓) import. It is **pure
 re-composition** of the already-validated chain — *no new physics, no new calibration* —
 turning the §1 "cooling curve in, microstructure out" into a sweepable what-if over
 **cooling rate** and **composition**.
@@ -571,7 +583,55 @@ callback does not). The test (`tests/test_steel_notebook.py`) executes the noteb
 (`nbclient`, `allow_errors=False`) and asserts **no cell errors** — *that it runs clean*, not a
 physics check (ADR 0002) — gated on the `[notebook]` stack **and a registered kernelspec**, so a
 headless/clean checkout skips rather than errors. The shareable **Streamlit** twin (`app.py`) is
-slice 2 (next).
+slice 2 (below).
+
+## Interactive surfaces — the Streamlit what-if app (`app.py`, §9 slice 2)
+
+The *shareable* interactive twin of the notebook: the same sweep harness re-skinned as a
+slider UI you can `streamlit run` and hand someone a link to. Like the notebook it adds **reach,
+not correctness** (ADR 0002) — pure `sweep` re-composition, no new physics.
+
+```powershell
+pip install -e .[viz,app]                 # matplotlib (viz) + streamlit (app)
+streamlit run projects/steel/app.py
+```
+
+It is laid out in **three layers** so the deliverable is both testable and runnable:
+
+- **Compute helpers** (`single_steel_outcomes` / `evaluate_one` / `comparison_grid` /
+  `temper_curve_data` / `hardness_readout`) call `sweep` directly and import **neither** Streamlit
+  **nor** matplotlib — so the module imports on a bare core install and the helpers are unit-tested
+  **always-green** (`tests/test_app.py`), exactly like `test_sweep` (not gated like the notebook).
+- **Figure builders** (`mechanism_figure`, `comparison_figure`) are lazy-import wrappers over the
+  existing `plots.py` figures (`four_curves_figure`, `sweep_comparison_figure`); the tempering view
+  uses Streamlit-native `st.line_chart` (one chart per quantity — HV/HRC/UTS/toughness live on very
+  different scales — rather than inventing a matplotlib temper figure in a prior phase's render layer).
+- **`main()`** is the **only** place `import streamlit` lives, and is kept paper-thin: every value
+  it shows is computed/formatted by a tested helper, so the only statements that can raise are
+  literal `st.*` calls — the sole defence for a surface neither the test nor a headless checkout can
+  exercise.
+
+**Two non-obvious points** (both verified, not assumed):
+
+- **Run-as-script imports.** `streamlit run app.py` executes the file as a top-level script
+  (`__main__`, no package parent) with `projects/steel/` — *not* the repo root — on `sys.path`, so a
+  relative `from . import sweep` raises "no known parent package" and a bare `from projects.steel
+  import sweep` raises `ModuleNotFoundError`. The module therefore puts the repo root on `sys.path`
+  first (the `parents[2]` idiom the demos use) and imports **absolutely**. Verify cheaply, no
+  streamlit needed: `python projects/steel/app.py` must reach `import streamlit` inside `main()` and
+  die only there (if it dies on a `from …` line, the bootstrap is wrong).
+- **The grade dropdown, not a raw %C/Mn slider.** Cooling/hardness/temper use the `STEELS` registry
+  (real compositions) to dodge the documented `Mn = 0` "leaner hypothetical steel" trap — the same
+  discipline as the notebook. HV/HRC honesty (`off HRC scale` where Rockwell-C is undefined) and the
+  Biot validity flag (severe quench of a thick section → the Phase-2 spatial-solve cue) are surfaced
+  in the readout, not hidden.
+
+The sidebar drives three views: a single grade's **mechanism + microstructure + hardness readout**
+(the four-curves figure for the chosen steel), the **composition × cooling-rate comparison grid**
+(the hardenability story side by side), and the **quench-and-temper response** (martensite-only,
+the softening / strength↔toughness trade-off). `tests/test_app.py` exercises every compute helper
+always-green, asserts importing `app` does **not** pull Streamlit (the layering guard), and
+build-smoke-tests the figures under the optional `[viz]` extra.
 
 ## Run the tests
 

@@ -196,7 +196,7 @@ BigSim/
     carburize.py                    # case-hardening gradient                (Phase 3)
     calphad_backend.py              # optional pycalphad equilibrium         (Phase 4)
     plots.py                        # steel-local plot helpers (→ promote to viz/ by rule-of-three)
-    app.py                          # thin Streamlit what-if app (sliders → live re-run)
+    app.py                          # thin Streamlit what-if app (sliders → live re-run)  ✓ slice 2
     steel.ipynb                     # teaching notebook (narrative + ipywidgets sliders)  ✓ slice 1
     demo_four_curves.py             # the anchor artifact (static figure via plots.py)
     README.md                       # per-module map + per-session load pointer
@@ -380,14 +380,34 @@ slices, in order:
    dropdown to avoid the documented "leaner hypothetical" (`Mn = 0`) trap. *That it executes
    clean*, not a physics check.
 
-2. **Slice 2 — `app.py` (the thin Streamlit what-if app).** *Next.* The shareable slider UI — the same
-   harness re-skinned for the web: sidebar sliders → the mechanism view (paths on the TTT), the
-   microstructure bars, the hardness readout, the temper curve, and a two-steel side-by-side
-   (`composition_sweep`/`sweep_grid`). Cheap after slice 1 (same compute wiring; only the widget
-   framework differs). **Banks:** a runnable `app.py` (`streamlit run`). **Dep:** `streamlit` (a
-   new `[app]` extra). **Discipline:** keep all compute in importable helpers that call `sweep`
-   directly, Streamlit calls confined to `main()`; the **test** imports the module and exercises
-   the compute helpers (the UI itself is not unit-tested — ADR 0002).
+2. **Slice 2 — `app.py` (the thin Streamlit what-if app).** **Built ✓** (2026-06-09). The shareable
+   slider UI — the same harness re-skinned for the web: sidebar (grade dropdown, quench medium,
+   section size, compare-grades multiselect, temper time) → the mechanism view (paths on the TTT +
+   microstructure bars via `four_curves_figure`), the hardness readout (HV/HRC + dominant constituent
+   + Biot flag), the composition × cooling-rate comparison grid (`sweep_grid` → `sweep_comparison_figure`),
+   and the martensite-only quench-and-temper response. **Banks:** a runnable `app.py` (`streamlit run`).
+   **Dep:** the new `[app]` extra = `streamlit` (matplotlib stays in `[viz]`, so the runnable combo is
+   `.[viz,app]`, mirroring `.[viz,notebook]`). **Discipline as built — three layers:** (a) **compute
+   helpers** call `sweep` directly and import **neither** Streamlit **nor** matplotlib, so the module
+   imports on a bare core install and the helpers are unit-tested **always-green** (`tests/test_app.py`,
+   *not* gated like the notebook — they are pure `sweep` re-composition); (b) **figure builders** are
+   lazy-import wrappers over the existing `plots.py` figures, with the temper view on Streamlit-native
+   `st.line_chart` (one chart per quantity — HV/HRC/UTS/toughness on different scales — rather than
+   inventing a matplotlib temper figure in a prior phase's render layer); (c) **`main()`** is the *only*
+   place `import streamlit` lives and is kept paper-thin (every value computed/formatted in a tested
+   helper, so only `st.*` calls can raise). **The non-obvious blocker (advisor, the crux):** `streamlit
+   run app.py` executes the file as a **top-level script** (no package parent, `projects/steel/` — not
+   the repo root — on `sys.path`), where a relative `from . import sweep` raises "no known parent
+   package" and a bare `from projects.steel import sweep` raises `ModuleNotFoundError` — yet the
+   always-green test (which imports it *as* `projects.steel.app`, proper package context) would stay
+   green: **tests green, deliverable broken.** Fixed by bootstrapping the repo root onto `sys.path` at
+   the top of the module (the `parents[2]` idiom the demos use) + **absolute** imports; verified cheaply
+   with `python projects/steel/app.py` (no streamlit needed — it must reach `import streamlit` inside
+   `main()` and die *only* there). The grade dropdown (not a raw %C/`Mn=0` slider) dodges the documented
+   "leaner-hypothetical" trap, as in the notebook. The **test** asserts importing `app` does not pull
+   Streamlit (the layering guard), exercises every compute helper, and build-smoke-tests the figures
+   under `[viz]`; the UI itself is not unit-tested (ADR 0002). 9 new tests; full suite **244 green**
+   (234 without the optional pycalphad/viz/notebook/app stack).
 
 3. **Slice 3 — D_I cross-check *or* begin Microchip (decide on arrival).** After slices 1–2 the
    experimentation surface is complete, so **all of Steel's planned work (Phases 1–4 + the §9
@@ -688,8 +708,24 @@ errors). The `%C` slider drives only the Fe-C *equilibrium* cell; cooling/hardne
 (execution smoke-test, not a physics check); full suite **235 green** (226 without the optional
 pycalphad/viz/notebook stack).
 
-**Next:** Steel's planned phases (1–4) are complete and the §9 surface is **2/3 done** (`sweep.py` ✓,
-`steel.ipynb` ✓ slice 1; **`app.py` Streamlit = slice 2**, next). The *available, not-required* **D_I**
-cross-check is still open; after slice 2 the program's build order (ARCHITECTURE.md §4) advances to
-**Microchip**, which first **reuses the frozen `engines/diffusion` spine** (dopant profiles = the
-carbon-diffusion code).
+**§9 slice 2 — `app.py` (Streamlit what-if app) built ✓** (2026-06-09) — `projects/steel/app.py` +
+`tests/test_app.py` + the `[app]` extra. The shareable interactive twin of the notebook: the same
+`sweep` harness re-skinned as a `streamlit run` slider UI (grade / quench medium / section size /
+compare-grades / temper time → the mechanism four-curves figure, the hardness readout with HV/HRC +
+Biot honesty, the composition × cooling-rate comparison grid, and the martensite-only temper response).
+**Three layers:** streamlit/matplotlib-free **compute helpers** (unit-tested **always-green** — pure
+`sweep` re-composition, not gated like the notebook), **lazy-import figure builders** over `plots.py`
+(temper view on Streamlit-native `st.line_chart`, one chart per quantity), and a paper-thin **`main()`**
+(the only place `import streamlit` lives; not unit-tested — ADR 0002). **The crux (advisor):** `streamlit
+run app.py` runs the file as a top-level script (no package parent, `projects/steel/` not the repo root on
+`sys.path`) where relative imports fail — while the always-green test, importing it *as* `projects.steel.app`,
+would stay green (**tests green, deliverable broken**). Fixed by a repo-root `sys.path` bootstrap + absolute
+imports, verified by `python projects/steel/app.py` reaching `import streamlit` inside `main()` and dying
+only there. 9 new tests; full suite **244 green** (234 without the optional stack).
+
+**Next:** Steel's planned phases (1–4) **and the entire §9 experimentation surface are complete**
+(`sweep.py` ✓, `steel.ipynb` ✓ slice 1, `app.py` ✓ slice 2 — **3/3**). All of Steel's planned work is
+done. **Slice 3 is the decide-on-arrival point:** the program's build order (ARCHITECTURE.md §4) now
+advances to **Microchip** (recommended — reuse the frozen `engines/diffusion` spine: Phase 1a = dopant
+erfc profiles, a fast validated win from a 100 %-complete Steel), with the *available, not-required*
+**D_I** cross-check the alternative (modest marginal validation, blocks nothing).
