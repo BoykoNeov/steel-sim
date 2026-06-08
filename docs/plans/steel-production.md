@@ -406,8 +406,9 @@ slices, in order:
    `main()` and die *only* there). The grade dropdown (not a raw %C/`Mn=0` slider) dodges the documented
    "leaner-hypothetical" trap, as in the notebook. The **test** asserts importing `app` does not pull
    Streamlit (the layering guard), exercises every compute helper, and build-smoke-tests the figures
-   under `[viz]`; the UI itself is not unit-tested (ADR 0002). 9 new tests; full suite **244 green**
-   (234 without the optional pycalphad/viz/notebook/app stack).
+   under `[viz]` (the per-grade mechanism figure parametrized over all four registry grades, so a
+   non-1080 dropdown selection can't crash the render); the UI itself is not unit-tested (ADR 0002).
+   13 new tests; full suite **248 green** (234 without the optional pycalphad/viz/notebook/app stack).
 
 3. **Slice 3 — D_I cross-check *or* begin Microchip (decide on arrival).** After slices 1–2 the
    experimentation surface is complete, so **all of Steel's planned work (Phases 1–4 + the §9
@@ -721,7 +722,8 @@ run app.py` runs the file as a top-level script (no package parent, `projects/st
 `sys.path`) where relative imports fail — while the always-green test, importing it *as* `projects.steel.app`,
 would stay green (**tests green, deliverable broken**). Fixed by a repo-root `sys.path` bootstrap + absolute
 imports, verified by `python projects/steel/app.py` reaching `import streamlit` inside `main()` and dying
-only there. 9 new tests; full suite **244 green** (234 without the optional stack).
+only there (and end-to-end by Streamlit's own `AppTest` → 0 exceptions). 13 new tests; full suite
+**248 green** (234 without the optional stack).
 
 **Next:** Steel's planned phases (1–4) **and the entire §9 experimentation surface are complete**
 (`sweep.py` ✓, `steel.ipynb` ✓ slice 1, `app.py` ✓ slice 2 — **3/3**). All of Steel's planned work is

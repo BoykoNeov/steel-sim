@@ -132,16 +132,23 @@ def test_temper_curve_data_columns_are_consistent():
 # --------------------------------------------------------------------------- #
 # 5. Figure builders — a build-only smoke test, viz-gated (ADR 0002: render is reach)
 # --------------------------------------------------------------------------- #
-def test_figures_build_when_viz_present():
+@pytest.mark.parametrize("grade", app.GRADES)
+def test_mechanism_figure_builds_for_every_selectable_grade(grade):
+    # The app lets a user pick ANY registry grade as the single steel, so the mechanism figure
+    # must build for each — not just 1080 (the four-curves reference). 8620/4140 push the
+    # 1080-calibrated C-curve into regimes (0.2 %C, heavy hardenability shift) the demo never
+    # exercises; the helpers finite-filter, but assert it rather than infer it.
     plt = pytest.importorskip("matplotlib")
     plt.use("Agg")
-
-    outs = app.single_steel_outcomes("1080")
-    fig = app.mechanism_figure(outs, "1080")
+    fig = app.mechanism_figure(app.single_steel_outcomes(grade), grade)
     assert len(fig.axes) >= 2                             # paths-on-TTT + microstructure bars
     plt.pyplot.close(fig)
 
+
+def test_comparison_figure_builds_when_viz_present():
+    plt = pytest.importorskip("matplotlib")
+    plt.use("Agg")
     grid = app.comparison_grid(["1045", "1080", "4140"])
-    fig2 = app.comparison_figure(grid)
-    assert len(fig2.axes) >= 2                            # hardenability curve + hardness grid
-    plt.pyplot.close(fig2)
+    fig = app.comparison_figure(grid)
+    assert len(fig.axes) >= 2                             # hardenability curve + hardness grid
+    plt.pyplot.close(fig)
