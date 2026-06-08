@@ -357,9 +357,21 @@ slider → re-run → re-plot needs no special engineering.
 conservation, per-method stability, source-augmented conservation, heat-mode
 Robin + flux bookkeeping). The diffusion spine the entire trio inherits is sealed.
 
-**Next: Phase 1b — Fe-C equilibrium** (`projects/steel/fe_c.py`). Metastable
-Fe–Fe₃C boundaries (A₁=727 °C; A₃, A_cm; eutectoid 0.76 % C) + the **lever rule**
-→ equilibrium phase fractions, validated against the exact invariant points (§3).
-Then 1c (Avrami/TTT + Scheil additivity + KM/Andrews) and the four-curves anchor
-demo. Nothing downstream touches the frozen solver's internals — only its
-`CONTRACT.md`.
+**Phase 1b is built ✓** (2026-06-08) — `projects/steel/fe_c.py`. Metastable
+Fe–Fe₃C boundaries linear between the pinned invariant points (A₁=727 °C; A₃
+912→727 °C; A_cm 727→1147 °C / 2.11 % C; eutectoid 0.76 % C) + the **lever rule**.
+Two readings: `phase_fractions(C0, T)` → the phase dict (ferrite/austenite/
+cementite), and `equilibrium_constituents(C0)` → pro-eutectoid ferrite/cementite +
+pearlite (the teaching split — dramatic on 1045, near-degenerate on 1080). A
+42-test triad: exact invariant points + lever-rule fractions (analytical), carbon
+mass balance `Σ fᵢCᵢ=C0` + constituent↔phase consistency (conservation), AISI
+1045/1080 published facts (benchmark). Full suite green (60 tests). The 727 °C
+isotherm convention is documented + pinned.
+
+**Next: Phase 1c — transformation kinetics** (`kinetics.py` + `pathint.py` +
+`cooling.py`). Isothermal **JMAK/Avrami** → TTT; **Scheil additivity** ∫dt/τ=1 →
+CCT; **Koistinen–Marburger** martensite with **Andrews** `M_s` from composition;
+a lumped/0-D cooler (or 1a in heat mode) supplies `T(t)`. The undercooling below
+`fe_c`'s `A1`/`A3` is the driving force. Then the four-curves anchor demo
+(`sweep.py` + `plots.py` + `demo_four_curves.py`). Nothing downstream touches the
+frozen solver's internals — only its `CONTRACT.md`.
