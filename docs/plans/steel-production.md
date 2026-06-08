@@ -1,7 +1,7 @@
 # Steel Production Simulator — Project Plan
 
 > Per-project plan #1 of the educational-simulator program. Built to the
-> **Section 10 template** of `SIMULATOR_PROGRAM_HANDOFF.md`; inherits Sections
+> **Section 10 template** of `ARCHITECTURE.md`; inherits Sections
 > 2–9 as fixed invariants (compliance check in §8 below). This is the
 > **first** project in build order (Steel → Microchip → Planet) and the one
 > that **builds and freezes the diffusion/heat solver** — the spine the other
@@ -38,7 +38,7 @@ No other shared engine is touched. CALPHAD (Phase 4) is consumed as a
 **validation reference and optional backend** (pycalphad), *not* reimplemented —
 see §5 scope ceiling and §6 terms of use.
 
-> **Freeze-before-reuse (invariant 5 / Section 6).** The diffusion solver is
+> **Freeze-before-reuse (invariant 5 / ARCHITECTURE.md §6).** The diffusion solver is
 > sealed behind its passing validation suite at the **end of Phase 1**, before
 > Microchip or Planet are allowed to depend on it. Its CONTRACT.md is the
 > one-page unit of context those projects load instead of this codebase.
@@ -56,13 +56,13 @@ rationale + alternatives: `docs/decisions/0001-language-and-performance.md`.
 
 Every phase below names its **validation triad** concretely: an *analytical
 limit*, a *conservation law*, and a *published benchmark* (program invariant 3 /
-Section 7). The triad is not boilerplate — it is the project's externalized
+ARCHITECTURE.md §7). The triad is not boilerplate — it is the project's externalized
 memory and the test that lets a later session change a solver and *know* it
 still honors its contract.
 
 ### Phase 1 — "Cooling curve in, microstructure out" (the foundation)
 
-Per handoff §11, Phase 1 is explicitly **both** the erfc-validated diffusion/heat
+Phase 1 is deliberately **both** the erfc-validated diffusion/heat
 solver **and** the Fe-C + Avrami core. It is internally staged (1a→1c) but banks
 **one** artifact: the four-curves-four-microstructures demo. Nothing is reused
 downstream until 1a is frozen.
@@ -103,7 +103,7 @@ downstream until 1a is frozen.
 
 **Banked artifact:** the anchor figure of §1, produced through a small
 **sweep / what-if harness** (`sweep.py`) — parameter sweeps over cooling rate
-and composition are a *named Phase-1 feature*, not a one-off script (program §1
+and composition are a *named Phase-1 feature*, not a one-off script (ARCHITECTURE.md §1
 makes experimentation a core target and ties sweeps to "the cheapest
 verification").
 
@@ -170,12 +170,12 @@ CALPHAD thermodynamics, showing what the parametrized version got wrong.
 Repository layout (Python; NumPy/SciPy core — chosen to match the program's
 reference ecosystem: pycalphad, climlab, REBOUND, MESA are all Python). Files
 are deliberately small so any single task loads with its neighbors' *contracts*,
-not their internals (Section 6).
+not their internals (ARCHITECTURE.md §6).
 
 ```
 BigSim/
-  SIMULATOR_PROGRAM_HANDOFF.md      # program plan (exists)
-  ARCHITECTURE.md                   # [Phase 1] program map + "load these files" pointer
+  PORTFOLIO.md                      # the project catalog (30+ sims)
+  ARCHITECTURE.md                   # program doctrine, invariants, §10 plan template
   docs/
     plans/steel-production.md       # this plan
     decisions/                      # ADR-style decision log (one file per call)
@@ -205,7 +205,7 @@ BigSim/
 
 This is the cross-cutting interface the whole program hinges on; it is specified
 here precisely because a vague contract is the one mistake that propagates to
-Chip and Planet (Sections 5–6). Draft of `engines/diffusion/CONTRACT.md`:
+Chip and Planet (ARCHITECTURE.md §5–6). Draft of `engines/diffusion/CONTRACT.md`:
 
 - **Solves** the conservative 1-D parabolic PDE
   `∂u/∂t = ∂/∂x( D(x,…) ∂u/∂x ) + S(x,t)` on `x∈[0,L]`, where `u` is a generic
@@ -243,7 +243,7 @@ Chip and Planet (Sections 5–6). Draft of `engines/diffusion/CONTRACT.md`:
 ## 5. Scope ceiling — consequence, not mechanism
 
 **The named tar pit:** spatially-resolved **phase-field** modeling of dendrite /
-microstructure morphology on a mesh (handoff §8). It is a research/compute wall,
+microstructure morphology on a mesh (ARCHITECTURE.md §8). It is a research/compute wall,
 not a token problem.
 
 **What we target instead — the consequence:** *path-integrated kinetics.* We
@@ -254,7 +254,7 @@ field. The deep end here is **CALPHAD-grade thermodynamics + multicomponent
 kinetics (Phase 4)** — rich, validated, and feasible — with phase-field left
 explicitly outside the line.
 
-**Loose-coupling / extensibility hook (§8 mandate):** modules exchange plain
+**Loose-coupling / extensibility hook (ARCHITECTURE.md §8 mandate):** modules exchange plain
 arrays (a cooling path `T(t)`; a `%C(x)` profile; a phase-fraction dict). That
 boundary is exactly where a future phase-field module *could* be slotted to
 consume a local thermal history — designed-for but not built. Nothing in v1
@@ -264,7 +264,7 @@ forecloses it.
 
 ## 6. Terms-of-use status
 
-**Clean per program handoff Section 9** — steel is published fundamental science:
+**Clean per ARCHITECTURE.md §9** — steel is published fundamental science:
 no copyright dimension (implement equations from principles, original code/prose,
 no verbatim listings/figures) and **no export-control dimension**.
 
@@ -280,7 +280,7 @@ a `.tdb` (already in `.gitignore`). Published TTT/CCT/Jominy curves are used as
 ## 7. Test runner
 
 Single command, fast, runs the whole suite (engines + steel) so any session can
-verify cheaply (Section 6 hygiene):
+verify cheaply (ARCHITECTURE.md §6 hygiene):
 
 ```powershell
 # from repo root
@@ -294,7 +294,7 @@ the spine; they must stay green for any change anywhere downstream.
 
 ---
 
-## 8. Invariant-compliance check (against handoff §2–9 — not re-litigated)
+## 8. Invariant-compliance check (against ARCHITECTURE.md §2–9 — not re-litigated)
 
 | Program invariant | How this plan honors it |
 |---|---|
@@ -304,7 +304,7 @@ the spine; they must stay green for any change anywhere downstream.
 | 4 — target consequence where mechanism is a wall | §5: path-integrated kinetics instead of phase-field. |
 | 5 — reuse only frozen modules | Solver sealed behind its test suite at end of 1a, before any downstream use. |
 | 6 — updating docs is part of every change | ARCHITECTURE.md + per-module READMEs + `docs/decisions/` log are Phase-1 deliverables and maintained per change. |
-| Terms of use (§9) | §6: clean; CALPHAD DB licensing flagged as the lone diligence item. |
+| Terms of use (ARCHITECTURE.md §9) | §6: clean; CALPHAD DB licensing flagged as the lone diligence item. |
 
 ---
 

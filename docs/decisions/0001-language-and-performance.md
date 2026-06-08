@@ -5,7 +5,7 @@ Scope: Program-level invariant; inherited by every per-project plan.
 
 ## Context
 
-The program handoff is silent on implementation language; the Steel production
+The program-level docs did not specify an implementation language; the Steel production
 plan (`docs/plans/steel-production.md`) introduced Python + NumPy/SciPy. The
 question was raised: wouldn't a faster language (Rust, C++, Julia) scale better
 for future compute-intensive features?
@@ -18,17 +18,17 @@ Forces in play:
   program's own validation references embody this: REBOUND (C core, Python skin)
   and climlab (Fortran radiation core).
 - **Compute-bound regimes are deferred, not foreclosed.** The scope-ceiling
-  doctrine (handoff §8) defers phase-field, TCAD, GCM, and CFD out of the
+  doctrine (ARCHITECTURE.md §8) defers phase-field, TCAD, GCM, and CFD out of the
   *first implementation*, but mandates loose coupling so they remain
   **expansion paths**, addable later behind module seams.
 - **Agent context budget.** The program is explicitly built to be developed by
-  an LLM agent with a fixed context window across the portfolio (handoff §6). A
+  an LLM agent with a fixed context window across the portfolio (ARCHITECTURE.md §6). A
   terse, high-exposure language minimizes context per task and failure modes
   versus C++ build systems / headers / manual memory or Rust's borrow checker.
 - **Validation ecosystem is Python-native.** pycalphad, climlab, REBOUND,
-  Landlab, and the MESA interfaces — the program's benchmark tools (handoff §7,
+  Landlab, and the MESA interfaces — the program's benchmark tools (ARCHITECTURE.md §7,
   the methodology) — are Python-reachable.
-- **Contract boundaries make language a per-module choice** (handoff §6).
+- **Contract boundaries make language a per-module choice** (ARCHITECTURE.md §6).
 - **Product goal is interactive education** (responsive on a laptop), not
   maximum throughput.
 
