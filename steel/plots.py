@@ -413,6 +413,94 @@ def calphad_figure(binary: dict, alloy: dict | None = None) -> "plt.Figure":
     return fig
 
 
+def sweep_comparison_figure(
+    grid: list[list],
+    title: str = "Experimentation surface: composition × cooling rate (hardenability, side by side)",
+) -> "plt.Figure":
+    """The banked **experimentation-surface artifact**: the composition × cooling-rate grid.
+
+    ``grid`` is the :func:`~projects.steel.sweep.sweep_grid` output — ``grid[i][j]`` is steel
+    ``i`` cooled in medium ``j`` (rows = steels, cols = media). This is the one genuinely-new
+    view over the four-curves demo: it adds the **composition axis** a single-steel demo
+    cannot show. Two panels (mechanism | consequence), like the four-curves figure:
+
+      * **Left — hardenability as a curve.** Martensite fraction vs cooling rate ``Vr``
+        (°C/h at 700 °C, log axis), one line per steel. In the 0-D model every steel sees the
+        *same* cooling path at a given medium, so the lines share their x-values and stack by
+        **hardenability**: the deep-hardening alloy keeps martensite down to far lower cooling
+        rates (its curve sits high and to the left), while the lean steel needs a fast quench.
+        The steels **converge at the fast end** (all martensitic) and **at the slow end** (all
+        pearlitic) and **diverge in the middle** — the project's recurring lesson, here on the
+        cooling-rate axis.
+      * **Right — the property grid.** A hardness heat-map (HRC) over the same steels × media;
+        cells off the HRC scale (soft ferrite-pearlite, < ~20 HRC) are marked "soft". The
+        side-by-side comparison the plan (§9) asks for — read off "what material do I get".
+
+    All numbers are computed upstream by :mod:`sweep` (ADR 0002: viz consumes validated
+    arrays, never derives them). Outcomes carrying ``lumped_valid = False`` (a severe quench
+    of a thick section, beyond the 0-D Biot range) are marked with a hollow ring on the left
+    panel — the honest "this node is stretched; use the Phase-2 spatial solve" flag.
+    """
+    steels = [row[0].steel for row in grid]
+    media = [o.medium for o in grid[0]]
+    n_steel, n_media = len(steels), len(media)
+
+    fig, (ax_curve, ax_heat) = plt.subplots(
+        1, 2, figsize=(13, 6), gridspec_kw={"width_ratios": [1.3, 1.0]})
+
+    # -- left: martensite fraction vs cooling rate, one line per steel -------------- #
+    palette = ["#c0392b", "#7d3c98", "#2471a3", "#1e8449", "#e67e22"]
+    for i, row in enumerate(grid):
+        color = STEEL_COLORS.get(steels[i].label(), palette[i % len(palette)])
+        Vr = np.array([o.Vr for o in row])
+        fM = np.array([o.result.martensite for o in row])
+        order = np.argsort(Vr)                              # draw slow → fast left → right
+        ax_curve.plot(Vr[order], fM[order], "-o", color=color, lw=2.2, ms=6,
+                      label=steels[i].label())
+        # ring the nodes where the 0-D lumped model is stretched (Bi ≥ 0.1).
+        for o in row:
+            if not o.lumped_valid and np.isfinite(o.Vr):
+                ax_curve.plot([o.Vr], [o.result.martensite], "o", mfc="none",
+                              mec="0.25", mew=1.6, ms=12, zorder=5)
+    ax_curve.set_xscale("log")
+    ax_curve.set_xlabel("cooling rate at 700 °C   Vr  (°C/h)")
+    ax_curve.set_ylabel("martensite fraction")
+    ax_curve.set_ylim(-0.03, 1.05)
+    ax_curve.grid(True, alpha=0.25, which="both")
+    ax_curve.legend(loc="upper left", fontsize=9, framealpha=0.9, title="steel")
+    ax_curve.set_title("hardenability: martensite vs cooling rate (○ = beyond 0-D Biot range)",
+                       fontsize=10.5)
+
+    # -- right: hardness grid (HRC heat-map, annotated; soft cells flagged) --------- #
+    HRC = np.array([[o.HRC for o in row] for row in grid])
+    HV = np.array([[o.HV for o in row] for row in grid])
+    masked = np.ma.masked_invalid(HRC)
+    cmap = plt.get_cmap("inferno").copy()
+    cmap.set_bad("0.85")                                    # off-scale (soft) → light grey
+    im = ax_heat.imshow(masked, cmap=cmap, aspect="auto", vmin=20.0, vmax=66.0,
+                        origin="upper")
+    for i in range(n_steel):
+        for j in range(n_media):
+            if np.isfinite(HRC[i, j]):
+                txt, tcol = f"{HRC[i, j]:.0f}\nHRC", ("white" if HRC[i, j] < 48 else "black")
+            else:
+                txt, tcol = f"soft\n{HV[i, j]:.0f}HV", "0.25"
+            ax_heat.text(j, i, txt, ha="center", va="center", fontsize=8.5,
+                         color=tcol, fontweight="bold")
+    ax_heat.set_xticks(range(n_media))
+    ax_heat.set_xticklabels([str(m) for m in media])
+    ax_heat.set_yticks(range(n_steel))
+    ax_heat.set_yticklabels([s.label() for s in steels])
+    ax_heat.set_xlabel("quench medium  (slow → fast)")
+    ax_heat.set_ylabel("steel")
+    fig.colorbar(im, ax=ax_heat, label="hardness (HRC)", fraction=0.046, pad=0.04)
+    ax_heat.set_title("resulting hardness — the side-by-side comparison", fontsize=10.5)
+
+    fig.suptitle(title, fontsize=13, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    return fig
+
+
 def four_curves_figure(
     ccurve: CCurve, paths: list[CoolingPath], results: list[TransformResult],
     hardness: list[tuple[float, float]] | None = None,

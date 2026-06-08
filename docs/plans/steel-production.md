@@ -595,7 +595,30 @@ overlay + 4140's phase-fractions-vs-T with the **M7C3 chromium carbide** `fe_c` 
 database is cached by path+mtime so the live tests don't re-parse the 460 KB MatCalc file. 13 new tests
 (6 committed always-green + 4 live + 3 demo); full suite **217 green** (210 without the optional stack).
 
-**Next:** Steel's planned phases are complete. Remaining steel options are the long-deferred
-**experimentation surface** (`sweep.py`/`app.py`/`steel.ipynb`, §9) and the *available, not-required*
-**D_I** cross-check; otherwise the program's build order (ARCHITECTURE.md §4) advances to **Microchip**,
-which first **reuses the frozen `engines/diffusion` spine** (dopant profiles = the carbon-diffusion code).
+**Experimentation surface — `sweep.py` built ✓** (2026-06-08) — `projects/steel/sweep.py` +
+`demo_sweep.py` + a `plots.sweep_comparison_figure`. The first of the §9 experimentation
+deliverables: the headless **sweep/what-if harness** ARCHITECTURE.md §1 ties to "the cheapest
+verification". It is **pure re-composition** of the validated chain (`ccurve_for_steel` →
+`cooling` → `pathint` → `properties`) — *no new physics, no new calibration, no new constant* —
+so it carries **no triad of its own**; its tests (`test_sweep.py`) check *harness* correctness.
+The single what-if `evaluate(steel, medium, …) → Outcome` (as-quenched microstructure + HV/HRC +
+Vr + Biot flag) is swept over the **cooling-rate** axis (`cooling_rate_sweep`), the **composition**
+axis (`composition_sweep`), and their **grid** (`sweep_grid`, the banked
+`docs/figures/steel-sweep.png`), with tempering kept to its own **martensite-only** `temper_sweep`
+(honouring the deferred mixed-structure-temper scope). Three design crux-points (advisor): (1) a
+`STEELS` registry of **real** compositions so the surface avoids the `ccurve_for_steel(0.80, Mn=0)`
+"leaner-hypothetical" trap and **one `Steel.minor()` dict threads into both the kinetics
+(hardenability `τ`-shift) and the hardness (Maynier minor-alloy term)** — the cross-consistency
+the harness tests assert (the near-tautological "exact re-composition" leg has teeth only there);
+(2) the **0-D discrimination lesson** — in the lumped cooler the path is composition-independent,
+so steels **share the martensitic fast end and pearlitic slow end and diverge only in the middle**,
+hence the alloy-hardenability trend is read at an *intermediate* medium (oil), never the saturated
+ends; (3) trends asserted **in HV** (defined everywhere; HRC is `nan` on soft tails) and Biot
+carried per-`Outcome` with `warn_biot=False` (no per-node warning spew). 17 new tests; full suite
+**234 green** (226 without the optional pycalphad/viz stack). **Still planned (§9):** the
+*interactive* surfaces — `app.py` (Streamlit) and `steel.ipynb` (ipywidgets) — layered on this harness.
+
+**Next:** Steel's planned phases (1–4) are complete and the experimentation surface is **begun**
+(`sweep.py` ✓; `app.py`/`steel.ipynb` remain). The *available, not-required* **D_I** cross-check is
+still open; otherwise the program's build order (ARCHITECTURE.md §4) advances to **Microchip**, which
+first **reuses the frozen `engines/diffusion` spine** (dopant profiles = the carbon-diffusion code).

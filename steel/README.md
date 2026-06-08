@@ -44,6 +44,12 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   (committed-vs-live) and `demo_calphad.py` + `tests/test_demo_calphad.py` (the artifact).
   Needs the `[calphad]` extra (+ a steel TDB via `download_mc_fe()` for the multicomponent
   half); the committed tests run without it. The module docstring is its contract.
+- **To work on the experimentation surface (`sweep.py`):** `sweep.py` + `tests/test_sweep.py`
+  (the harness) and `demo_sweep.py` + `tests/test_demo_sweep.py` (the artifact). It is **pure
+  re-composition** of the validated chain (`ccurve_for_steel` → `cooling` → `pathint` →
+  `properties`) — no new physics — so its tests check *harness* correctness (cross-consistency,
+  monotone trends, conservation passthrough), not new triad legs. The module docstring is its
+  contract; `sweep.STEELS` ships the real compositions the surface defaults to.
 - The Fe-C boundaries in `fe_c.py` are **parametrized approximations** (linear between
   pinned invariant points). Phase 4 (`calphad_backend.py`) computes them from real
   thermodynamics instead — `CalphadBackend().phase_fractions(C0, T)` is a drop-in for
@@ -61,7 +67,8 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 1c | `pathint.py` | steel-local path-integrator (additivity ∫dt/τ + Avrami-along-path + 0-D cooler) | **built ✓** |
 | 1c | `cooling.py` | cooling-path presets (`h` for furnace/air/oil/water) + Biot validity flag | **built ✓** |
 | 1 | `plots.py`, `demo_four_curves.py` | the anchor artifact (four rates → pearlite→martensite); needs `[viz]` extra | **built ✓** |
-| 1 | `sweep.py`, `app.py`, `steel.ipynb` | experimentation surface (sweeps, Streamlit, notebook) | planned |
+| 1 | `sweep.py`, `demo_sweep.py`, `plots.py` | experimentation surface — the headless sweep/what-if harness (composition × cooling rate) + the comparison artifact | **built ✓** (2026-06-08) |
+| 1 | `app.py`, `steel.ipynb` | interactive surfaces (Streamlit, ipywidgets notebook) layered on the sweep harness | planned |
 | 2a | `jominy.py` | end-quench **spatial thermal** model (fin equation; frozen heat solver + lateral loss) → cooling-rate-vs-distance | **built ✓** (2026-06-08) |
 | 2b | `kinetics.py` (`hardenability_factor`, `ccurve_for_steel`) | alloy **hardenability** = a Grossmann-potency multiplicative C-curve time-shift (Mn/Cr/Mo → right; default identity) | **built ✓** (2026-06-08) |
 | 2c | `properties.py`, `demo_jominy.py` | microstructure→hardness map (rule of mixtures) → the Jominy **hardness**-vs-distance artifact; 1045/4140 hardness benchmark | **built ✓** (2026-06-08) |
@@ -476,6 +483,62 @@ corrupted-not-absent phases are excluded.
 The banked artifact [`docs/figures/steel-calphad.png`](../../docs/figures/steel-calphad.png) overlays
 the linear-chord-vs-curved A₃ (left) and 4140's equilibrium phase fractions vs temperature — with a
 **chromium carbide** `fe_c` has no key for (right).
+
+## Experimentation surface (`sweep.py`, `demo_sweep.py`)
+
+ARCHITECTURE.md §1 makes experimentation a core target and ties parameter sweeps to "the
+cheapest verification"; `sweep.py` is the headless harness that delivers it — the foundation
+the interactive surfaces (`app.py`, `steel.ipynb`, planned) import. It is **pure
+re-composition** of the already-validated chain — *no new physics, no new calibration* —
+turning the §1 "cooling curve in, microstructure out" into a sweepable what-if over
+**cooling rate** and **composition**.
+
+```python
+from projects.steel import sweep
+sweep.evaluate(sweep.STEELS["4140"], medium="oil")          # one what-if → an Outcome
+sweep.cooling_rate_sweep(sweep.STEELS["1080"])              # one steel × four media (the cooling-rate axis)
+sweep.composition_sweep(["1045", "4140"], medium="oil")    # steels at one medium (the composition axis)
+sweep.sweep_grid(["1045", "1080", "4140"])                 # the composition × cooling-rate grid
+sweep.temper_sweep(sweep.STEELS["4140"], t_hours=1.0)      # the martensite-only Q&T temper curve
+```
+
+Two design choices keep it honest:
+
+- **Real compositions by default** (`sweep.STEELS`: 1045/1080/4140/8620, matching the grades
+  used across the project) — so the surface avoids the documented `ccurve_for_steel(0.80, Mn=0)`
+  "leaner hypothetical steel" trap, and one `Steel.minor()` dict threads into **both** the
+  kinetics (the hardenability `τ`-shift) **and** the hardness (the Maynier minor-alloy term),
+  self-consistently. 1080 is the kinetics' reference steel, so its shift is exactly identity.
+- **The 0-D discrimination lesson, surfaced not hidden.** In the lumped cooler the cooling
+  path depends on `h`/section, **not** composition — so a composition sweep at a fixed medium
+  feeds every steel the *same* `(t, T)` path, and the alloy effect only speaks at an
+  *intermediate* medium (oil): steels **share the martensitic fast end and pearlitic slow end,
+  diverge in the middle**. Each `Outcome` also carries its Biot validity flag (a severe quench
+  of a thick section exceeds the 0-D range → the cue for the Phase-2 spatial solve), and
+  hardness is compared in **HV** (defined everywhere; HRC is `nan` on soft tails). Tempering is
+  kept to its own `temper_sweep` (the validated **martensite-only** `tempered_martensite_HV`) —
+  not folded into the as-quenched sweeps, respecting the deferred mixed-structure temper.
+
+**Validated** (`test_sweep.py`) — *harness* correctness, not new physics: **cross-consistency**
+(one composition reaches both the kinetics and the hardness face); **monotone trends** (faster
+cool → harder; more C → harder martensite + lower Mₛ; more alloy → martensite survives a slower
+quench; more tempering → softer, with the strength↔toughness trade-off and emergent alloy
+temper-resistance); **conservation passthrough** (the four fractions sum to 1 at every node).
+
+### The sweep-comparison artifact (`demo_sweep.py`)
+
+```powershell
+pip install -e .[viz]
+python -m projects.steel.demo_sweep
+```
+
+Three steels × four media → the figure
+[`docs/figures/steel-sweep.png`](../../docs/figures/steel-sweep.png): the **composition axis**
+the four-curves demo cannot show. Left, the mechanism — martensite fraction vs cooling rate,
+one line per steel, the deep-hardening 4140 staying martensitic down to far lower rates (its
+hardenability), the lean 1045 needing a fast quench, both converging at the saturated ends.
+Right, the consequence — a hardness grid (HRC), soft cells flagged off-scale, severe-quench
+nodes ringed as beyond the 0-D Biot range.
 
 ## Run the tests
 
