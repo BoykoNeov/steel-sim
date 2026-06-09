@@ -169,3 +169,26 @@ carries the pycalphad-on-Python-3.14 symengine install wrinkle (Phase 4 notes), 
 is a deliberate separate step the user opts into; a cheap interim is CI running
 `-m "not slow"` (no optional stack). **Recommended, not yet built** — flagged to the
 user at the time of this amendment.
+
+## Scheduled revisit — after Microchip (project #2) lands
+
+By user direction (2026-06-09), the whole gate/tests system is to be **re-examined
+once Microchip is complete** — the first moment a second project exists, where the
+"whole-repo fast lane ≈ one project's tests" identity that justifies *not* scoping by
+path (Decision #4) stops holding. At that revisit, reconsider:
+
+- **Per-project scoping vs whole-repo fast lane** — is the fast lane still under the
+  ~30 s trigger with two projects' tests in it, or does path-scoping / a changed-files
+  gate now earn its keep? (A steel-only commit re-running chip's tests, and vice versa,
+  is the cost to weigh.)
+- **The `slow` set** — Microchip adds its own potentially-heavy tests (Deal–Grove,
+  litho, any live numerics) to classify by the same live-solver/kernel/subprocess rule.
+- **The rot mitigation actually in place** — was full-gate CI on push set up (the
+  Amendment's recommendation), or do the live-CALPHAD tests + the known flake still run
+  ~never? If still uncaught, this is the moment to fix it, not defer again.
+- **The overstated framing to correct** — Decision #4 / the Amendment lean on "narrowing
+  to `pytest projects/steel` would drop the `engines/diffusion` tests a steel change
+  uses." That is only mechanically true (those test *files* aren't collected); because
+  the engine is **frozen**, a project-only commit cannot regress them, so dropping them
+  is *harmless* there — the load-bearing reasons are really "identical sets for one
+  project" + "classifier silent-skip risk." Restate accurately at the revisit.
