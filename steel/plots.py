@@ -162,6 +162,64 @@ def plot_microstructure_bars(
     return ax
 
 
+def microstructure_schematic(
+    ax: "plt.Axes", fractions: dict, *, n: int = 16, seed: int = 0,
+    title: str | None = None, legend: bool = True,
+) -> "plt.Axes":
+    """A **schematic** microstructure swatch whose cell areas track the phase fractions.
+
+    Tiles an ``n × n`` field and allocates cells to each constituent in proportion to
+    ``fractions`` (the validated :meth:`~projects.steel.pathint.TransformResult.fractions`
+    dict — pearlite/bainite/martensite/retained_austenite), coloured by
+    :data:`PHASE_COLORS` with a light morphology hatch (pearlite lamellae ``---``,
+    martensite laths ``///``, bainite ``xx``). The allocation is **deterministic** (a fixed
+    ``seed``), so the same fractions always draw the same swatch — a committed/re-run notebook
+    stays stable, and dragging a slider morphs the field smoothly as the fractions change.
+
+    **This is an illustration, not a simulation** (ADR 0002 — the render layer is *reach, not
+    evidence*). Only the cell **areas** carry validated information (they are the phase
+    fractions); the grain *shapes, sizes and placement are decorative* — there is no
+    grain-size or morphology model behind them (that is the deferred grain-physics phase). The
+    axis label says so, so the figure cannot be mistaken for a micrograph.
+    """
+    from matplotlib.patches import Rectangle, Patch
+
+    order = ["pearlite", "bainite", "martensite", "retained_austenite"]
+    hatches = {"pearlite": "---", "bainite": "xx", "martensite": "///",
+               "retained_austenite": ""}
+    total = n * n
+    # Cell counts ∝ fractions, summing *exactly* to total (the largest phase absorbs the
+    # rounding remainder, so areas stay faithful and the grid is always full).
+    counts = {p: int(round(float(fractions.get(p, 0.0)) * total)) for p in order}
+    drift = total - sum(counts.values())
+    if drift != 0:
+        biggest = max(order, key=lambda p: float(fractions.get(p, 0.0)))
+        counts[biggest] = max(0, counts[biggest] + drift)
+    cells: list[str] = []
+    for p in order:
+        cells.extend([p] * counts[p])
+    cells = cells[:total] + ["retained_austenite"] * max(0, total - len(cells))
+    np.random.default_rng(seed).shuffle(cells)   # deterministic "mixed" placement
+
+    ax.set_xlim(0, n); ax.set_ylim(0, n); ax.set_aspect("equal")
+    ax.set_xticks([]); ax.set_yticks([])
+    for idx, p in enumerate(cells):
+        r, c = divmod(idx, n)
+        ax.add_patch(Rectangle((c, r), 1, 1, facecolor=PHASE_COLORS[p],
+                               edgecolor="white", linewidth=0.4, hatch=hatches[p]))
+    if title:
+        ax.set_title(title, fontsize=10.5)
+    if legend:
+        present = [p for p in order if counts[p] > 0]
+        ax.legend(handles=[Patch(facecolor=PHASE_COLORS[p], label=PHASE_LABELS[p])
+                           for p in present],
+                  loc="upper center", bbox_to_anchor=(0.5, -0.05), ncol=4,
+                  fontsize=7.5, frameon=False)
+    ax.text(0.5, -0.16, "schematic — areas ∝ phase fractions; shapes illustrative (not a grain simulation)",
+            transform=ax.transAxes, ha="center", va="top", fontsize=6.8, color="0.45")
+    return ax
+
+
 # Stable per-steel colours for the Jominy artifact (plain-carbon warm, alloy cool).
 STEEL_COLORS = {
     "1045": "#c0392b",

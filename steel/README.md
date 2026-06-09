@@ -563,14 +563,18 @@ nodes ringed as beyond the 0-D Biot range.
 
 ## Interactive surfaces — the teaching notebook (`steel.ipynb`, §9 slice 1)
 
-The *education* artifact (target #1): the sweep harness with the knobs exposed. A guided
-"cooling curve in, microstructure out" narrative — Fe-C endpoint → TTT C-curve → the four-curves
-anchor → composition × cooling-rate hardenability → tempering — with **ipywidgets sliders** (%C,
-grade, quench medium, section size, temper T/t) re-running `sweep`/`properties`/`fe_c` live.
+The *education* artifact (target #1): the sweep harness with the knobs exposed. It opens with an
+**entry-level primer + glossary**, then a guided "cooling curve in, microstructure out" narrative —
+Fe-C endpoint → TTT C-curve → the four-curves anchor → composition × cooling-rate hardenability →
+tempering — with **ipywidgets sliders** re-running `sweep`/`properties`/`fe_c` live. The
+hardenability section adds a **build-your-own-steel** view (live C/Mn/Cr/Mo/Ni sliders that slide the
+C-curve right, read out at the discriminating oil quench) with a **schematic microstructure** swatch
+(cell areas ∝ the computed phase fractions — illustrative, *not* a grain simulation) and UTS +
+relative toughness alongside hardness.
 
 ```powershell
-pip install -e .[viz,notebook]        # matplotlib (viz) + ipywidgets + the nbclient/ipykernel run stack
-jupyter lab projects/steel/steel.ipynb    # or: jupyter notebook
+pip install -e .[viz,notebook]        # matplotlib (viz) + jupyterlab + ipywidgets + the nbclient/ipykernel run stack
+jupyter lab projects/steel/steel.ipynb    # (classic UI: `pip install notebook`, then `jupyter notebook`)
 ```
 
 It is a **thin skin** (ADR 0002): every *compute* cell calls the validated harness **directly**
