@@ -78,19 +78,25 @@ the *exceptional* full-gate runs (engine edits, releases, CI) — **not** on eve
 commit. Routine commits verify the fast subset (240 / ~8 s). The fast count is a
 derived convenience, never a competing invariant.
 
-**4. Breadth scoping is a principle, not a system (the §8 deferral).** A *frozen*
-engine's tests only need re-running when that engine is edited (freeze-before-reuse
-makes this safe), and the whole-repo fast lane already keeps those engine tests in
-scope for ~3 s. Strict **per-project path-scoping** (the literal "only the changed
-project") is the *same* deferral: today the whole-repo fast lane is both faster and
-*more* faithful to "the project **and used modules**" — narrowing to
-`pytest projects/steel` would wrongly *drop* the `engines/diffusion` tests a steel
-change uses. Do **not** build per-project markers, a git-diff classifier,
-dependency-aware selection (`pytest-testmon`), or parallelism (`pytest-xdist`) now:
-with one project they distinguish identical sets, and a classifier that silently
-skips a test-that-should-run is a worse failure than a convention. **Trigger to
-revisit:** mechanize only when the *fast lane itself* crosses ~30 s (i.e. when
-project #2+ makes whole-repo scope actually bite).
+**4. Breadth scoping is a principle, not a system (the §8 deferral).** Don't build
+per-project markers, a git-diff classifier, dependency-aware selection
+(`pytest-testmon`), or parallelism (`pytest-xdist`) now. The two load-bearing reasons:
+(a) **with one project the scopes are identical sets** — `pytest projects/steel` *is*
+essentially the whole repo's fast tests today, so a classifier distinguishes the same
+thing twice; and (b) the fast lane is already ~8 s, so scoping buys ~nothing while a
+classifier adds a real **silent-skip failure mode** (a path rule that quietly omits a
+test that should have run is worse than a convention) plus a dependency map to maintain.
+
+A secondary note, *not* a load-bearing reason: `pytest projects/steel` collects only
+the test *files* under that path, so the engine's own `engines/diffusion/tests/` are
+not run **as tests**. The engine *code* is still exercised (steel imports it), and —
+because the engine is **frozen** — a steel-only commit cannot regress those engine
+tests anyway, so not collecting them is *harmless* here, not a real loss. It only
+matters when you actually edit the engine, which is the cross-cutting **full-gate**
+case. So whole-repo fast lane wins on (a)+(b), not on "scoping would miss a regression."
+
+**Trigger to revisit:** mechanize only when the *fast lane itself* crosses ~30 s (i.e.
+when project #2+ makes whole-repo scope actually bite).
 
 ## Consequences
 
@@ -132,9 +138,11 @@ reason or pin the solve. Until then it is a known, full-gate-visible flake.
   default.
 - **A git-diff classifier / per-project gate script now** — rejected (would repeat
   the very over-build this ADR's §4 warns against): with one project it scopes
-  between identical sets, the user's "and used modules" wants the engine tests that
-  narrow project-scoping would drop, and a classifier that silently skips a needed
-  test is a worse failure mode than a convention. Deferred to the ~30 s trigger.
+  between identical sets, the fast lane is already ~8 s so scoping buys ~nothing, and
+  a classifier that silently skips a needed test is a worse failure mode than a
+  convention. Deferred to the ~30 s trigger. (See §4 for why the "narrow scoping drops
+  the used-module/engine tests" framing is only a secondary, frozen-harmless note, not
+  the reason.)
 - **Mark by a time threshold (e.g. `> 2 s`)** — rejected: brittle (drifts with
   hardware and incidental test growth) and not self-documenting. "Drives a live
   external engine" is a stable, intent-revealing rule.
@@ -186,9 +194,10 @@ path (Decision #4) stops holding. At that revisit, reconsider:
 - **The rot mitigation actually in place** — was full-gate CI on push set up (the
   Amendment's recommendation), or do the live-CALPHAD tests + the known flake still run
   ~never? If still uncaught, this is the moment to fix it, not defer again.
-- **The overstated framing to correct** — Decision #4 / the Amendment lean on "narrowing
-  to `pytest projects/steel` would drop the `engines/diffusion` tests a steel change
-  uses." That is only mechanically true (those test *files* aren't collected); because
-  the engine is **frozen**, a project-only commit cannot regress them, so dropping them
-  is *harmless* there — the load-bearing reasons are really "identical sets for one
-  project" + "classifier silent-skip risk." Restate accurately at the revisit.
+- *(Resolved 2026-06-09 — no longer pending.)* An earlier draft of Decision #4 / the
+  Amendment leaned on "narrowing to `pytest projects/steel` would drop the
+  `engines/diffusion` tests a steel change uses" as a *reason*. That was overstated and
+  has been corrected: it is only mechanically true (those test *files* aren't collected),
+  and because the engine is **frozen** a project-only commit cannot regress them, so it is
+  harmless — §4 now states the load-bearing reasons as "identical sets for one project" +
+  "classifier silent-skip risk." Kept here as a record of the correction.
