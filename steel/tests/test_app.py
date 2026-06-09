@@ -152,3 +152,68 @@ def test_comparison_figure_builds_when_viz_present():
     fig = app.comparison_figure(grid)
     assert len(fig.axes) >= 2                             # hardenability curve + hardness grid
     plt.pyplot.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# 6. UTS / toughness now surfaced in the readout (the strength/toughness consequence)
+# --------------------------------------------------------------------------- #
+def test_format_uts_is_honest_off_scale():
+    assert app.format_uts(1200.0) == "1,200 MPa"
+    assert app.format_uts(float("nan")) == "off-scale (as-quenched)"
+
+
+def test_readout_carries_uts_and_toughness():
+    # A soft slow-cooled steel has a real ISO-18265 UTS; toughness is a finite [0, 1] proxy.
+    soft = app.hardness_readout(app.evaluate_one("1045", "furnace"))
+    assert soft["UTS"].endswith("MPa")
+    assert 0.0 <= float(soft["toughness"]) <= 1.0
+    # As-quenched hard martensite is past the ISO band — surfaced as off-scale, not a nan number.
+    hard = app.hardness_readout(app.evaluate_one("4140", "water"))
+    assert hard["UTS"] == "off-scale (as-quenched)"
+
+
+# --------------------------------------------------------------------------- #
+# 7. Build-your-own: the free-composition what-if + its readout + the guardrails
+# --------------------------------------------------------------------------- #
+def test_custom_steel_outcome_runs_the_chain_at_the_discriminating_medium():
+    out = app.custom_steel_outcome(0.45, 0.75, 0.0, 0.0, 0.0)
+    assert out.medium == sweep.DISCRIMINATING_MEDIUM    # oil — never the saturated ends
+    assert out.steel.name == "your steel"
+    assert sum(out.fractions().values()) == pytest.approx(1.0, abs=1e-12)  # conservation passthrough
+
+
+def test_custom_composition_threads_hardenability():
+    # Adding alloy (Cr/Mo) at fixed C/Mn must slide the C-curve right (tau_factor up) — the
+    # hardenability payoff, threaded composition → kinetics. tau_factor is the robust signal
+    # (guaranteed by the kinetics regardless of saturation); martensite follows non-decreasing.
+    lean = app.custom_steel_outcome(0.45, 0.75, 0.0, 0.0, 0.0)
+    alloy = app.custom_steel_outcome(0.45, 0.75, 1.0, 0.20, 0.0)
+    assert alloy.ccurve.tau_factor > lean.ccurve.tau_factor
+    assert alloy.result.martensite >= lean.result.martensite
+
+
+def test_custom_readout_is_display_ready():
+    cr = app.custom_readout(app.custom_steel_outcome(0.45, 0.75, 1.0, 0.20, 0.0))
+    assert set(cr) == {"Ms", "hardenability", "martensite", "HV", "HRC", "UTS", "toughness"}
+    assert cr["Ms"].endswith("°C") and cr["hardenability"].endswith("×")
+    assert cr["martensite"].endswith("%") and cr["HV"].endswith("HV")
+
+
+def test_composition_warnings_flags_the_envelope():
+    # Inside the calibration envelope (a 1045-like chemistry) — no caution.
+    assert app.composition_warnings(0.45, 0.75, 0.0, 0.0, 0.0) == []
+    # Sub-floor Mn is the *programmatic* guard: main() floors the slider at MN_FLOOR, so a drag
+    # cannot reach this — but a direct call must still flag the leaner-hypothetical trap.
+    low_mn = app.composition_warnings(0.45, app.MN_FLOOR - 0.1, 0.0, 0.0, 0.0)
+    assert any("Mn" in w for w in low_mn)
+    # Heavy alloy past the calibration grades is the live, UI-reachable caution.
+    heavy = app.composition_warnings(0.45, 0.75, 2.0, 0.5, 0.0)
+    assert any("beyond the calibration grades" in w for w in heavy)
+
+
+def test_custom_figure_builds_when_viz_present():
+    plt = pytest.importorskip("matplotlib")
+    plt.use("Agg")
+    fig = app.custom_figure(app.custom_steel_outcome(0.45, 0.75, 1.0, 0.20, 0.0))
+    assert len(fig.axes) >= 2                             # path-on-TTT + schematic swatch
+    plt.pyplot.close(fig)

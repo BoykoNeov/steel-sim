@@ -587,3 +587,31 @@ def four_curves_figure(
     fig.suptitle(title, fontsize=13, fontweight="bold")
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
+
+
+def single_steel_figure(
+    ccurve: CCurve, path: CoolingPath, result: TransformResult, *,
+    ttt_title: str | None = None, schematic_title: str | None = None, seed: int = 0,
+) -> "plt.Figure":
+    """One steel, one quench: the cooling path across the TTT (left) + a schematic
+    microstructure swatch (right) — the **build-your-own composition** view's figure.
+
+    Packaged here (the render layer) so the *free-composition* surfaces compose the same
+    two-panel view from validated arrays rather than each hand-rolling it: the Streamlit
+    app's :func:`~projects.steel.app.custom_figure` wraps this (the app's discipline forbids
+    inventing a figure in ``main()``), and ``steel.ipynb`` §3 draws the same left/right pair.
+    Takes the chain **primitives** — ``ccurve`` (the alloy-shifted C-curve), the single
+    cooling ``path`` and its ``result`` — *not* a :class:`~projects.steel.sweep.Outcome`, so
+    this module keeps its no-:mod:`sweep`-import boundary (it already depends only on
+    kinetics/pathint/cooling/properties). ADR 0002: a figure is reach, never evidence.
+    """
+    fig, (ax_ttt, ax_micro) = plt.subplots(
+        1, 2, figsize=(13, 5.4), gridspec_kw={"width_ratios": [1.55, 1.0]})
+    plot_ttt(ax_ttt, ccurve)
+    plot_cooling_paths(ax_ttt, [path], [result])
+    if ttt_title:
+        ax_ttt.set_title(ttt_title, fontsize=10.5)
+    microstructure_schematic(ax_micro, result.fractions(),
+                             title=schematic_title or "microstructure at this quench", seed=seed)
+    fig.subplots_adjust(left=0.06, right=0.97, bottom=0.20, wspace=0.22)
+    return fig

@@ -67,13 +67,25 @@ from projects.steel import sweep
 from projects.steel import properties as prop
 
 
-# The dropdown vocabularies — the real-composition grades and the slow→fast media. Using the
-# STEELS registry (not a raw %C / Mn=0 slider) keeps the surface off the documented
-# "leaner hypothetical steel" trap: a plain-carbon grade still carries its ~0.7 % Mn, and the
-# reference 1080 the kinetics were calibrated to *is* that Mn (sweep.STEELS docstring).
+# The dropdown vocabularies — the real-composition grades and the slow→fast media. The preset
+# registry drives the main what-ifs (sections 1–2): a plain-carbon grade still carries its
+# ~0.7 % Mn and the reference 1080 the kinetics were calibrated to *is* that Mn (sweep.STEELS
+# docstring), so the dropdown cannot wander into the documented "leaner hypothetical steel" trap.
+# The *build-your-own* section (4) deliberately reopens a free C/Mn/Cr/Mo/Ni slider — the
+# experimentation payoff the notebook also exposes — and pays for that reach honestly: the Mn
+# slider floors at MN_FLOOR and composition_warnings() flags alloy content past the 1080/4140
+# calibration envelope. So free composition here is a *guarded* reach, not an oversight.
 GRADES = list(sweep.STEELS)
 MEDIA = list(sweep.DEFAULT_MEDIA)
 DEFAULT_COMPARE = ["1045", "1080", "4140"]
+
+# The build-your-own composition envelope — the honest companion to allowing a free slider at
+# all. The kinetics are calibrated to 1080 (Mn≈0.7, hardenability M = 1) and 4140 (Cr1.0/Mo0.2);
+# beyond that the C-curve shift extrapolates. MN_FLOOR doubles as the Mn slider's lower bound in
+# main(), so composition_warnings()'s Mn branch is a tested *programmatic* guard (a drag can't
+# reach it); the alloy-envelope branch is the live, UI-reachable warning.
+MN_FLOOR = 0.30
+ALLOY_ENVELOPE = {"Cr": 1.5, "Mo": 0.40, "Ni": 1.5}
 
 
 # --------------------------------------------------------------------------- #
@@ -127,21 +139,102 @@ def format_hrc(hrc: float) -> str:
     return f"{hrc:.0f} HRC" if math.isfinite(hrc) else "off HRC scale (soft)"
 
 
+def format_uts(uts: float) -> str:
+    """UTS display string — honest ``off-scale`` where ISO-18265 leaves HV (as-quenched HV > ~550).
+
+    The ISO-18265 HV→UTS correlation is defined on a finite hardness band; outside it
+    :func:`~projects.steel.properties.tensile_strength_MPa` returns ``nan`` (a glass-hard
+    as-quenched martensite has no meaningful tensile number — it fractures first). Say so,
+    rather than print a ``nan`` MPa.
+    """
+    return f"{uts:,.0f} MPa" if math.isfinite(uts) else "off-scale (as-quenched)"
+
+
 def hardness_readout(outcome) -> dict:
     """Flatten one :class:`~projects.steel.sweep.Outcome` to display-ready strings for the readout.
 
     All the nan/HRC and formatting logic lives here (a tested helper), so :func:`main` only
-    forwards strings to ``st.metric`` — never formats a possibly-``nan`` number itself.
+    forwards strings to ``st.metric`` — never formats a possibly-``nan`` number itself. ``UTS``
+    (ISO-18265 tensile strength) and ``toughness`` (the rough relative [0, 1] index) are derived
+    from the same validated ``HV`` and carried here too, so the single what-if surfaces the
+    strength/toughness consequence, not just hardness.
     """
     return {
         "HV": f"{outcome.HV:.0f} HV",
         "HRC": format_hrc(outcome.HRC),
+        "UTS": format_uts(prop.tensile_strength_MPa(outcome.HV)),
+        "toughness": f"{prop.toughness_index(outcome.HV):.2f}",
         "dominant": outcome.dominant().replace("_", " "),
         "Vr": f"{outcome.Vr:,.0f} °C/h" if math.isfinite(outcome.Vr) else "—",
         "fractions": {k: float(v) for k, v in outcome.fractions().items()},
         "lumped_valid": bool(outcome.lumped_valid),
         "biot": float(outcome.biot),
     }
+
+
+def custom_steel_outcome(
+    C: float, Mn: float, Cr: float, Mo: float, Ni: float,
+    medium: str | float = sweep.DISCRIMINATING_MEDIUM,
+    diameter: float = sweep.STANDARD_DIAMETER,
+):
+    """The build-your-own what-if: a *free* composition → the full validated chain.
+
+    The notebook's §3 "build your own steel" as a headless helper — one
+    :func:`sweep.evaluate` of a :class:`~projects.steel.sweep.Steel` assembled from free
+    C/Mn/Cr/Mo/Ni, at the **discriminating** oil quench (the composition axis is silent at the
+    saturated water/furnace ends — see :data:`sweep.DISCRIMINATING_MEDIUM`). The *same* harness
+    the preset dropdown uses, driven by sliders instead of a registry key — so it adds no
+    physics, only reach. The fixed oil medium / standard section isolate the composition effect
+    (the sidebar's grade/medium/diameter knobs intentionally do **not** reach this section).
+    """
+    steel = sweep.Steel(C=float(C), Mn=float(Mn), Cr=float(Cr), Mo=float(Mo),
+                        Ni=float(Ni), name="your steel")
+    return sweep.evaluate(steel, medium=medium, diameter=diameter)
+
+
+def custom_readout(outcome) -> dict:
+    """Display strings for the build-your-own panel — the knobs the composition moved + the result.
+
+    Surfaces what alloying *did*: ``Ms`` (the martensite-start the composition lowered) and
+    ``hardenability`` (the ``tau_factor`` C-curve shift — the deeper-hardening payoff), then the
+    resulting structure (``martensite`` fraction) and properties (``HV``/``HRC``/``UTS``/
+    ``toughness``). All nan/format logic here, so :func:`main` only forwards strings.
+    """
+    return {
+        "Ms": f"{outcome.ccurve.Ms:.0f} °C",
+        "hardenability": f"{outcome.ccurve.tau_factor:.1f}×",
+        "martensite": f"{outcome.result.martensite:.0%}",
+        "HV": f"{outcome.HV:.0f} HV",
+        "HRC": format_hrc(outcome.HRC),
+        "UTS": format_uts(prop.tensile_strength_MPa(outcome.HV)),
+        "toughness": f"{prop.toughness_index(outcome.HV):.2f}",
+    }
+
+
+def composition_warnings(C: float, Mn: float, Cr: float, Mo: float, Ni: float) -> list[str]:
+    """Honest envelope cautions for a free composition — the build-your-own guardrails.
+
+    The preset dropdown cannot leave the validated chemistry; a free slider can, so it must
+    *say so*. Returns human-readable cautions (an empty list means inside the envelope): a
+    sub-:data:`MN_FLOOR` Mn "leaner hypothetical" the kinetics warn about, and alloy contents
+    past the 1080/4140 calibration grades (:data:`ALLOY_ENVELOPE`) where the hardenability shift
+    extrapolates. These are *reach* flags, not hard limits — the number still computes; the
+    warning is the honesty (ADR 0002). The Mn branch is a programmatic guard: ``main()`` floors
+    the Mn slider at :data:`MN_FLOOR`, so a drag cannot trigger it (but a direct call can).
+    """
+    warns: list[str] = []
+    if Mn < MN_FLOOR:
+        warns.append(
+            f"Mn = {Mn:.2f} % is below ~{MN_FLOOR:.2f} % — a real plain-carbon steel still "
+            "carries ~0.7 % Mn, so this is a leaner hypothetical the kinetics flag (the reference "
+            "1080 they were calibrated to *is* that Mn).")
+    high = [f"{el} {val:.2f} %" for el, val in (("Cr", Cr), ("Mo", Mo), ("Ni", Ni))
+            if val > ALLOY_ENVELOPE[el]]
+    if high:
+        warns.append(
+            "Alloy content beyond the calibration grades (1080, 4140): " + ", ".join(high)
+            + " — the hardenability shift extrapolates past the validated envelope here.")
+    return warns
 
 
 # --------------------------------------------------------------------------- #
@@ -176,6 +269,25 @@ def comparison_figure(grid: list):
     return sweep_comparison_figure(grid)
 
 
+def custom_figure(outcome):
+    """The build-your-own two-panel view: the cooling path across the (alloy-shifted) TTT +
+    a schematic microstructure swatch.
+
+    A thin wrapper over :func:`projects.steel.plots.single_steel_figure` — the render layer owns
+    the composition, exactly as :func:`mechanism_figure` wraps ``four_curves_figure`` (the app
+    invents no figure of its own). The title carries the two hardenability knobs the composition
+    moved (Mₛ and the ``tau_factor`` shift). Raises ``ImportError`` without matplotlib — caught
+    in :func:`main`.
+    """
+    from projects.steel.plots import single_steel_figure
+
+    cc = outcome.ccurve
+    ttt_title = (f"your steel — the TTT slides right with alloy  "
+                 f"(Mₛ {cc.Ms:.0f} °C · hardenability M {cc.tau_factor:.1f}×)")
+    return single_steel_figure(cc, outcome.path, outcome.result, ttt_title=ttt_title,
+                               schematic_title="microstructure at an oil quench")
+
+
 # --------------------------------------------------------------------------- #
 # 3. main() — the Streamlit surface (the ONLY place streamlit is imported)
 # --------------------------------------------------------------------------- #
@@ -197,6 +309,22 @@ def main() -> None:
         "knobs (ADR 0002)."
     )
 
+    # The entry-level on-ramp — open by default so a newcomer meets it, collapsible for the expert.
+    with st.expander("New to heat treatment? Start here — the 30-second mental model", expanded=True):
+        st.markdown(
+            "**Steel is iron with a little carbon.** Heat it red-hot (~850 °C) and it becomes "
+            "**austenite**, which dissolves the carbon. What happens in the seconds *after* you "
+            "start cooling decides whether you get a soft, machinable part or a glass-hard one.\n\n"
+            "- **How much carbon** sets the *potential* hardness.\n"
+            "- **What alloy** (Mn, Cr, Mo, Ni) sets how *deep* the hardness reaches — *hardenability*.\n"
+            "- **How fast you cool** sets *which* microstructure actually forms.\n"
+            "- **Tempering** (reheating afterward) trades hardness back for toughness.\n\n"
+            "The one rule of thumb everything below makes concrete: **slow cooling → soft pearlite; "
+            "fast quench → hard martensite; alloying lets martensite form even when you cool more "
+            "slowly.** Glossary: *pearlite* = soft layered ferrite + cementite (slow cooling); "
+            "*bainite* = an intermediate product; *martensite* = hard, carbon trapped (fast quench)."
+        )
+
     # ---- sidebar: the knobs ------------------------------------------------ #
     st.sidebar.header("What-if controls")
     grade = st.sidebar.selectbox("Steel grade", GRADES,
@@ -215,11 +343,16 @@ def main() -> None:
     st.subheader(f"{grade}: same steel, four fates")
     one = evaluate_one(grade, medium, diameter)
     r = hardness_readout(one)
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
     c1.metric(f"Hardness in {medium}", r["HV"])
     c1.caption(r["HRC"])                              # HRC as a plain gray line — not a metric delta
-    c2.metric("Dominant constituent", r["dominant"])
-    c3.metric("Cooling rate at 700 °C", r["Vr"])
+    c2.metric("Tensile strength (UTS)", r["UTS"])
+    c3.metric("Dominant constituent", r["dominant"])
+    c4.metric("Cooling rate at 700 °C", r["Vr"])
+    st.caption(
+        f"Relative toughness index ≈ {r['toughness']} (a rough [0, 1] proxy that rises as the steel "
+        "softens) · UTS via the ISO-18265 hardness correlation, off-scale for as-quenched martensite."
+    )
     if not r["lumped_valid"]:
         st.warning(
             f"This quench of a {diameter_mm:.0f} mm section exceeds the 0-D lumped-capacitance "
@@ -249,7 +382,42 @@ def main() -> None:
     else:
         st.info("Pick one or more grades in the sidebar to compare.")
 
-    # ---- section 3: the quench-and-temper response (martensite-only) ------- #
+    # ---- section 3: build your own steel — the free-composition what-if ---- #
+    st.subheader("Build your own steel — move the C-curve with composition")
+    st.caption(
+        "Mix your own chemistry and watch the TTT slide right with alloy (that *is* hardenability) "
+        "and the microstructure respond. Read at an **oil** quench — the discriminating medium "
+        "(water → all martensite, furnace → all pearlite, so the composition axis only speaks in "
+        "the middle). The swatch is a **schematic**: areas = the computed phase fractions, grain "
+        "shapes are illustrative (not a grain simulation)."
+    )
+    bc = st.columns(5)
+    C = bc[0].slider("C %", 0.10, 1.00, 0.45, 0.05)
+    Mn = bc[1].slider("Mn %", MN_FLOOR, 2.00, 0.75, 0.05)
+    Cr = bc[2].slider("Cr %", 0.00, 2.00, 0.00, 0.05)
+    Mo = bc[3].slider("Mo %", 0.00, 0.60, 0.00, 0.05)
+    Ni = bc[4].slider("Ni %", 0.00, 2.00, 0.00, 0.05)
+    for w in composition_warnings(C, Mn, Cr, Mo, Ni):
+        st.warning(w)
+    custom = custom_steel_outcome(C, Mn, Cr, Mo, Ni)
+    cr = custom_readout(custom)
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Mₛ (martensite start)", cr["Ms"])
+    m2.metric("Hardenability M", cr["hardenability"])
+    m3.metric("Hardness (oil quench)", cr["HV"])
+    m3.caption(cr["HRC"])
+    m4.metric("Tensile strength (UTS)", cr["UTS"])
+    st.caption(
+        f"Oil quench → {cr['martensite']} martensite · relative toughness ≈ {cr['toughness']}. "
+        "Reproduce the presets: 1045 ≈ C0.45/Mn0.75 · 4140 ≈ C0.40/Mn0.90/Cr1.0/Mo0.20 · "
+        "8620 ≈ C0.20/Mn0.80/Ni0.55/Cr0.50/Mo0.20."
+    )
+    try:
+        st.pyplot(custom_figure(custom))
+    except ImportError:
+        st.info(viz_hint)
+
+    # ---- section 4: the quench-and-temper response (martensite-only) ------- #
     st.subheader(f"{grade}: quench-and-temper response ({temper_hours:g} h temper)")
     st.caption(
         "A fully martensitic start tempered at each temperature: hardness falls and toughness "
