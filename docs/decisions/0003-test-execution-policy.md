@@ -1,6 +1,6 @@
 # 0003 — Test execution policy (the tiered gate)
 
-Status: Accepted — 2026-06-09
+Status: Accepted — 2026-06-09 (amended same day — see Amendment)
 Scope: Program-level invariant; inherited by every per-project plan.
 
 ## Context
@@ -51,46 +51,68 @@ lane), and the 1 notebook-subprocess test. A pure convergence test that merely
 takes ~1 s (e.g. `test_time_order`) is **not** `slow` — it is fast core that
 happens to compute.
 
-**2. Three lanes; the default stays the full gate.**
+**2. The routine commit gate is the fast lane; the full gate is exceptional.**
+*(Reversed 2026-06-09 — see the Amendment. Originally bare `pytest` was the
+per-commit default; that does not scale, below.)*
 
-- *Inner loop* — `pytest -m "not slow"` → the pure/deterministic core (~8 s,
-  240 tests). The explicit fast lane.
-- *Commit gate* — `pytest` → **everything** (the tracked 248). Run at the
-  end-of-batch ritual, in CI, and before any push. **Unchanged default on
-  purpose:** bare `pytest` must keep meaning "the gate," so the heavyweight/flaky
-  live tests cannot rot between commits.
-- *Scoped dev* — `pytest projects/<name>` (or a single file) → just the module
-  under edit, using the directory grain that already exists.
+- *Routine commit gate* — `pytest -m "not slow"` (~8 s, ~240 tests). The
+  **whole-repo** fast lane: every project's pure tests **and** the frozen engines'
+  tests (the "used modules"). This runs before an ordinary commit.
+- *Full gate* — bare `pytest` → **everything**, incl. the live-solver / kernel
+  tests (the tracked 248). Run only in **exceptional** cases: editing a shared
+  `engines/` module (the cross-cutting §6 case — blast radius is every consumer),
+  a root-config change (`pyproject`/`conftest`), a release, or CI.
+- *Docs-only change* — **no gate**. A commit touching only Markdown / `docs/` runs
+  no tests.
+- *Scoped dev* — `pytest projects/<name>` (or a single file) while iterating on one
+  module.
 
-**3. The canonical number is the full-gate count.** "248 green" stays the single
-source of truth in docs and memory. The fast lane is documented as a *derived*
-convenience ("240 in ~8 s"), never as a competing invariant.
+The governing constraint is wall-clock at portfolio scale (~200 s × every commit ×
+N projects). The full gate's cost is concentrated in the live-solver tail, which a
+routine commit does not need to re-run; "run everything every commit" multiplies an
+already-too-large number by the whole portfolio.
 
-**4. Breadth scoping is a principle, not a system (the §8 deferral).** Scope by
-path during development; run the full gate at commit; **a frozen engine's tests
-only need re-running when that engine is edited** (freeze-before-reuse makes this
-safe). This needs *no* tooling — `pytest projects/chip` already works. Do **not**
-build per-project markers, dependency-aware selection (`pytest-testmon`), or
-parallelism (`pytest-xdist`) now: with the cost concentrated in 8 tests they buy
-little. **Trigger to revisit:** mechanize only when the *fast lane itself* crosses
-~30 s.
+**3. The canonical green count is the full-gate number, verified at full-gate
+moments.** "248 green" stays the single source of truth, but it is now confirmed at
+the *exceptional* full-gate runs (engine edits, releases, CI) — **not** on every
+commit. Routine commits verify the fast subset (240 / ~8 s). The fast count is a
+derived convenience, never a competing invariant.
+
+**4. Breadth scoping is a principle, not a system (the §8 deferral).** A *frozen*
+engine's tests only need re-running when that engine is edited (freeze-before-reuse
+makes this safe), and the whole-repo fast lane already keeps those engine tests in
+scope for ~3 s. Strict **per-project path-scoping** (the literal "only the changed
+project") is the *same* deferral: today the whole-repo fast lane is both faster and
+*more* faithful to "the project **and used modules**" — narrowing to
+`pytest projects/steel` would wrongly *drop* the `engines/diffusion` tests a steel
+change uses. Do **not** build per-project markers, a git-diff classifier,
+dependency-aware selection (`pytest-testmon`), or parallelism (`pytest-xdist`) now:
+with one project they distinguish identical sets, and a classifier that silently
+skips a test-that-should-run is a worse failure than a convention. **Trigger to
+revisit:** mechanize only when the *fast lane itself* crosses ~30 s (i.e. when
+project #2+ makes whole-repo scope actually bite).
 
 ## Consequences
 
-- `+` Inner loop drops ~165 s → ~8 s with a one-line command; the gate's meaning
-  and tracked count are untouched.
+- `+` The routine commit drops ~200 s → ~8 s with a one-line command, and the cost
+  no longer multiplies by the portfolio — a commit to project #N never re-runs the
+  other projects' live-solver tails.
 - `+` `-m "not slow"` is a crisp, self-checking definition ("no live engine"),
   not a brittle time cutoff that drifts as hardware/tests change.
 - `+` The fast lane behaves identically whether or not the optional CALPHAD /
   notebook stacks are installed (the live tests are deselected either way, rather
   than skip-vs-run depending on the environment).
-- `−` Two ways to invoke the suite is a small discipline cost: contributors must
-  know the commit gate is bare `pytest`, not the fast lane. Mitigated by the
-  default staying full and by this ADR + the `pyproject` comment.
-- `−` The `slow` marker pulls the *flaky* live CALPHAD test out of the inner loop,
-  where flakiness could hide. **Mitigation:** the full gate still runs it every
-  commit, and the flakiness is tracked as an open issue (below) rather than
-  silently quarantined.
+- `+` No new tooling: `run_tests.ps1` already passes args through, so
+  `./run_tests.ps1 -m "not slow"` *is* the routine gate — nothing to maintain.
+- `−` The full gate no longer runs every commit, so the live-solver tests, the
+  known flake (below), and (once project #2 lands) cross-project regressions run
+  ~never unless something forces it. **This is the real cost** — its proper
+  mitigation is CI running the full gate on push (see the Amendment), not a 200 s
+  local default.
+- `−` Two invocations is a small discipline cost: a contributor must know the
+  *routine* gate is `-m "not slow"` and the full gate is the exceptional one.
+  Mitigated by this ADR, the `pyproject`/`run_tests.ps1` comments, and the
+  end-of-batch ritual.
 
 ### Open issue (tracked, not closed by this ADR)
 
@@ -103,9 +125,16 @@ reason or pin the solve. Until then it is a known, full-gate-visible flake.
 
 ## Alternatives considered
 
-- **Flip the default to fast (`addopts = -m "not slow"`), run full only in CI** —
-  rejected: bare `pytest` would stop meaning "the gate," and the heaviest/flakiest
-  tests would rot between commits. The fast lane is opt-*in*, not the default.
+- **Keep bare `pytest` = full as the per-commit default** — the original decision
+  #2; **reversed same-day** (Amendment): it costs ~200 s on every commit even with
+  one project (the cost is Steel's own live-CALPHAD tail), and multiplies by the
+  portfolio. The honesty it bought (no rot) is recovered via CI, not a slow local
+  default.
+- **A git-diff classifier / per-project gate script now** — rejected (would repeat
+  the very over-build this ADR's §4 warns against): with one project it scopes
+  between identical sets, the user's "and used modules" wants the engine tests that
+  narrow project-scoping would drop, and a classifier that silently skips a needed
+  test is a worse failure mode than a convention. Deferred to the ~30 s trigger.
 - **Mark by a time threshold (e.g. `> 2 s`)** — rejected: brittle (drifts with
   hardware and incidental test growth) and not self-documenting. "Drives a live
   external engine" is a stable, intent-revealing rule.
@@ -116,3 +145,27 @@ reason or pin the solve. Until then it is a known, full-gate-visible flake.
 - **Per-project / dependency-aware selection (`pytest-testmon`) now** — rejected
   as premature (§8): two packages and an ~8 s core do not justify the machinery.
   Named as the breadth-axis mechanism to add at the trigger, not before.
+
+## Amendment (2026-06-09)
+
+Decision #2 originally kept bare `pytest` = the full gate as the per-commit default,
+to keep the gate honest (heavy/flaky live tests cannot rot if they run every commit).
+**Reversed the same day at the user's direction: that default does not scale.** The
+full gate's ~200 s is *Steel's own* live-CALPHAD tail, so it costs ~200 s on every
+commit even before a second project exists — and the program is a portfolio of many
+projects. "Run everything on every commit" multiplies an already-too-large number by
+the whole catalog.
+
+New policy (Decision #2 above): the routine commit gate is the whole-repo fast lane
+(`-m "not slow"`); the full gate is exceptional (shared-engine edit / root-config /
+release / CI); docs-only commits run no gate.
+
+**The trade-off this accepts, stated plainly (not hidden):** the live-CALPHAD tests,
+the known flake (above), and — once project #2 lands — cross-project regressions now
+run ~never unless something forces the full gate. The honesty concern that motivated
+the original default-full is real; its correct home is **CI running the full gate on
+push**, off the developer's critical path, *not* a 200 s local default. Full-gate CI
+carries the pycalphad-on-Python-3.14 symengine install wrinkle (Phase 4 notes), so it
+is a deliberate separate step the user opts into; a cheap interim is CI running
+`-m "not slow"` (no optional stack). **Recommended, not yet built** — flagged to the
+user at the time of this amendment.
