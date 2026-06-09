@@ -364,8 +364,9 @@ slices, in order:
    hardenability → tempering — with ipywidgets sliders (%C, grade, quench medium, section size,
    temper T/t) re-running the harness live. **Banked:** the committed, executed `.ipynb` (its
    five static figures embedded so it reads on GitHub without a kernel). **Dep:** the new
-   `[notebook]` extra (`ipywidgets` + the `nbclient`/`nbformat`/`ipykernel` run machinery;
-   matplotlib stays in `[viz]`, so the runnable combo is `.[viz,notebook]`). **Discipline as
+   `[notebook]` extra (`jupyterlab` — the frontend you open it in — plus `ipywidgets` + the
+   `nbclient`/`nbformat`/`ipykernel` headless run machinery the smoke-test uses; matplotlib stays
+   in `[viz]`, so the runnable combo is `.[viz,notebook]`). **Discipline as
    built:** every *compute* cell calls a `sweep`/`properties`/`fe_c` function **directly** (a
    static figure per section), with `interact` layered on top as sugar — because
    `ipywidgets.interact` runs its callback inside an `Output` that *captures* exceptions, so a
