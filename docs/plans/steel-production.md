@@ -732,3 +732,155 @@ done. **Slice 3 is the decide-on-arrival point:** the program's build order (ARC
 advances to **Microchip** (recommended — reuse the frozen `engines/diffusion` spine: Phase 1a = dopant
 erfc profiles, a fast validated win from a 100 %-complete Steel), with the *available, not-required*
 **D_I** cross-check the alternative (modest marginal validation, blocks nothing).
+
+---
+
+## 11. Future directions (post-v1) — the "future of steel" menu
+
+Steel's v1 (Phases 1–4 + the §9 surface) is complete. Four directions were
+surfaced (2026-06-09) as candidate post-v1 work; **all four are recorded here as
+live possibilities**, and the **first is being promoted to an active Phase 5** at
+the user's direction. The other three remain available, appetite-driven, blocking
+nothing. Each new-physics direction follows the program doctrine: a short plan
+first, its own validation triad, and the non-circularity (validated-vs-calibrated)
+discipline — **never a notebook tweak** ([[steel-grain-physics-deferred]]).
+
+1. **Grain size & Hall–Petch — `[ACTIVE → Phase 5]` (chosen 2026-06-09).** Austenite
+   grain growth during austenitization (`d^n − d₀^n = k₀·exp(−Q/RT)·t`) → prior
+   austenite grain size → **Hall–Petch** `σ_y = σ₀ + k_y·d^(−½)` → **yield strength**,
+   the one engineering property the hardness chain deliberately refuses to give
+   (`properties.py` returns UTS from hardness but **not** yield — Tabor's `H≈3σ` is
+   flow stress, not yield). Replaces the schematic-cartoon stand-in in `steel.ipynb`/
+   `app.py` (labelled "not a grain simulation") with real physics. Clean benchmark
+   (published austenite grain-growth data + the canonical ferrite Hall–Petch
+   coefficients). Detailed sub-plan in **§12** below.
+
+2. **Residual stress & distortion on quench — `[available]`.** The biggest genuinely-
+   *new* axis: introduces **solid mechanics**. Quench thermal gradients + transformation
+   volume change → thermal + transformation strains → a **residual-stress profile** →
+   quench-crack / distortion risk. Reuses the Jominy `ThermalField` already built.
+   Heavier lift, harder to benchmark cleanly (heat/geometry-specific).
+
+3. **Deepen / close known simplifications — `[available]`.** A rigor pass, no new axis:
+   **real bainite** (a separate TTT bainite bay — 2b shifts pearlite+bainite together —
+   plus the deferred Maynier bainite hardness terms, the least-anchored constituent);
+   **couple CALPHAD into the live kinetics** (the `CalphadBackend` drop-in exists but
+   `kinetics` still uses `fe_c`'s linear A₃ chord + the documented **A₁-not-A₃**
+   hypoeutectoid simplification); and the **D_I** ideal-critical-diameter cross-check
+   (the explicitly-available, not-required benchmark that buttons Steel to 100 %).
+
+4. **Inverse design capstone — `[available]`.** Flip the forward model into a design
+   tool: target a hardness/depth (or yield) → search composition × quench × temper for
+   a recipe. An **optimization + UX** layer over the existing `sweep` harness; **no new
+   core physics**.
+
+Also flagged in the deferred pile but not promoted to the menu (named scope ceilings,
+mostly harder to validate honestly): quantitative **Charpy / ductile-brittle transition**
+toughness (real impact toughness is non-monotone through the embrittlement troughs —
+3b's named ceiling); **concentration-dependent diffusivity `D(C)`** in carburizing
+(Tibbetts — would extend the *frozen* engine's flagged-but-unbuilt nonlinear `D(u)`);
+**mixed-structure tempering** (per-constituent, vs 3b's martensite-only); **welding/HAZ**
+thermal cycles; **fatigue**.
+
+---
+
+## 12. Phase 5 — Grain size & Hall–Petch (the grain-size strengthening axis)
+
+Promoted from §11 (chosen 2026-06-09). Steel's first **post-v1** phase and the first
+to add the one engineering property the hardness chain *deliberately withholds:*
+**yield strength.** `properties.py` maps structure → hardness → UTS but returns **no
+yield** on principle (Tabor's `H≈3σ` is *flow* stress, not yield — see the
+`tensile_strength_MPa` docstring). Hall–Petch supplies yield from a **different physical
+variable — grain size** — so Phase 5 is *orthogonal* to the hardness model, not a refit
+of it. It touches **neither** the frozen `engines/diffusion` **nor** any frozen
+benchmark (2c / 3a / 3b / Jominy / four-curves all byte-identical).
+
+**New module:** `projects/steel/grain.py` (+ `tests/test_grain.py`, `demo_grain.py`, a
+`plots.grain_figure`). Steel-local, a peer of `properties.py`.
+
+### 5a — Austenite grain growth (austenitizing T, t → PAGS)
+
+Isothermal normal grain growth `dⁿ − d₀ⁿ = k₀·exp(−Q/RT)·t` → the **prior austenite
+grain size (PAGS)** a part inherits from its austenitizing hold, plus the **ASTM E112
+grain-size number** `N = 2^(G−1)` (grains/in² at 100×) ↔ mean diameter — the standard
+the benchmark data is reported in. The exponent **`n` is cited, usually > 2** for real
+steels (solute drag / second-phase Zener pinning slow growth below the ideal n=2) for
+the benchmark steel — named, not silently assumed.
+
+### 5b — Hall–Petch (grain size → yield strength)
+
+`σ_y = σ₀ + k_y·d^(−½)` — the new property. **Diffusional-regime only:** yield is
+returned for a ferrite-pearlite (normalized/annealed) structure and is **`nan` for a
+martensitic structure** (the HRC-`nan`-on-a-soft-tail idiom) — as-quenched martensite
+strength is carbon/lath-dominated and its **packet/block Hall–Petch is deferred** (a
+second-order correction, the bainite-deferral analogue of 3a). `σ₀, k_y` are pinned to
+**one cited ferrite dataset** (Hall/Petch low-carbon steel — σ₀≈70 MPa, k_y≈0.6 MPa·√m,
+≈260 MPa yield at 10 µm; flagged interstitial-sensitive).
+
+### 5c — Coupling + the banked artifact
+
+Austenitizing T → PAGS (5a) → effective ferrite grain via a **calibrated
+proportionality** (austenite boundaries are ferrite nucleation sites: finer γ → finer α)
+→ yield (5b). **Isolated at a fixed cooling rate** on purpose: ferrite grain size depends
+on cooling rate too — often *more* than on PAGS — so the PAGS effect is read at one
+cooling rate, the same single-variable isolation as 3c's single-quench carbon gradient.
+Named.
+
+**Banked artifact (`docs/figures/steel-grain.png`) — strength only.** Austenitizing
+temperature ↑ → PAGS ↑ → yield ↓: **the Hall–Petch penalty of overheating** (why you
+don't over-austenitize). The well-known **toughness co-benefit of grain refinement**
+(finer grain is the *one* lever that raises strength *and* toughness together — the
+exception to 3b's strength↔toughness trade-off) is **narrated as cited fact, NOT shown by
+the model:** `toughness_index` is a function of `HV`, grain size does not enter `HV`, so
+the model's toughness is flat under refinement — claiming the figure demonstrates the
+toughness half would be dishonest. (A real grain→DBTT term is **option (b)**, deferred —
+it collides with 3b's named non-monotone-toughness ceiling and carries its own validation
+burden.)
+
+### Validation triad — Phase 5
+
+- *Analytic limit ("recover the constant"):* the grain-growth **power-law asymptote**
+  `d ∝ t^(1/n)` for `d₀→0` (exact self-similar scaling — the analogue of carburizing's
+  `√(Dt)`); the **ASTM G ↔ d round-trip** exact by construction; **Hall–Petch linearity**
+  in `d^(−½)` exact by construction; the **Arrhenius Q-recovery** (fit grain sizes at two
+  hold temperatures → recover the input `Q`).
+- *Dissipative-direction invariant (the rigor leg — grain growth has **no
+  mass-conservation analogue**; this is its honest cousin):* growth is **monotone**
+  (`d(t)` non-decreasing, `dd/dt ≥ 0`), the **rate → 0 as the driving force vanishes**,
+  and total grain-boundary area only **shrinks** — the dissipative cousin of the
+  Jominy/planet energy-balance leg, asserted directly. *Named:* a one-way direction, not
+  a conserved quantity.
+- *Benchmark — where the teeth are (the non-circularity split, as in 2b/3b):* the leg
+  with **teeth** is the **grain-growth benchmark** (independent published
+  austenite-grain-size-vs-austenitizing-T data — *not* the Hall–Petch source) **and the
+  coupled 5c prediction**; the **Hall–Petch line itself is closer to *calibrated***
+  (citing σ₀, k_y *and* benchmarking σ_y(d) from the same source is a 2-parameter fit
+  replayed through its own points — flagged calibrated, not dressed as a cross-check).
+  Plus a **yield ≤ UTS consistency guard** (HP yield vs the hardness-derived UTS — won't
+  bite in the soft FP regime where yield ≪ UTS, but makes the scope boundary explicit).
+
+### Scope ceiling & deferrals (named)
+
+- **Grain *size*, not *morphology*.** Phase 5 produces a scalar `d` + yield. Upgrading
+  the `steel.ipynb`/`app.py` schematic cartoon to a size-accurate **Voronoi** tessellation
+  is **viz (reach), not physics** — it stays on the ADR-0002 line where the cartoon
+  already sits ([[steel-grain-physics-deferred]]).
+- **Martensite packet/block Hall–Petch deferred** (carbon-dominated; second-order — the
+  bainite-deferral analogue).
+- **Grain → toughness / DBTT deferred** (option b; collides with 3b's named ceiling).
+- **Abnormal / secondary (discontinuous) grain growth and explicit Zener pinning-particle
+  drag** named, not modeled (the reason real `n > 2`).
+
+### Sources to pin (build-time)
+
+A grain-growth dataset (austenite grain size vs austenitizing T/t for a named steel) and
+a ferrite **Hall–Petch** dataset (σ₀, k_y) — each its own `[[…]]` reference memory, like
+every other phase's cited source. The two **must be independent** (different
+steels/experiments) to keep the coupled 5c prediction non-circular.
+
+### Phases / build order
+
+5a (grain growth + ASTM G, its own analytic + dissipative-invariant legs) → 5b
+(Hall–Petch yield, the new property + the cited-dataset benchmark) → 5c (coupling at
+fixed cooling rate + the banked strength figure + the `yield ≤ UTS` guard). Each banks a
+testable artifact; 5a alone is demonstrable (PAGS vs austenitizing T).
