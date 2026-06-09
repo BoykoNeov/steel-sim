@@ -401,6 +401,7 @@ class CarburizedTraverse:
     HRC: np.ndarray
     HV_as_quenched: np.ndarray
     medium: str
+    ferrite: np.ndarray = None      # proeutectoid ferrite per depth (Phase 6a; ~0 in the high-C case, rises in the low-C core)
 
     def case_depth_50HRC(self) -> float:
         """Case depth (m) to **50 HRC** on the potential traverse — the hardness-based ECD.
@@ -465,7 +466,7 @@ def carburized_traverse(
 
     Cx = np.asarray(profile.C, dtype=float)
     n = Cx.size
-    pear = np.empty(n); bain = np.empty(n); mart = np.empty(n); ra = np.empty(n)
+    fer = np.empty(n); pear = np.empty(n); bain = np.empty(n); mart = np.empty(n); ra = np.empty(n)
     HV = np.empty(n); HV_aq = np.empty(n)
 
     for k, C in enumerate(Cx):
@@ -475,9 +476,13 @@ def carburized_traverse(
         )
         r = pathint.transform_along_path(path.t, path.T, cc)
         f = r.fractions()
+        # Phase 6a: proeutectoid ferrite is ~0 in the high-carbon case but rises in the low-carbon
+        # core (KV's large carbon coefficient → low-C austenite forms ferrite readily) — track it
+        # so the microstructure gradient sums to 1 and the soft core is shown honestly.
+        fer[k] = f["ferrite"]
         pear[k], bain[k] = f["pearlite"], f["bainite"]
         mart[k], ra[k] = f["martensite"], f["retained_austenite"]
-        # The full as-quenched rule of mixtures (RA dragging the surface down)…
+        # The full as-quenched rule of mixtures (RA + proeutectoid ferrite dragging the curve down)…
         HV_aq[k] = prop.hardness_HV(f, float(C), comp=comp)
         # …vs the martensite *potential*: the case as designed (the benchmark anchor).
         HV[k] = prop.vickers_martensite(float(C), comp=comp)
@@ -485,6 +490,7 @@ def carburized_traverse(
     return CarburizedTraverse(
         depth=profile.x,
         C=Cx,
+        ferrite=fer,
         pearlite=pear,
         bainite=bain,
         martensite=mart,

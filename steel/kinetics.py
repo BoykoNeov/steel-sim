@@ -120,9 +120,16 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from . import fe_c
+# The cited alloy-aware equilibrium Ae3 (Andrews 1965) — pinned in :mod:`calphad_reference`
+# as Phase 4's independent benchmark. The Phase-6a ferrite bay reuses it as the *ceiling* of
+# the proeutectoid-ferrite reaction (Li/KV undercooling is measured below Ae3). Importing it
+# here is acyclic: :mod:`calphad_reference` imports only ``math`` at module load (pycalphad is
+# lazy), so it never pulls in :mod:`kinetics`.
+from .calphad_reference import andrews_Ae3
 
 # Physical constants.
 R_GAS = 8.314462618          # universal gas constant, J/(mol·K)
+R_CAL = 1.987                # gas constant, cal/(mol·K) — the unit Li/KV's Q below is given in
 ABS_ZERO = 273.15            # 0 °C in kelvin
 
 # Koistinen–Marburger rate constant (K⁻¹). The classic value: gives ~0.90
@@ -229,6 +236,7 @@ class CCurve:
     tau0: float = TAU0
     tau_factor: float = 1.0                        # alloy hardenability shift M (1.0 = reference steel)
     Bs: float = BS_DEFAULT
+    ferrite: "FerriteReaction | None" = None       # Phase-6a proeutectoid-ferrite bay (None = no α reaction)
 
     def tau(self, T: float) -> float:
         """Characteristic time ``τ(T)`` (s) — time to ``X = 0.632`` at ``T`` (°C).
@@ -380,16 +388,183 @@ def hardenability_factor(
     return ratio ** HARDENABILITY_SCALE
 
 
+# --------------------------------------------------------------------------- #
+# 5. The proeutectoid-ferrite bay — the Li/Kirkaldy–Venugopalan reaction (Phase 6a)
+# --------------------------------------------------------------------------- #
+# THE CORRECTED DIAGNOSIS (Phase 6a; supersedes the "A₁-not-A₃ simplification" framing).
+# Sections 2–4 model a *single* diffusional C-curve with ceiling A₁ and split its product into
+# pearlite/bainite by formation temperature. For a hypoeutectoid steel this misses an entire
+# reaction: on cooling below the A₃ transus — *above* A₁ — **proeutectoid ferrite** nucleates on
+# the austenite grain boundaries and grows, depleting the austenite toward the eutectoid before
+# any pearlite can form. The single curve has no such pathway, so it holds austenite untransformed
+# too long → 1045's Jominy knee sat ~2–3 mm too deep. The earlier note blamed "A₁-not-A₃", i.e.
+# the *pearlite* ceiling; that was a **misdiagnosis** — A₁ is *correct* for pearlite (the eutectoid
+# product cannot form above A₁). What was missing is the ferrite reaction, with its own *higher*
+# ceiling A₃. (Empirically: bumping the single curve's T_eq to A₃ moved the nose to ~620 °C — which
+# is just *the ferrite nose* — and destroyed 4140's plateau; the model was straining to be two
+# curves at once.) Phase 6a adds the second curve, leaving the pearlite curve byte-identical.
+#
+# THE MODEL — Li (1998) / Kirkaldy–Venugopalan (1983) ferrite-start kinetics, the established
+# semi-empirical CCT model (the cited, *independent* anchor — Met. Trans. B 29:661; Phase Transf.
+# in Ferrous Alloys, 1983). The site-saturation completion U ∈ [0, 1] of the ferrite reaction
+# advances along a cooling path by
+#
+#     dU/dt = K(T)·g(U),   K(T) = scale · 2^(0.41·G) · (Ae3 − T)³ · exp(−Q/RT) / FC
+#     g(U)  = U^{0.4(1−U)} · (1−U)^{0.4U}              (the KV sigmoidal shape function)
+#
+# with **Q = 27 500 cal/mol** (Li's diffusional activation energy, all reactions), the ΔT³ ferrite
+# undercooling below **Ae3**, the ASTM grain-size factor 2^(0.41·G), and the **composition factor
+# FC = exp(1.00 + 6.31·C + 1.78·Mn + 0.31·Si + 1.12·Ni + 2.70·Cr + 4.06·Mo)** — larger FC ⇒ slower
+# ⇒ more retarded. The ferrite mass fraction is U·f_pro, capped at the **equilibrium proeutectoid-
+# ferrite fraction** ``fe_c.equilibrium_constituents`` gives (so it is inert for a eutectoid /
+# hypereutectoid steel, where there is no proeutectoid ferrite — the four-curves 1080 is untouched).
+# :mod:`pathint` runs this reaction *first*, then the existing pearlite/martensite logic on the
+# ``(1 − f_ferrite)`` remainder (the remaining austenite has been enriched toward the eutectoid the
+# pearlite curve is calibrated for — see :func:`~projects.steel.pathint.transform_along_path`).
+#
+# WHAT IS CITED vs CALIBRATED (the non-circularity discipline, as in 2b/3b/4/5):
+#   * CITED — the FC *relative* composition coefficients (so the ferrite-retardation **ratio**
+#     FC(4140)/FC(1045) ≈ 32× is not ours to choose), the ΔT³ form, Q, the grain factor, and the
+#     **alloy-aware Ae3** (Andrews, :func:`calphad_reference.andrews_Ae3`; the CALPHAD curved/alloy
+#     Ae3 is the optional live refinement — pass it as ``Ae3=``).
+#   * CALIBRATED — exactly ONE knob, :data:`FERRITE_KINETIC_SCALE`, which reconciles Li/KV's
+#     absolute time base to *this project's* (separately calibrated) pearlite-curve time base — the
+#     Phase-6a analogue of 2b's ``HARDENABILITY_SCALE`` (cited coefficients set the relative shape;
+#     one number sets the size). It is bounded by a **sanity ceiling, not a fit**: a single global
+#     scale across all carbon levels cannot be made aggressive enough to fully shallow 0.45 %C 1045
+#     without over-softening a 0.2 %C core (8620 carburize core), because KV's large carbon
+#     coefficient (6.31) makes *low*-carbon austenite form ferrite readily — physically correct, not
+#     a bug. So the scale is held at the largest value that keeps a 0.2 %C core in its published
+#     ~30–40 HRC band (≈ 8); within that ceiling, 1045's knee shallows **as far as it physically
+#     can** (a *partial* improvement, ~1 mm of the documented ~2–3 mm gap — an explicit bonus, not
+#     the headline) and 4140 stays deep by cited retardation.
+#   * THE TEETH — with the scale set by that constraint, **4140 stays deep is the cited prediction**:
+#     4140 has *more* proeutectoid ferrite available than 1045 (f_pro ≈ 0.49 vs 0.42) yet forms
+#     almost none, purely because its cited Cr/Mo FC coefficients retard the reaction ~32×. Nothing
+#     about 4140 was tuned. (1080-inert and the preserved fully-martensitic quenched end are
+#     *structural*, not fitted.) The real 6a win is that the **previously-missing reaction now
+#     exists** — proeutectoid ferrite appears in the microstructure and the soft-end hardness, and
+#     the 1045-shallow / 4140-deep divergence is now *mechanistic* (cited Cr/Mo), not a single-curve
+#     shift.
+#   * NAMED SCOPE CAVEATS — (1) one global scale across all carbon levels leaves a residual: it
+#     cannot fully close 1045's knee without over-softening low-C cores; lifting that needs
+#     per-reaction *absolute* kinetics (a fuller Li/KV treatment of pearlite too — deferred to 6b).
+#     (2) The ferrite *C-curve nose* runs fast and cool (~600 °C) vs published ferrite TTT; this is
+#     irreducible in KV's coarse ΔT³ form at this Q (a scale prefactor cannot move the nose
+#     temperature) — the hardenability *consequence* is what 6a captures, not the absolute TTT
+#     position. G is a physical reference grain size, NOT a knob (tuning it to the knee would
+#     dissolve the teeth).
+R_CAL_FERRITE = R_CAL                       # alias for readability inside the ferrite model
+KV_Q = 27_500.0                             # Li/KV diffusional activation energy, cal/mol (all reactions)
+FERRITE_FC_COEFFS = {                       # KV ferrite composition-factor exponent coefficients (per wt%)
+    "const": 1.00, "C": 6.31, "Mn": 1.78, "Si": 0.31, "Ni": 1.12, "Cr": 2.70, "Mo": 4.06,
+}
+FERRITE_ASTM_GRAIN = 7.0                    # reference austenitic ASTM grain-size number (~30 µm) — physical, NOT a knob
+FERRITE_KINETIC_SCALE = 8.0                # the ONE calibrated knob (see above): KV→project time-base reconciliation,
+                                            # held at the largest value keeping a 0.2 %C core in its published ~30–40 HRC
+                                            # band. Larger over-softens low-C cores; smaller leaves 1045 deeper.
+_FERRITE_INCUBATION_SEED = 1e-6             # deliberate site-saturation seed: g(0)=0 never ignites, so U starts here
+                                            # (it sets the incubation; the start time is insensitive to its exact value)
+
+
+def ferrite_FC(C: float, Mn: float = 0.0, Si: float = 0.0, Ni: float = 0.0,
+               Cr: float = 0.0, Mo: float = 0.0) -> float:
+    """Li/KV ferrite composition factor ``FC = exp(Σ bᵢ·wtᵢ)`` (wt%) — larger ⇒ slower ferrite.
+
+    The cited coefficients (:data:`FERRITE_FC_COEFFS`): Cr (2.70) and especially Mo (4.06) are
+    strong ferrite retarders, which is *why* an alloy steel keeps its proeutectoid ferrite
+    suppressed (4140 ≈ 32× slower than 1045 — the Phase-6a teeth). Carbon raises it too (6.31).
+    """
+    comp = {"C": C, "Mn": Mn, "Si": Si, "Ni": Ni, "Cr": Cr, "Mo": Mo}
+    expo = FERRITE_FC_COEFFS["const"] + sum(FERRITE_FC_COEFFS[el] * comp[el] for el in comp)
+    return math.exp(expo)
+
+
+@dataclass(frozen=True)
+class FerriteReaction:
+    """The proeutectoid-ferrite reaction attached to a hypoeutectoid steel's :class:`CCurve`.
+
+    Carries the Li/KV ferrite kinetics: the ceiling ``Ae3`` (°C), the composition factor ``FC``
+    (:func:`ferrite_FC`), the equilibrium proeutectoid-ferrite cap ``f_pro`` (mass fraction, from
+    :func:`~projects.steel.fe_c.equilibrium_constituents`), the ASTM grain number ``G`` and the
+    calibrated ``scale``. :meth:`rate` is the completion-rate coefficient ``K(T)``; the path
+    integration (and the ``U·f_pro`` cap) lives in :mod:`pathint`. ``f_pro = 0`` (eutectoid /
+    hypereutectoid) makes the reaction inert — :meth:`rate` returns 0, so an attached but inert
+    reaction leaves the microstructure byte-identical (the 1080 / four-curves guarantee).
+    """
+
+    Ae3: float
+    FC: float
+    f_pro: float
+    G: float = FERRITE_ASTM_GRAIN
+    scale: float = FERRITE_KINETIC_SCALE
+
+    def rate(self, T: float) -> float:
+        """Site-saturation rate coefficient ``K(T)`` (per s) — 0 at/above ``Ae3`` or if inert.
+
+        ``K = scale·2^(0.41·G)·(Ae3 − T)³·exp(−Q/RT)/FC`` with ``T`` converted to kelvin and
+        ``Q`` in cal/mol (so the gas constant is :data:`R_CAL`). The ``dU/dt = K(T)·g(U)`` step
+        and the cap are applied by :func:`~projects.steel.pathint.transform_along_path`.
+        """
+        if self.f_pro <= 0.0 or T >= self.Ae3:
+            return 0.0
+        T_K = T + ABS_ZERO
+        dTu = self.Ae3 - T
+        return (self.scale * 2.0 ** (0.41 * self.G) * dTu ** 3
+                * math.exp(-KV_Q / (R_CAL * T_K)) / self.FC)
+
+    def completion_step(self, U: float, T: float, dt: float) -> float:
+        """Advance the ferrite completion ``U ∈ [0, 1]`` one isothermal step ``dt`` (s) at ``T`` (°C).
+
+        The site-saturation step ``U ← min(1, U + K(T)·g(U)·dt)`` with the KV sigmoidal shape
+        ``g(U) = U^{0.4(1−U)}·(1−U)^{0.4U}``. Because ``g(0) = 0`` would never ignite, the first
+        increment is seeded from :data:`_FERRITE_INCUBATION_SEED` (a deliberate incubation seed;
+        the start time is insensitive to its exact value). Returns ``U`` unchanged when the
+        reaction is inert or above ``Ae3`` (``rate`` is 0 there). :mod:`pathint` calls this per
+        step within the ``Ms < T < Ae3`` window and multiplies the final ``U`` by ``f_pro``.
+        """
+        K = self.rate(T)
+        if K == 0.0:
+            return U
+        U_seed = U if U > 0.0 else _FERRITE_INCUBATION_SEED
+        gU = U_seed ** (0.4 * (1.0 - U_seed)) * (1.0 - U_seed) ** (0.4 * U_seed)
+        return min(1.0, U + K * gU * dt)
+
+
+def ferrite_reaction_for_steel(
+    C: float, Mn: float = 0.0, Ni: float = 0.0, Cr: float = 0.0, Mo: float = 0.0,
+    Si: float = 0.0, Ae3: float | None = None, G: float = FERRITE_ASTM_GRAIN,
+) -> FerriteReaction:
+    """Build the :class:`FerriteReaction` for a steel composition (wt%) — Phase 6a.
+
+    Computes the cited composition factor ``FC`` (:func:`ferrite_FC`), reads the equilibrium
+    proeutectoid-ferrite cap ``f_pro`` from :func:`~projects.steel.fe_c.equilibrium_constituents`
+    (``0`` for eutectoid / hypereutectoid — the reaction is then inert), and takes the ceiling
+    ``Ae3`` from the **alloy-aware Andrews Ae3** by default. Pass ``Ae3=`` to override it with a
+    CALPHAD-computed transus — the optional "couple CALPHAD into live kinetics" refinement (the
+    always-green default needs no pycalphad).
+    """
+    cons = fe_c.equilibrium_constituents(C)
+    f_pro = cons.f_proeutectoid if cons.proeutectoid == "ferrite" else 0.0
+    if Ae3 is None:
+        Ae3 = andrews_Ae3({"C": C, "Mn": Mn, "Ni": Ni, "Cr": Cr, "Mo": Mo, "Si": Si})
+    FC = ferrite_FC(C, Mn=Mn, Si=Si, Ni=Ni, Cr=Cr, Mo=Mo)
+    return FerriteReaction(Ae3=Ae3, FC=FC, f_pro=f_pro, G=G)
+
+
 def ccurve_for_steel(
     C: float, Mn: float = 0.0, Ni: float = 0.0, Cr: float = 0.0, Mo: float = 0.0,
-    Si: float = 0.0, T_eq: float | None = None, **ccurve_kwargs,
+    Si: float = 0.0, T_eq: float | None = None, add_ferrite: bool = True,
+    Ae3: float | None = None, G: float = FERRITE_ASTM_GRAIN, **ccurve_kwargs,
 ) -> CCurve:
-    """Build the TTT :class:`CCurve` for a named steel composition (wt%) — Phase 2b.
+    """Build the TTT :class:`CCurve` for a named steel composition (wt%) — Phase 2b + 6a.
 
-    The one-call entry point that bundles the three composition-dependent pieces: the
-    equilibrium ceiling ``T_eq`` (``fe_c`` eutectoid A₁ by default), the martensite
-    floor ``Mₛ`` (:func:`andrews_Ms`), and the alloy hardenability time-shift ``M``
-    (:func:`hardenability_factor`). This is what Phase 2c and the Jominy artifact
+    The one-call entry point that bundles the composition-dependent pieces: the **pearlite**
+    ceiling ``T_eq`` (``fe_c`` eutectoid **A₁** by default — correct: pearlite cannot form above
+    A₁), the martensite floor ``Mₛ`` (:func:`andrews_Ms`), the alloy hardenability time-shift
+    ``M`` (:func:`hardenability_factor`), and — Phase 6a — the **proeutectoid-ferrite reaction**
+    (:func:`ferrite_reaction_for_steel`: its own ceiling A₃, Li/KV kinetics, capped at the
+    equilibrium proeutectoid-ferrite fraction). This is what Phase 2c and the Jominy artifact
     consume to compare a plain-carbon against an alloy steel.
 
     >>> cc_1045 = ccurve_for_steel(0.45, Mn=0.75, Si=0.22)              # shallow, M ≈ 1
@@ -401,13 +576,19 @@ def ccurve_for_steel(
     ``ccurve_for_steel(0.80)`` with the default ``Mn = 0`` is a (leaner, hypothetical)
     steel whose nose is ~4–5× *faster* than the demo's 1080 — for the idealized
     carbon-only 1080 of the four-curves demo, use the direct :class:`CCurve` constructor
-    instead. Two known v1 simplifications: ``T_eq`` defaults to the eutectoid **A₁**,
-    but for hypoeutectoid steels (1045/4140, ≈ 0.4 % C) the true diffusional ceiling is
-    **A₃** (kept at A₁ for consistency with frozen Phase 1c); and the single ``M`` shifts
-    pearlite and bainite together (no separate bainite bay — see the module docstring §4).
+    instead (no ferrite reaction is attached there).
+
+    The **ferrite bay** (``add_ferrite=True``) is attached for every composition but is *inert*
+    where there is no proeutectoid ferrite (eutectoid / hypereutectoid, ``f_pro = 0``) — so a
+    1080-ish steel is byte-identical with or without it. ``Ae3`` overrides the ferrite ceiling
+    (default: alloy-aware Andrews Ae3) — the seam for a CALPHAD-computed transus. ``add_ferrite=
+    False`` reproduces the pre-6a single-curve model. The remaining simplification: the single
+    ``M`` still shifts pearlite and bainite together (no separate bainite bay — Phase 6b).
     """
     Ms = andrews_Ms(C, Mn=Mn, Ni=Ni, Cr=Cr, Mo=Mo)
     M = hardenability_factor(Mn=Mn, Ni=Ni, Cr=Cr, Mo=Mo, Si=Si)
     if T_eq is None:
         T_eq = fe_c.A1()
-    return CCurve(T_eq=T_eq, Ms=Ms, tau_factor=M, **ccurve_kwargs)
+    ferrite = (ferrite_reaction_for_steel(C, Mn=Mn, Ni=Ni, Cr=Cr, Mo=Mo, Si=Si, Ae3=Ae3, G=G)
+               if add_ferrite else None)
+    return CCurve(T_eq=T_eq, Ms=Ms, tau_factor=M, ferrite=ferrite, **ccurve_kwargs)

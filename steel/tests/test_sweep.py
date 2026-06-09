@@ -125,13 +125,19 @@ def test_alloy_hardens_deeper_at_an_intermediate_medium():
 
 
 def test_saturated_ends_do_not_discriminate_composition():
-    # The other half of the lesson: at water every steel is martensitic and at furnace every
-    # steel is pearlitic, so composition says ~nothing there — the trend MUST be read in the
-    # middle. (At water the lean 1045 is even marginally harder, on its 0.05 % more carbon.)
-    for medium in ("water", "furnace"):
-        lean, alloy = composition_sweep(["1045", "4140"], medium=medium)
-        assert lean.result.martensite == pytest.approx(alloy.result.martensite, abs=0.1)
-        assert lean.HV == pytest.approx(alloy.HV, abs=15.0)
+    # The other half of the lesson: the *slow* (furnace) end saturates — both steels go fully
+    # ferrite+pearlite (martensite ≈ 0, soft, near-identical HV), so composition says ~nothing
+    # there. The *fast* (water) end is now only *nearly* saturated: both are mostly martensitic,
+    # but the shallow 1045 forms a little proeutectoid ferrite even at water (Phase 6a — it does
+    # not fully through-harden a 10 mm section; and water on that section is already the 0-D
+    # model's stretched Biot > 0.1 regime), so it reads marginally *softer* than the deep 4140
+    # (~20 HV), not harder. Either way the trend is cleanest read in the middle (oil).
+    lean, alloy = composition_sweep(["1045", "4140"], medium="furnace")
+    assert lean.result.martensite == pytest.approx(alloy.result.martensite, abs=0.05)  # both ≈ 0
+    assert lean.HV == pytest.approx(alloy.HV, abs=15.0)                                 # both soft FP
+    lean, alloy = composition_sweep(["1045", "4140"], medium="water")
+    assert lean.result.martensite == pytest.approx(alloy.result.martensite, abs=0.1)    # both mostly martensitic
+    assert lean.HV == pytest.approx(alloy.HV, abs=25.0)                                 # 1045 marginally softer (a little α)
 
 
 # --------------------------------------------------------------------------- #

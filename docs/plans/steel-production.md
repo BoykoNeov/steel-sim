@@ -533,6 +533,11 @@ hardness-map error: the linear rule cannot mismap the transition without breakin
 quenched-end anchor, so the well-anchored claims are asserted tightly and the 1045 knee
 *position* loosely. 20-test file; full suite **167 green** (16 `test_properties` + 3
 `test_demo_jominy` + the figure `docs/figures/steel-jominy-hardness.png`).
+*(**Corrected in §13 / Phase 6a:** the "A₁-not-A₃" framing was a **misdiagnosis** — A₁ is correct
+for pearlite; the deep knee is the **unmodeled proeutectoid-ferrite reaction**, ceiling A₃, now
+added as the Phase-6a bay. Bumping `T_eq` to A₃ as written here is **falsified** — it relocates the
+nose to the ferrite nose and destroys 4140; the additive ferrite bay is the right fix, partially
+shallowing the 1045 knee while keeping every other benchmark byte-identical.)*
 
 **Phase 3a is built ✓** (2026-06-08) — `properties.py` extended with **Maynier's (1978)
 minor-alloy + cooling-rate terms**, and `demo_four_curves` **rewired** onto the real model
@@ -761,13 +766,20 @@ discipline — **never a notebook tweak** ([[steel-grain-physics-deferred]]).
    quench-crack / distortion risk. Reuses the Jominy `ThermalField` already built.
    Heavier lift, harder to benchmark cleanly (heat/geometry-specific).
 
-3. **Deepen / close known simplifications — `[available]`.** A rigor pass, no new axis:
-   **real bainite** (a separate TTT bainite bay — 2b shifts pearlite+bainite together —
-   plus the deferred Maynier bainite hardness terms, the least-anchored constituent);
-   **couple CALPHAD into the live kinetics** (the `CalphadBackend` drop-in exists but
-   `kinetics` still uses `fe_c`'s linear A₃ chord + the documented **A₁-not-A₃**
-   hypoeutectoid simplification); and the **D_I** ideal-critical-diameter cross-check
-   (the explicitly-available, not-required benchmark that buttons Steel to 100 %).
+3. **Deepen / close known simplifications — `[ACTIVE → Phase 6]` (chosen 2026-06-09).**
+   Investigation collapsed the three sub-items into **one** piece of new modeling and
+   **corrected a misdiagnosis** (see §13). The headline "**A₁-not-A₃** hypoeutectoid
+   simplification" was *wrong*: A₁ is **correct** for pearlite (the eutectoid product cannot
+   form above A₁); the 1045 knee sat too deep because the **proeutectoid-ferrite reaction
+   (ceiling A₃) was not modeled at all** — the missing earlier diffusional pathway. Bumping
+   the single curve's `T_eq` to A₃ was empirically falsified (it moved the nose to ~620 °C =
+   *the ferrite nose*, destroyed 4140's plateau, and broke the quenched-end anchor — the model
+   straining to be two curves at once). So **"real bainite bay" + "A₁-not-A₃" are the same new
+   modeling**: competing diffusional C-curves (ferrite/pearlite/bainite) with element-specific
+   retardation, the Li/Kirkaldy–Venugopalan model. **Phase 6a (the proeutectoid-ferrite bay) is
+   BUILT** (§13); **6b** (bainite bay + Maynier bainite hardness) and **6c** (the **D_I**
+   cross-check) remain. CALPHAD coupling lands as the **Ae3-ceiling seam** (6a): always-green
+   default = cited Andrews Ae3, optional override = a CALPHAD-computed transus.
 
 4. **Inverse design capstone — `[available]`.** Flip the forward model into a design
    tool: target a hardness/depth (or yield) → search composition × quench × temper for
@@ -1088,3 +1100,84 @@ which the laws `nan` — the §3 isolation idiom). Steel gate fast `not slow` **
 the schematic swatch itself **stays** (areas ∝ validated fractions are honest), its caption reworded
 to point at §5 instead of calling the physics unbuilt. Grain *morphology* (Voronoi) still deferred
 ([[steel-grain-physics-deferred]]).
+
+---
+
+## 13. Phase 6 — Close known simplifications: the competing-reaction CCT kinetics
+
+Promoted from §11 item 3 (chosen 2026-06-09). Investigation **reframed it** (advisor-guided): the
+three sub-items ("real bainite bay", "couple CALPHAD / A₁-not-A₃", "D_I cross-check") are not a
+rigor pass but **one real modeling phase** plus a validation leg, because the **"A₁-not-A₃"
+framing was a misdiagnosis**.
+
+**The corrected diagnosis (durable).** A₁ is **correct** for the pearlite C-curve — pearlite is the
+eutectoid product and cannot form above A₁. The 1045 Jominy knee sat ~2–3 mm too deep not because
+the pearlite ceiling was wrong, but because the **proeutectoid-ferrite reaction (ceiling A₃) was
+not modeled at all** — the earlier, higher-temperature diffusional pathway a hypoeutectoid steel
+takes before pearlite. Bumping the single curve's `T_eq` to A₃ was **empirically falsified**: it
+relocated the calibrated 550 °C nose to ~620 °C (= *the ferrite nose*), destroyed 4140's plateau,
+and broke the fully-martensitic quenched-end anchor — the one curve straining to be two. So **"real
+bainite bay" and "A₁-not-A₃" are the same new physics**: competing diffusional C-curves
+(ferrite + pearlite + bainite) with element-specific retardation = the **Li (1998) / Kirkaldy–
+Venugopalan (1983)** semi-empirical CCT model. The fix is **additive** — the pearlite curve and
+every eutectoid/four-curves benchmark stay byte-identical; a *parallel* ferrite reaction is added.
+
+### Phase 6a — the proeutectoid-ferrite bay (BUILT ✓ 2026-06-09)
+
+`projects/steel/kinetics.py` §5 (`ferrite_FC`, `FerriteReaction`, `ferrite_reaction_for_steel`, the
+`CCurve.ferrite` field) + `pathint.transform_along_path` (sequential coupling) + a one-line
+`properties.CONSTITUENT_HV` entry + `plots` (a soft `ferrite` phase) + `tests/test_ferrite.py`
+(16 tests). **Full steel gate 300 → 315.** Source pinned → [[ferrite-bay-source]].
+
+**The model (cited):** the ferrite completion `U` advances by the Li/KV site-saturation law
+`dU/dt = K(T)·g(U)`, `K = scale·2^(0.41 G)·(Ae3 − T)³·exp(−Q/RT)/FC`, `g(U) = U^{0.4(1−U)}(1−U)^{0.4U}`,
+with **Q = 27 500 cal/mol**, the ΔT³ undercooling below **Ae3**, and the **cited composition factor
+`FC = exp(1.00 + 6.31C + 1.78Mn + 0.31Si + 1.12Ni + 2.70Cr + 4.06Mo)`**. Ferrite mass fraction =
+`U·f_pro`, capped at the **equilibrium proeutectoid-ferrite fraction** from `fe_c`
+(Phase 1b) — so the reaction is **inert for eutectoid/hypereutectoid** (1080 byte-identical).
+`pathint` runs it **first** (sequential, advisor), then the existing pearlite/martensite logic on
+the `(1 − f_ferrite)` remainder (enriched toward the eutectoid the pearlite curve is calibrated for).
+
+**Cited vs calibrated (the discipline).** *Cited* = the FC coefficients (so the retardation **ratio**
+FC(4140)/FC(1045) ≈ **32×** is not ours), Q, the ΔT³ form, the grain factor, and the alloy-aware
+**Andrews Ae3** ceiling (the CALPHAD-computed transus is the optional override = the "couple CALPHAD"
+seam, live-tested with the bundled binary DB). *Calibrated* = exactly **one** knob,
+`FERRITE_KINETIC_SCALE = 8.0`, reconciling KV's absolute time base to the project's pearlite-curve
+base — **bounded by a sanity ceiling, not a fit**: a single global scale cannot fully shallow 0.45 %C
+1045 *without over-softening a 0.2 %C core* (KV's 6.31 carbon coefficient → low-C austenite forms
+ferrite readily, physically correct), so the scale is the largest value keeping a 0.2 %C 8620 core in
+its published ~30–40 HRC band.
+
+**The teeth (cited prediction).** With the scale set by that constraint, **4140 stays deep**: it has
+*more* proeutectoid ferrite available than 1045 (f_pro ≈ 0.49 vs 0.42) yet forms almost none, purely
+from its cited Cr/Mo FC coefficients — nothing about 4140 tuned. 1080-inert and the preserved
+quenched end are *structural*. **The real win is the previously-missing reaction now exists** —
+proeutectoid ferrite in the microstructure + the soft-end hardness, and the 1045-shallow/4140-deep
+divergence is now **mechanistic** (cited Cr/Mo), not a single-curve shift. The 1045 knee shallows
+**partially** (7.66 → 6.68 mm, ~1 mm of the ~2–3 mm gap) — an explicit *bonus*, not the headline.
+
+**Named scope caveats.** (1) One global scale across all carbon levels leaves a residual — it cannot
+fully close 1045 without over-softening low-C cores; **per-reaction *absolute* kinetics (a fuller
+KV treatment of pearlite too) would lift it — deferred to 6b.** (2) The ferrite *nose* runs fast/cool
+(~600 °C) vs published ferrite TTT — irreducible in KV's coarse ΔT³ at this Q (a scale prefactor
+cannot move the nose temperature); 6a captures the hardenability *consequence*, not the absolute TTT
+position. (3) `properties` aggregates proeutectoid ferrite onto the **ferrite-pearlite hardness**
+(it *is* that aggregate), so the soft-end hardness anchor is untouched; only martensite/knee
+hardness re-blessed.
+
+**Re-blessed (honest physics refinements, not regressions):** `test_hardenability`/`test_demo_sweep`
+auto-passed at the gentler scale; `test_sweep` (the slow furnace end still converges, the fast water
+end now reads 1045 marginally *softer* — it forms a little α, it does not through-harden a 10 mm
+section); `test_carburize` (reframed — the as-quenched core now dips below the full-martensite
+*potential* by the proeutectoid ferrite it really forms, landing ~40 HRC in the published 8620 band,
+the more-physical result the module docstring anticipated).
+
+### Phase 6b / 6c — PENDING
+
+* **6b — the bainite bay** (the second new reaction): the KV bainite C-curve (own ceiling Bs, ΔT¹,
+  `BC = exp(−10.23 + 10.18C + 0.85Mn + 0.55Ni + 0.90Cr + 0.36Mo)`) raced alongside ferrite/pearlite,
+  + the deferred Maynier bainite hardness terms (the least-anchored constituent, Phase 3a). This is
+  also where the **per-reaction absolute kinetics** that would lift 6a's single-scale residual live.
+* **6c — the D_I ideal-critical-diameter cross-check** (now against the *post-6a* model). **Teeth
+  caveat (advisor):** must use an **independent measured D_I**, not a Grossmann-derived one (kinetics
+  already uses Grossmann relative potencies → a Grossmann D_I would be a tautology).

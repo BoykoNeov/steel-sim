@@ -36,6 +36,7 @@ import numpy as np
 import pytest
 
 from projects.steel import carburize as cb
+from projects.steel import properties as prop
 
 
 # --------------------------------------------------------------------------- #
@@ -192,14 +193,26 @@ def test_retained_austenite_rises_toward_the_high_carbon_surface():
     assert tr.retained_austenite[-1] < 0.05                 # core is essentially martensite
 
 
-def test_as_quenched_hardness_dips_below_potential_only_near_the_surface():
-    # The two hardness curves coincide through the core (full martensite there) and the
-    # as-quenched curve dips below the potential only near the surface — the visible RA
-    # signature. Assert the direction; do NOT assert the RA-laden surface value vs published.
+def test_as_quenched_hardness_dips_below_the_martensite_potential():
+    # The "potential" curve (tr.HV) is the *as-designed* full-martensite hypothetical; the
+    # as-quenched curve (tr.HV_as_quenched) is the real mixture, which dips below it for TWO
+    # distinct reasons at the two ends:
+    #   * surface — heavy RETAINED AUSTENITE (high-C austenite, low Ms) drags it down hard;
+    #   * core    — PROEUTECTOID FERRITE (Phase 6a): a 0.2 %C core forms ~⅓ α at the slow oil
+    #     quench (KV's large carbon coefficient → low-C austenite transforms readily), the more
+    #     physical result the module docstring anticipated (published 8620 cores run ~30–40 HRC,
+    #     NOT the full-martensite ~48 HRC potential). Pre-6a the core sat at the potential
+    #     (spuriously full martensite); now it dips by the ferrite it really forms.
+    # Assert both dips are real and the case-harder-than-core ordering holds; do NOT assert the
+    # core coincides with the full-martensite potential (it no longer does — and shouldn't).
     p = cb.solve_carburize(t_hours=8.0)
     tr = cb.carburized_traverse(p)
-    assert tr.HV_as_quenched[0] < tr.HV[0] - 50.0           # RA drags the surface down
-    assert tr.HV_as_quenched[-1] == pytest.approx(tr.HV[-1], rel=0.05)  # core: curves coincide
+    assert tr.HV_as_quenched[0] < tr.HV[0] - 50.0          # surface dip: retained austenite
+    assert tr.HV_as_quenched[-1] < tr.HV[-1] - 30.0        # core dip: proeutectoid ferrite (6a)
+    assert tr.HV_as_quenched[0] > tr.HV_as_quenched[-1]    # case still harder than core
+    # The as-quenched core lands in the published 8620 oil-core band (~30–40 HRC), not the
+    # full-martensite potential — the ferrite bay corrects it toward the real value.
+    assert 30.0 <= prop.vickers_to_rockwell_c(tr.HV_as_quenched[-1]) <= 42.0
 
 
 def test_solve_rejects_inverted_carbon_gradient():

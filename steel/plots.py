@@ -30,12 +30,14 @@ from .carburize import CarburizedProfile, CarburizedTraverse
 
 # Stable colours so the legend reads the same across every figure.
 PHASE_COLORS = {
+    "ferrite": "#f2d7a8",             # pale — soft proeutectoid α (the diffusional high-T product, Phase 6a)
     "pearlite": "#e8833a",            # warm — diffusional, slow, soft
     "bainite": "#4a9b5e",
     "martensite": "#3b6db5",          # cool — athermal, fast, hard
     "retained_austenite": "#9aa0a6",
 }
 PHASE_LABELS = {
+    "ferrite": "proeutectoid ferrite",
     "pearlite": "pearlite",
     "bainite": "bainite",
     "martensite": "martensite",
@@ -139,7 +141,7 @@ def plot_microstructure_bars(
     otherwise the bars carry no hardness label (the figure still builds). Hardness is
     computed upstream (ADR 0002: viz consumes validated numbers, never derives them).
     """
-    order = ["pearlite", "bainite", "martensite", "retained_austenite"]
+    order = ["ferrite", "pearlite", "bainite", "martensite", "retained_austenite"]
     names = [p.name for p in paths]
     x = np.arange(len(names))
     bottom = np.zeros(len(names))
@@ -186,8 +188,8 @@ def microstructure_schematic(
     """
     from matplotlib.patches import Rectangle, Patch
 
-    order = ["pearlite", "bainite", "martensite", "retained_austenite"]
-    hatches = {"pearlite": "---", "bainite": "xx", "martensite": "///",
+    order = ["ferrite", "pearlite", "bainite", "martensite", "retained_austenite"]
+    hatches = {"ferrite": "", "pearlite": "---", "bainite": "xx", "martensite": "///",
                "retained_austenite": ""}
     total = n * n
     # Cell counts ∝ fractions, summing *exactly* to total (the largest phase absorbs the
@@ -330,10 +332,12 @@ def carburize_figure(
                    fontsize=10.5)
 
     # -- panel 2: microstructure gradient (stacked phase fractions) -------------- #
-    order = ["martensite", "bainite", "pearlite", "retained_austenite"]
+    order = ["martensite", "bainite", "pearlite", "ferrite", "retained_austenite"]
     bands = {
         "martensite": traverse.martensite, "bainite": traverse.bainite,
-        "pearlite": traverse.pearlite, "retained_austenite": traverse.retained_austenite,
+        "pearlite": traverse.pearlite,
+        "ferrite": (traverse.ferrite if traverse.ferrite is not None else np.zeros_like(traverse.martensite)),
+        "retained_austenite": traverse.retained_austenite,
     }
     ax_phase.stackplot(
         depth_mm, *[bands[p] for p in order],

@@ -150,17 +150,19 @@ def additivity_start_time(
 class TransformResult:
     """The microstructure a cooling path produces — mass fractions summing to 1.
 
-    ``pearlite``/``bainite`` are the diffusional product (split by formation
-    temperature at ``Bs``); ``martensite``/``retained_austenite`` are the athermal
-    fate of the austenite that survived to ``Mₛ``. ``X_diffusional`` is the
-    diffusional total (= pearlite + bainite), ``T_min`` the lowest temperature
-    reached (°C), and ``formation_T`` the fraction-weighted mean temperature at
-    which the diffusional product formed (°C, ``nan`` if none) — *where on the
-    C-curve* the transformation happened, the kinetic quantity that distinguishes
-    an otherwise-identical pearlite (high formation T = coarser lamellae) from a
-    lower-temperature one. The ``t``/``T``/``X`` arrays are the path and its
-    cumulative diffusional fraction — for the mechanism view (the cooling curve
-    drawn across the C-curve) and the demo, not the validation scalars.
+    ``ferrite`` is the **proeutectoid ferrite** (Phase 6a — the Li/KV reaction below A₃, ``0`` for
+    a eutectoid/hypereutectoid steel or a bare :class:`~projects.steel.kinetics.CCurve` with no
+    ferrite reaction); ``pearlite``/``bainite`` are the rest of the diffusional product (split by
+    formation temperature at ``Bs``); ``martensite``/``retained_austenite`` are the athermal fate
+    of the austenite that survived to ``Mₛ``. ``X_diffusional`` is the diffusional total
+    (= ferrite + pearlite + bainite), ``T_min`` the lowest temperature reached (°C), and
+    ``formation_T`` the fraction-weighted mean temperature at which the *pearlite/bainite* product
+    formed (°C, ``nan`` if none; proeutectoid ferrite forms higher, near A₃, and is reported
+    separately) — *where on the C-curve* the transformation happened, the kinetic quantity that
+    distinguishes an otherwise-identical pearlite (high formation T = coarser lamellae) from a
+    lower-temperature one. The ``t``/``T``/``X`` arrays are the path and its cumulative
+    *pearlite/bainite* fraction — for the mechanism view (the cooling curve drawn across the
+    C-curve) and the demo, not the validation scalars.
     """
 
     pearlite: float
@@ -173,10 +175,18 @@ class TransformResult:
     t: np.ndarray
     T: np.ndarray
     X: np.ndarray
+    ferrite: float = 0.0          # proeutectoid ferrite (Phase 6a); 0.0 = no ferrite reaction (byte-identical)
 
     def fractions(self) -> dict:
-        """The product fractions as a dict (the inter-module currency, plan §5)."""
+        """The product fractions as a dict (the inter-module currency, plan §5).
+
+        Always carries the ``ferrite`` key (``0.0`` when there is no proeutectoid-ferrite
+        reaction — the stable key set the ``fe_c`` idiom keeps), so consumers index without a
+        ``KeyError`` and the rule of mixtures iterates it in lockstep with
+        :data:`~projects.steel.properties.CONSTITUENT_HV`.
+        """
         return {
+            "ferrite": self.ferrite,
             "pearlite": self.pearlite,
             "bainite": self.bainite,
             "martensite": self.martensite,
@@ -191,12 +201,19 @@ class TransformResult:
 def transform_along_path(t: np.ndarray, T: np.ndarray, ccurve: CCurve) -> TransformResult:
     """Integrate a cooling path ``(t, T)`` to its microstructure (the Phase-1c core).
 
-    The diffusional fraction is advanced by the **additive fictitious-time** method
-    over every interval where ``Mₛ < T < T_eq`` (outside that window there is no
-    driving force, or martensite governs); each increment is labelled *pearlite*
-    (formed at ``T ≥ Bs``) or *bainite* (``T < Bs``). The austenite still untransformed
-    when the path bottoms out then shears to **martensite** per Koistinen–Marburger
-    at the lowest temperature reached, the remainder staying **retained austenite**.
+    Two diffusional reactions run, then the athermal one. **Proeutectoid ferrite** (Phase 6a,
+    only if ``ccurve.ferrite`` is an active reaction) advances by the Li/KV site-saturation law
+    over every interval where ``Mₛ < T < Ae3``, capped at the equilibrium proeutectoid-ferrite
+    fraction. **Pearlite/bainite** advance by the **additive fictitious-time** method over every
+    interval where ``Mₛ < T < T_eq`` (the existing curve, computed on the *full* austenite and
+    labelled pearlite at ``T ≥ Bs`` else bainite). Proeutectoid ferrite forms first and at higher
+    temperature, enriching the remaining austenite toward the eutectoid the pearlite curve is
+    calibrated for, so it is treated **sequentially**: the pearlite/bainite/martensite products are
+    scaled onto the ``(1 − f_ferrite)`` austenite the ferrite reaction left. The austenite still
+    untransformed when the path bottoms out shears to **martensite** per Koistinen–Marburger at the
+    lowest temperature reached, the remainder staying **retained austenite**. With no ferrite
+    reaction (``ferrite=None``) or an inert one (``f_pro=0``: eutectoid/hypereutectoid, e.g. the
+    four-curves 1080), ``f_ferrite = 0`` and the result is **byte-identical** to the pre-6a model.
 
     Parameters
     ----------
@@ -205,7 +222,8 @@ def transform_along_path(t: np.ndarray, T: np.ndarray, ccurve: CCurve) -> Transf
         with :func:`newton_cooling` on a :func:`log_time_grid`, or from
         :mod:`cooling`'s presets.
     ccurve : CCurve
-        The steel's TTT C-curve (carries ``T_eq``, ``Mₛ``, ``Bs``, ``n``).
+        The steel's TTT C-curve (carries ``T_eq``, ``Mₛ``, ``Bs``, ``n``, and the optional
+        Phase-6a ``ferrite`` reaction).
     """
     t = np.asarray(t, dtype=float)
     T = np.asarray(T, dtype=float)
@@ -214,16 +232,23 @@ def transform_along_path(t: np.ndarray, T: np.ndarray, ccurve: CCurve) -> Transf
 
     n = ccurve.n
     Ms, Bs, T_eq = ccurve.Ms, ccurve.Bs, ccurve.T_eq
+    fr = ccurve.ferrite             # Phase-6a proeutectoid-ferrite reaction (may be None / inert)
 
     X = 0.0
     pearlite = 0.0
     bainite = 0.0
-    formation_T_weighted = 0.0      # Σ dX·T over the diffusional product (for the mean)
+    U_ferrite = 0.0                 # KV proeutectoid-ferrite completion ∈ [0, 1]
+    formation_T_weighted = 0.0      # Σ dX·T over the pearlite/bainite product (for the mean)
     X_hist = np.zeros_like(t)
 
     for i in range(1, t.size):
         dt = t[i] - t[i - 1]
         Ti = T[i]
+        # Proeutectoid ferrite (Phase 6a): advances wherever Mₛ < T < Ae3 (rate is 0 above Ae3,
+        # and the step is a no-op for an inert/None reaction).
+        if fr is not None and Ti > Ms:
+            U_ferrite = fr.completion_step(U_ferrite, float(Ti), dt)
+        # Pearlite / bainite — the existing curve on the full austenite (unchanged).
         if Ms < Ti < T_eq and X < 1.0:
             tau_T = ccurve.tau(float(Ti))
             if not math.isinf(tau_T):
@@ -239,20 +264,29 @@ def transform_along_path(t: np.ndarray, T: np.ndarray, ccurve: CCurve) -> Transf
                 X += dX
         X_hist[i] = X
 
-    X_diff = pearlite + bainite
+    X_diff = pearlite + bainite     # raw pearlite/bainite on the full austenite
     formation_T = formation_T_weighted / X_diff if X_diff > 0.0 else float("nan")
     T_min = float(np.min(T))
-    retained = 1.0 - X_diff
     f_km = koistinen_marburger(T_min, Ms)        # 0 if the path never reaches Mₛ
+
+    # Sequential coupling: proeutectoid ferrite consumes f_ferrite of the austenite first; the
+    # existing pearlite/martensite products take the (1 − f_ferrite) remainder. This is exact
+    # (Σ = 1) and reduces to the pre-6a model when f_ferrite = 0.
+    f_ferrite = U_ferrite * fr.f_pro if fr is not None else 0.0
+    remainder = 1.0 - f_ferrite
+    pearlite *= remainder
+    bainite *= remainder
+    retained = remainder * (1.0 - X_diff)
     martensite = retained * f_km
     retained_austenite = retained * (1.0 - f_km)
 
     return TransformResult(
+        ferrite=f_ferrite,
         pearlite=pearlite,
         bainite=bainite,
         martensite=martensite,
         retained_austenite=retained_austenite,
-        X_diffusional=X_diff,
+        X_diffusional=f_ferrite + pearlite + bainite,
         T_min=T_min,
         formation_T=formation_T,
         t=t,

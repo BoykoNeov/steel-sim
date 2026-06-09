@@ -307,7 +307,17 @@ def vickers_bainite(C: float, comp: dict | None = None, Vr: float | None = None)
 # dict, so the rule of mixtures iterates them in lockstep (a missing/extra key is a real
 # error). All take the same (C, comp, Vr) signature so the rule of mixtures threads the
 # Phase-3 terms uniformly; retained austenite ignores them (a soft constant).
+#
+# **Proeutectoid ferrite (Phase 6a)** maps to the *same* function as pearlite,
+# :func:`vickers_ferrite_pearlite`. That is not a stand-in: the function is explicitly the
+# **ferrite + pearlite aggregate** (its docstring — fit to *normalized plain-carbon hardness*,
+# which is exactly a ferrite-pearlite mixture). So a structure with proeutectoid ferrite ``f_α``
+# plus lamellar pearlite ``f_p`` contributes ``f_α·HV_fp + f_p·HV_fp = (f_α + f_p)·HV_fp`` — the
+# soft-end hardness depends only on the *diffusional total*, identical to the pre-6a value for the
+# same total. So adding the ferrite bay leaves the calibrated soft-end hardness anchor untouched;
+# only the *martensite-driven* (hardenability-knee) hardness shifts, which is the intended re-bless.
 CONSTITUENT_HV = {
+    "ferrite": vickers_ferrite_pearlite,    # proeutectoid α — the ferrite+pearlite aggregate (6a)
     "pearlite": vickers_ferrite_pearlite,
     "bainite": vickers_bainite,
     "martensite": vickers_martensite,
