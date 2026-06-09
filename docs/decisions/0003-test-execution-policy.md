@@ -178,8 +178,27 @@ the original default-full is real; its correct home is **CI running the full gat
 push**, off the developer's critical path, *not* a 200 s local default. Full-gate CI
 carries the pycalphad-on-Python-3.14 symengine install wrinkle (Phase 4 notes), so it
 is a deliberate separate step the user opts into; a cheap interim is CI running
-`-m "not slow"` (no optional stack). **Recommended, not yet built** — flagged to the
-user at the time of this amendment.
+`-m "not slow"` (no optional stack).
+
+**Built 2026-06-09** (at the user's direction — "full gate CI on push - do it"):
+`.github/workflows/full-gate.yml` runs bare `pytest` (all 248, incl. the live-solver /
+kernel tests) on every push + manual dispatch, ubuntu-latest, single job. Key choices,
+all to make the gate *honest* (the failure mode of a full gate is a green run that
+silently *skipped* the optional-stack tests rather than running them):
+
+- **Python 3.12, not 3.14** — sidesteps the symengine wrinkle entirely (a plain
+  `pip install -e .[calphad]` resolves on <3.14), rather than scripting the two-step
+  dance in CI. Accepted cost: CI can't catch a 3.14-only regression in the slow tests
+  (the local fast lane covers 3.14).
+- **Three silent-skip guards** — a loud post-install import check (a missing extra
+  fails red, not skips green), explicit `ipykernel install` (a kernelspec is *not*
+  registered by `pip install ipykernel`, and the notebook test skips without one), and
+  `pytest -rs` so every skip reason prints in the run log.
+- **The ODbL steel TDB is downloaded at CI time** (cached, never committed — plan §6),
+  so the multicomponent live test — the Open Issue's known flake — actually *runs*.
+  Per this Amendment that is the flake's intended home, so it is allowed to be visible;
+  the softener if it gets noisy is `pytest-rerunfailures` on the slow set, not skipping
+  the TDB.
 
 ## Successor — a per-project gate, after Microchip (project #2) lands
 
@@ -204,6 +223,9 @@ point the mapping has two distinct entries to get right.
 
 - **The `slow` set** — Microchip adds its own potentially-heavy tests (Deal–Grove,
   litho, any live numerics) to classify by the same live-solver/kernel/subprocess rule.
-- **The rot mitigation actually in place** — was full-gate CI on push set up (the
-  Amendment's recommendation), or do the live-CALPHAD tests + the known flake still run
-  ~never? If still uncaught, that milestone is the moment to fix it, not defer again.
+- **The rot mitigation actually in place** — full-gate CI on push **was** set up
+  (`.github/workflows/full-gate.yml`, 2026-06-09 — see the Amendment), so the
+  live-CALPHAD tests + the known flake now run on every push, not ~never. At the
+  Microchip milestone, settle instead: does Microchip add its slow tests to the same
+  workflow, and is the known multicomponent flake still unresolved (then either pin the
+  solve / loosen the band, or add `pytest-rerunfailures`)?
