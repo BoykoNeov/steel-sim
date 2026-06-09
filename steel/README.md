@@ -603,11 +603,13 @@ streamlit run projects/steel/app.py
 It is laid out in **three layers** so the deliverable is both testable and runnable:
 
 - **Compute helpers** (`single_steel_outcomes` / `evaluate_one` / `comparison_grid` /
-  `temper_curve_data` / `hardness_readout`) call `sweep` directly and import **neither** Streamlit
+  `temper_curve_data` / `hardness_readout` / `custom_steel_outcome` / `custom_readout` /
+  `composition_warnings`) call `sweep` directly and import **neither** Streamlit
   **nor** matplotlib — so the module imports on a bare core install and the helpers are unit-tested
   **always-green** (`tests/test_app.py`), exactly like `test_sweep` (not gated like the notebook).
-- **Figure builders** (`mechanism_figure`, `comparison_figure`) are lazy-import wrappers over the
-  existing `plots.py` figures (`four_curves_figure`, `sweep_comparison_figure`); the tempering view
+- **Figure builders** (`mechanism_figure`, `comparison_figure`, `custom_figure`) are lazy-import
+  wrappers over the existing `plots.py` figures (`four_curves_figure`, `sweep_comparison_figure`,
+  `single_steel_figure`); the tempering view
   uses Streamlit-native `st.line_chart` (one chart per quantity — HV/HRC/UTS/toughness live on very
   different scales — rather than inventing a matplotlib temper figure in a prior phase's render layer).
 - **`main()`** is the **only** place `import streamlit` lives, and is kept paper-thin: every value
@@ -624,18 +626,25 @@ It is laid out in **three layers** so the deliverable is both testable and runna
   first (the `parents[2]` idiom the demos use) and imports **absolutely**. Verify cheaply, no
   streamlit needed: `python projects/steel/app.py` must reach `import streamlit` inside `main()` and
   die only there (if it dies on a `from …` line, the bootstrap is wrong).
-- **The grade dropdown, not a raw %C/Mn slider.** Cooling/hardness/temper use the `STEELS` registry
-  (real compositions) to dodge the documented `Mn = 0` "leaner hypothetical steel" trap — the same
-  discipline as the notebook. HV/HRC honesty (`off HRC scale` where Rockwell-C is undefined) and the
-  Biot validity flag (severe quench of a thick section → the Phase-2 spatial-solve cue) are surfaced
-  in the readout, not hidden.
+- **The grade dropdown for the main what-ifs; a *guarded* free slider for build-your-own.**
+  Cooling/hardness/temper use the `STEELS` registry (real compositions) to dodge the documented
+  `Mn = 0` "leaner hypothetical steel" trap — the same discipline as the notebook. The
+  build-your-own view deliberately reopens a free C/Mn/Cr/Mo/Ni slider (the experimentation payoff)
+  and pays for that reach honestly: the Mn slider floors at 0.30 and `composition_warnings()` flags
+  alloy content past the 1080/4140 calibration envelope. HV/HRC honesty (`off HRC scale` where
+  Rockwell-C is undefined) and the Biot validity flag (severe quench of a thick section → the
+  Phase-2 spatial-solve cue) are surfaced in the readout, not hidden.
 
-The sidebar drives three views: a single grade's **mechanism + microstructure + hardness readout**
-(the four-curves figure for the chosen steel), the **composition × cooling-rate comparison grid**
-(the hardenability story side by side), and the **quench-and-temper response** (martensite-only,
-the softening / strength↔toughness trade-off). `tests/test_app.py` exercises every compute helper
-always-green, asserts importing `app` does **not** pull Streamlit (the layering guard), and
-build-smoke-tests the figures under the optional `[viz]` extra.
+It drives **four views** (plus an entry-level on-ramp, open by default): a single grade's
+**mechanism + microstructure + hardness readout** (the four-curves figure for the chosen steel,
+now with **UTS + relative toughness** beside the hardness), the **composition × cooling-rate
+comparison grid** (the hardenability story side by side), a **build-your-own-steel** what-if
+(free C/Mn/Cr/Mo/Ni sliders → the C-curve slides right with alloy + a schematic microstructure
+swatch, at a fixed oil quench — the same view the notebook's §3 carries), and the
+**quench-and-temper response** (martensite-only, the softening / strength↔toughness trade-off).
+`tests/test_app.py` exercises every compute helper always-green, asserts importing `app` does
+**not** pull Streamlit (the layering guard), and build-smoke-tests the figures under the optional
+`[viz]` extra.
 
 ## Run the tests
 
