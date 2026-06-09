@@ -775,25 +775,56 @@ discipline — **never a notebook tweak** ([[steel-grain-physics-deferred]]).
    core physics**.
 
 Also flagged in the deferred pile but not promoted to the menu (named scope ceilings,
-mostly harder to validate honestly): quantitative **Charpy / ductile-brittle transition**
-toughness (real impact toughness is non-monotone through the embrittlement troughs —
-3b's named ceiling); **concentration-dependent diffusivity `D(C)`** in carburizing
+mostly harder to validate honestly): the **full Charpy curve** — absolute shelf energies and
+the **tempering-axis** non-monotonicity (tempered-martensite / temper embrittlement troughs),
+3b's named ceiling — stays deferred (Phase 5 option (b) models only the **grain-size→DBTT
+*transition temperature***, a monotone Cottrell–Petch law on a different axis; see §12);
+**concentration-dependent diffusivity `D(C)`** in carburizing
 (Tibbetts — would extend the *frozen* engine's flagged-but-unbuilt nonlinear `D(u)`);
 **mixed-structure tempering** (per-constituent, vs 3b's martensite-only); **welding/HAZ**
 thermal cycles; **fatigue**.
 
 ---
 
-## 12. Phase 5 — Grain size & Hall–Petch (the grain-size strengthening axis)
+## 12. Phase 5 — Grain size, Hall–Petch & the DBTT co-benefit (option b)
 
-Promoted from §11 (chosen 2026-06-09). Steel's first **post-v1** phase and the first
-to add the one engineering property the hardness chain *deliberately withholds:*
-**yield strength.** `properties.py` maps structure → hardness → UTS but returns **no
-yield** on principle (Tabor's `H≈3σ` is *flow* stress, not yield — see the
-`tensile_strength_MPa` docstring). Hall–Petch supplies yield from a **different physical
-variable — grain size** — so Phase 5 is *orthogonal* to the hardness model, not a refit
-of it. It touches **neither** the frozen `engines/diffusion` **nor** any frozen
-benchmark (2c / 3a / 3b / Jominy / four-curves all byte-identical).
+Promoted from §11 (chosen 2026-06-09; **option (b)** chosen 2026-06-09 — the model
+*demonstrates* the strength-and-toughness co-benefit, it does not merely narrate it).
+Steel's first **post-v1** phase, and the first to add **two** engineering quantities the
+hardness chain *deliberately withholds* — **yield strength** and the **ductile-brittle
+transition temperature (DBTT)** — both as functions of **grain size**. `properties.py`
+maps structure → hardness → UTS but returns **no yield** on principle (Tabor's `H≈3σ` is
+*flow* stress, not yield — `tensile_strength_MPa` docstring) and **no transition
+temperature** (3b's `toughness_index` is a relative HV-direction, not a temperature). Both
+new quantities come from a **different physical variable — grain size** — so Phase 5 is
+*orthogonal* to the hardness model, not a refit of it. It touches **neither** the frozen
+`engines/diffusion` **nor** any frozen benchmark (2c / 3a / 3b / Jominy / four-curves all
+byte-identical), and it does **not** modify `toughness_index` (see the 3b reconciliation
+under §12 scope).
+
+**The spine of option (b): two laws of the *same Hall–Petch form*, opposite grain-size
+signs.** The headline metallurgical fact — *grain refinement is the **only** strengthening
+lever that raises strength **and** improves toughness at once* — is made to **emerge** from
+the **Pickering ferrite-pearlite equation pair** (the project's recurring "same form, two
+uses" structure — cf. the engine's mass/heat duality, litho's one `coherent_image` used
+twice):
+
+    σ_y  = f_σ(comp, %pearlite) + k_y·d^(−½)        grain term  POSITIVE  (refine → stronger)
+    DBTT = g_T(comp, %pearlite) − k_T·d^(−½)        grain term  NEGATIVE  (refine → tougher)
+
+In **both** equations Si / free-N / pearlite raise the value (strength↑ *and* DBTT↑ =
+embrittle), but the **grain-size term flips sign** — so grain refinement is the lone
+co-improving lever. This is the **pedagogical payoff** of option (b) and the legitimate
+reason to pick it over (a): the model now *outputs* DBTT and the figure *shows* the
+co-benefit that (a) could not. But it is a **demonstration, not a validation** —
+because both Pickering equations are *cited*, the sign-opposition is true **by
+construction** (no held-out measured quantity could falsify it), the exact "wiring check,
+not probative" status Phase 4 gave `fe_c`'s pinned invariant points. **The triad's teeth
+live elsewhere — in 5a's independent grain-growth benchmark** (see the validation triad
+below); the sign-opposition is asserted only as a *consistency check that passes by
+construction*. `%pearlite` for both `f`/`g` is read from **Phase 1b**
+`fe_c.equilibrium_constituents` (carbon → pearlite fraction) — a clean reuse, and the
+reason carbon embrittles in this model.
 
 **New module:** `projects/steel/grain.py` (+ `tests/test_grain.py`, `demo_grain.py`, a
 `plots.grain_figure`). Steel-local, a peer of `properties.py`.
@@ -807,80 +838,118 @@ the benchmark data is reported in. The exponent **`n` is cited, usually > 2** fo
 steels (solute drag / second-phase Zener pinning slow growth below the ideal n=2) for
 the benchmark steel — named, not silently assumed.
 
-### 5b — Hall–Petch (grain size → yield strength)
+### 5b — Hall–Petch yield + the Cottrell–Petch DBTT (the two grain-size laws)
 
-`σ_y = σ₀ + k_y·d^(−½)` — the new property. **Diffusional-regime only:** yield is
-returned for a ferrite-pearlite (normalized/annealed) structure and is **`nan` for a
-martensitic structure** (the HRC-`nan`-on-a-soft-tail idiom) — as-quenched martensite
-strength is carbon/lath-dominated and its **packet/block Hall–Petch is deferred** (a
-second-order correction, the bainite-deferral analogue of 3a). `σ₀, k_y` are pinned to
-**one cited ferrite dataset** (Hall/Petch low-carbon steel — σ₀≈70 MPa, k_y≈0.6 MPa·√m,
-≈260 MPa yield at 10 µm; flagged interstitial-sensitive).
+Two outputs, both diffusional-regime-only, both **`nan` for a martensitic structure** (the
+HRC-`nan`-on-a-soft-tail idiom — martensite strength is carbon/lath-dominated and its
+**packet/block Hall–Petch is deferred**, a second-order correction; martensite's *toughness*
+is the tempering-axis non-monotone story 3b already fenced off):
 
-### 5c — Coupling + the banked artifact
+- **Yield strength** `σ_y = σ₀ + k_y·d^(−½)` (Hall–Petch) — the bare two-constant form is the
+  plain-carbon teaching limit; the **composition-aware workhorse** is the **Pickering
+  ferrite-pearlite** strength equation (`σ_y = f_σ(Mn, Si, N_free, %pearlite) + k_y·d^(−½)`).
+- **DBTT** `T = g_T(Si, N_free, %pearlite) − k_T·d^(−½)` (**Cottrell–Petch / Pickering** impact
+  transition temperature) — the grain-size term has the **opposite sign** to the yield law, the
+  whole point of option (b).
 
-Austenitizing T → PAGS (5a) → effective ferrite grain via a **calibrated
-proportionality** (austenite boundaries are ferrite nucleation sites: finer γ → finer α)
-→ yield (5b). **Isolated at a fixed cooling rate** on purpose: ferrite grain size depends
-on cooling rate too — often *more* than on PAGS — so the PAGS effect is read at one
-cooling rate, the same single-variable isolation as 3c's single-quench carbon gradient.
-Named.
+`σ₀, k_y, k_T` and the composition coefficients are pinned to the **cited Pickering /
+Hall-Petch ferrite data** (σ₀≈70 MPa, k_y≈0.6 MPa·√m, ≈260 MPa yield at 10 µm; the Pickering
+grain-size ITT coefficient ≈ −11.5 °C·mm^(−½); flagged interstitial-sensitive). `%pearlite`
+comes from `fe_c.equilibrium_constituents` (Phase 1b). **Free nitrogen** `N_free` is not in the
+`STEELS` registry → defaulted to a typical small value (flagged), the grain + pearlite + Si terms
+carry the story.
 
-**Banked artifact (`docs/figures/steel-grain.png`) — strength only.** Austenitizing
-temperature ↑ → PAGS ↑ → yield ↓: **the Hall–Petch penalty of overheating** (why you
-don't over-austenitize). The well-known **toughness co-benefit of grain refinement**
-(finer grain is the *one* lever that raises strength *and* toughness together — the
-exception to 3b's strength↔toughness trade-off) is **narrated as cited fact, NOT shown by
-the model:** `toughness_index` is a function of `HV`, grain size does not enter `HV`, so
-the model's toughness is flat under refinement — claiming the figure demonstrates the
-toughness half would be dishonest. (A real grain→DBTT term is **option (b)**, deferred —
-it collides with 3b's named non-monotone-toughness ceiling and carries its own validation
-burden.)
+### 5c — Coupling + the banked artifact (the co-benefit, *demonstrated*)
+
+Austenitizing T → PAGS (5a) → effective ferrite grain via a **calibrated proportionality**
+(austenite boundaries are ferrite nucleation sites: finer γ → finer α) → **both** yield and DBTT
+(5b). **Isolated at a fixed cooling rate** on purpose: ferrite grain size depends on cooling rate
+too — often *more* than on PAGS — so the PAGS effect is read at one cooling rate, the same
+single-variable isolation as 3c's single-quench carbon gradient. Named.
+
+**Banked artifact (`docs/figures/steel-grain.png`) — the co-benefit shown, not narrated.** Two
+panels sharing the `d^(−½)` axis: (left) **yield ↑ and DBTT ↓ together** as the grain refines —
+the famous exception to the strength↔toughness trade-off, now a model output; (right) the **lever
+comparison** — refine the grain vs. add pearlite/Si to reach the *same* strength, and the model
+shows grain refinement *lowers* DBTT while pearlite/Si *raise* it (the sign-opposition of the two
+Pickering equations). The figure is the **pedagogical heart** of option (b); it is a
+*demonstration* that reproduces the textbook co-improvement direction (a consistency check that
+passes by construction — **not** the benchmark with teeth; those are 5a's grain-growth kinetics).
+A companion view keeps the original **Hall–Petch penalty of overheating** (austenitizing T ↑ →
+PAGS ↑ → yield ↓, DBTT ↑ — *both* worse). The strength-only framing of option (a) is retired.
 
 ### Validation triad — Phase 5
 
 - *Analytic limit ("recover the constant"):* the grain-growth **power-law asymptote**
   `d ∝ t^(1/n)` for `d₀→0` (exact self-similar scaling — the analogue of carburizing's
-  `√(Dt)`); the **ASTM G ↔ d round-trip** exact by construction; **Hall–Petch linearity**
-  in `d^(−½)` exact by construction; the **Arrhenius Q-recovery** (fit grain sizes at two
-  hold temperatures → recover the input `Q`).
+  `√(Dt)`); the **ASTM G ↔ d round-trip** exact by construction; **Hall–Petch / Cottrell–Petch
+  linearity** in `d^(−½)` (both σ_y and DBTT) exact by construction; the **Arrhenius Q-recovery**
+  (fit grain sizes at two hold temperatures → recover the input `Q`).
 - *Dissipative-direction invariant (the rigor leg — grain growth has **no
   mass-conservation analogue**; this is its honest cousin):* growth is **monotone**
   (`d(t)` non-decreasing, `dd/dt ≥ 0`), the **rate → 0 as the driving force vanishes**,
   and total grain-boundary area only **shrinks** — the dissipative cousin of the
   Jominy/planet energy-balance leg, asserted directly. *Named:* a one-way direction, not
   a conserved quantity.
-- *Benchmark — where the teeth are (the non-circularity split, as in 2b/3b):* the leg
-  with **teeth** is the **grain-growth benchmark** (independent published
-  austenite-grain-size-vs-austenitizing-T data — *not* the Hall–Petch source) **and the
-  coupled 5c prediction**; the **Hall–Petch line itself is closer to *calibrated***
-  (citing σ₀, k_y *and* benchmarking σ_y(d) from the same source is a 2-parameter fit
-  replayed through its own points — flagged calibrated, not dressed as a cross-check).
-  Plus a **yield ≤ UTS consistency guard** (HP yield vs the hardness-derived UTS — won't
-  bite in the soft FP regime where yield ≪ UTS, but makes the scope boundary explicit).
+- *Benchmark — where the teeth are (the non-circularity split, as in 2b/3b/4):* **the only
+  leg with real teeth is 5a's grain-growth benchmark** — independent published
+  austenite-grain-size-vs-austenitizing-T data, which genuinely *can* fail, so Phase 5's
+  falsifiable weight lives in the grain-growth **kinetics**. Everything on the strength/DBTT
+  side is **calibrated or true-by-construction**, and is labelled as such (not dressed as
+  teeth): **(i)** the **sign-opposition / lever-comparison** is a **demonstration / consistency
+  check** — because both Pickering equations are cited it passes *by construction* (no holdout
+  could falsify it; the Phase-4 "wiring check" status), kept because it is the pedagogical
+  payoff, *not* a benchmark; **(ii)** the σ_y and DBTT **Hall–Petch lines** are **calibrated**
+  (citing the coefficients *and* benchmarking the line from the same source is a fit replayed
+  through its own points); **(iii)** a normalized plain-carbon steel's (σ_y, DBTT) landing in its
+  published **scatter band** is a *loose, in-distribution* sanity check (Pickering is a general
+  correlation fit across exactly such steels — almost nothing is held out), not a cross-source
+  prediction. Consistency cross-checks (not teeth): the **yield ≤ UTS guard** (HP yield vs the
+  hardness-derived UTS — won't bite in the soft FP regime where yield ≪ UTS, but makes the scope
+  boundary explicit).
 
 ### Scope ceiling & deferrals (named)
 
-- **Grain *size*, not *morphology*.** Phase 5 produces a scalar `d` + yield. Upgrading
-  the `steel.ipynb`/`app.py` schematic cartoon to a size-accurate **Voronoi** tessellation
-  is **viz (reach), not physics** — it stays on the ADR-0002 line where the cartoon
-  already sits ([[steel-grain-physics-deferred]]).
-- **Martensite packet/block Hall–Petch deferred** (carbon-dominated; second-order — the
-  bainite-deferral analogue).
-- **Grain → toughness / DBTT deferred** (option b; collides with 3b's named ceiling).
+- **DBTT, not the full Charpy curve (the 3b reconciliation — load-bearing for option b).**
+  Phase 5 returns the **transition *temperature*** as a function of grain + composition — a
+  **monotone** Cottrell–Petch law on a *different axis* from 3b. It does **not** model upper/
+  lower **shelf energies**, an absolute **Charpy-J** number, or the **tempering-axis
+  non-monotonicity** (tempered-martensite embrittlement ~260–370 °C, temper embrittlement
+  ~375–575 °C) — those stay 3b's **named ceiling**, untouched. `properties.toughness_index(HV)`
+  is **not** modified; the DBTT is a new, complementary descriptor for diffusional structures,
+  so there is no overlap and no contradiction.
+- **Grain *size*, not *morphology*.** Phase 5 produces a scalar `d` (+ yield + DBTT). Upgrading
+  the `steel.ipynb`/`app.py` schematic cartoon to a size-accurate **Voronoi** tessellation is
+  **viz (reach), not physics** — it stays on the ADR-0002 line where the cartoon already sits
+  ([[steel-grain-physics-deferred]]).
+- **Martensite packet/block Hall–Petch (strength) and martensite toughness deferred**
+  (carbon-dominated / tempering-axis — the bainite-deferral analogue + 3b's ceiling).
 - **Abnormal / secondary (discontinuous) grain growth and explicit Zener pinning-particle
   drag** named, not modeled (the reason real `n > 2`).
 
 ### Sources to pin (build-time)
 
-A grain-growth dataset (austenite grain size vs austenitizing T/t for a named steel) and
-a ferrite **Hall–Petch** dataset (σ₀, k_y) — each its own `[[…]]` reference memory, like
-every other phase's cited source. The two **must be independent** (different
-steels/experiments) to keep the coupled 5c prediction non-circular.
+Two `[[…]]` reference memories, kept **independent** so the coupled 5c sign-opposition stays
+non-circular: **(1)** a grain-growth dataset (austenite grain size vs austenitizing T/t for a
+named steel) and **(2)** the **Pickering ferrite-pearlite strength *and* impact-transition-
+temperature equation pair** (σ₀, k_y, k_T + the comp/pearlite coefficients — Pickering /
+Gladman / Mintz). The bare Hall–Petch σ₀/k_y may share source (2) since they are the same
+ferrite physics.
+
+### Units (the registered trap)
+
+**The grain-size unit differs between the two cited forms** — bare Hall–Petch is
+**MPa·m^(½) with `d` in metres**, but the **Pickering** σ_y/ITT coefficients use **`d` in
+millimetres** (so k_y≈0.6 MPa·√m ≡ ≈18 N·mm^(−3/2) in Pickering units). This is the same
+unit-system trap as chip's CGS-vs-SI and oxidation's µm — `grain.py` pins **one internal
+grain-size unit (µm, the cross-module currency)** and converts at each cited-equation
+boundary, with the conversion asserted by a registry test. Growth/diffusion `Q` in J/mol,
+absolute `T` in K (the Arrhenius convention shared with `kinetics`).
 
 ### Phases / build order
 
-5a (grain growth + ASTM G, its own analytic + dissipative-invariant legs) → 5b
-(Hall–Petch yield, the new property + the cited-dataset benchmark) → 5c (coupling at
-fixed cooling rate + the banked strength figure + the `yield ≤ UTS` guard). Each banks a
-testable artifact; 5a alone is demonstrable (PAGS vs austenitizing T).
+5a (grain growth + ASTM G — its own analytic + dissipative-invariant legs) → 5b (the **two**
+grain-size laws: Hall–Petch yield **and** Cottrell–Petch DBTT, `nan` for martensitic, the
+cited Pickering pair) → 5c (coupling at fixed cooling rate + the banked **co-benefit** figure +
+the sign-opposition teeth + the `yield ≤ UTS` and DBTT-sanity guards). Each banks a testable
+artifact; 5a alone is demonstrable (PAGS vs austenitizing T).
