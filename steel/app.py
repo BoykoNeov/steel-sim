@@ -64,6 +64,7 @@ if str(_REPO_ROOT) not in sys.path:
 import numpy as np
 
 from projects.steel import sweep
+from projects.steel import grain
 from projects.steel import properties as prop
 
 
@@ -86,6 +87,14 @@ DEFAULT_COMPARE = ["1045", "1080", "4140"]
 # reach it); the alloy-envelope branch is the live, UI-reachable warning.
 MN_FLOOR = 0.30
 ALLOY_ENVELOPE = {"Cr": 1.5, "Mo": 0.40, "Ni": 1.5}
+
+# The grain / Phase-5 section's carbon cap. Phase 5's Pickering laws describe a ferrite-pearlite
+# structure; above the eutectoid (~0.8 %C) a pro-eutectoid cementite network appears and that
+# framing breaks, so the carbon slider stops there (cf. the §1 endpoint, which goes hyper-eutectoid
+# on purpose). The grain section is the **normalized / slow-cool** regime — its own austenitizing
+# and composition knobs, deliberately *not* wired to the sidebar's quench medium (those quench
+# toward martensite, which the ferrite-pearlite laws return nan for), the same isolation §3 uses.
+GRAIN_C_MAX = 0.80
 
 
 # --------------------------------------------------------------------------- #
@@ -237,6 +246,42 @@ def composition_warnings(C: float, Mn: float, Cr: float, Mo: float, Ni: float) -
     return warns
 
 
+def grain_outcome(T_austenitize: float, t_hours: float, C: float, Mn: float, Si: float):
+    """The grain what-if: an austenitizing hold + composition → the coupled Phase-5 result.
+
+    One :func:`grain.coupled_grain_properties` — austenitize (T, t) → prior-austenite grain (5a) →
+    ferrite grain (the calibrated coupling) → Hall–Petch yield + Cottrell–Petch DBTT (5b), with the
+    equilibrium pearlite from carbon (1b). This is the **normalized / slow-cool** ferrite-pearlite
+    regime those laws describe, isolated at a fixed cooling rate (named) — *not* the quench product
+    of the sections above. Mn/Si are the minor-alloy elements Pickering's laws read. Adds no
+    physics — a pure re-composition of the validated grain chain, exactly like the other helpers.
+    """
+    return grain.coupled_grain_properties(
+        float(T_austenitize), float(t_hours), float(C), comp={"Mn": float(Mn), "Si": float(Si)},
+    )
+
+
+def grain_readout(gp) -> dict:
+    """Display strings for the grain panel — the austenitize → grain → yield + DBTT chain.
+
+    Surfaces the genuinely-new Phase-5 quantities: the prior-austenite and ferrite grain sizes
+    (µm + their ASTM E112 numbers), the **yield strength** and **DBTT** the hardness chain
+    deliberately withholds, and the one reading that makes DBTT concrete — ductile or brittle at
+    room temperature (:data:`grain.ROOM_TEMPERATURE_C`). All formatting lives here, so
+    :func:`main` only forwards strings (and reads the ``brittle`` flag for its warning).
+    """
+    brittle = gp.dbtt_C > grain.ROOM_TEMPERATURE_C
+    return {
+        "pags": f"{gp.pags_um:.0f} µm  (ASTM G {grain.astm_grain_size_number(gp.pags_um):.1f})",
+        "ferrite": f"{gp.ferrite_um:.0f} µm  (ASTM G {grain.astm_grain_size_number(gp.ferrite_um):.1f})",
+        "yield": f"{gp.yield_MPa:.0f} MPa",
+        "dbtt": f"{gp.dbtt_C:.0f} °C",
+        "at_room": "brittle at room temperature" if brittle else "ductile at room temperature",
+        "brittle": brittle,
+        "f_pearlite": f"{gp.f_pearlite:.0%}",
+    }
+
+
 # --------------------------------------------------------------------------- #
 # 2. Figure builders — thin wrappers over plots.py (matplotlib imported lazily)
 # --------------------------------------------------------------------------- #
@@ -286,6 +331,21 @@ def custom_figure(outcome):
                  f"(Mₛ {cc.Ms:.0f} °C · hardenability M {cc.tau_factor:.1f}×)")
     return single_steel_figure(cc, outcome.path, outcome.result, ttt_title=ttt_title,
                                schematic_title="microstructure at an oil quench")
+
+
+def grain_overview_figure(gp, C: float, comp: dict, *, name: str = "", t_hours: float = 1.0):
+    """The grain section's two-panel interactive figure — grain growth + the property payoff.
+
+    A thin wrapper over :func:`projects.steel.plots.grain_interactive_figure` (the render layer
+    owns the figure; the app invents none of its own — the same discipline as :func:`custom_figure`
+    and :func:`mechanism_figure`). Left panel: the grain coarsening with austenitizing T (the new
+    length scale + ASTM G); right panel: yield ↑ / DBTT ↓ with the room-temperature service line,
+    the current hold marked on both. Raises ``ImportError`` without matplotlib — caught in
+    :func:`main`.
+    """
+    from projects.steel.plots import grain_interactive_figure
+
+    return grain_interactive_figure(gp, C, comp, name=name, t_hours=t_hours)
 
 
 # --------------------------------------------------------------------------- #
@@ -388,8 +448,9 @@ def main() -> None:
         "Mix your own chemistry and watch the TTT slide right with alloy (that *is* hardenability) "
         "and the microstructure respond. Read at an **oil** quench — the discriminating medium "
         "(water → all martensite, furnace → all pearlite, so the composition axis only speaks in "
-        "the middle). The swatch is a **schematic**: areas = the computed phase fractions, grain "
-        "shapes are illustrative (not a grain simulation)."
+        "the middle). The swatch's **areas are the computed phase fractions**; the grain *shapes* "
+        "are illustrative. For real grain-*size* physics — yield, DBTT, and the strength-toughness "
+        "lever — see the **Grain size** section below."
     )
     bc = st.columns(5)
     C = bc[0].slider("C %", 0.10, 1.00, 0.45, 0.05)
@@ -440,6 +501,49 @@ def main() -> None:
         "(starts harder, floors higher) — an emergent consequence of threading its composition "
         "through both ends of the master curve."
     )
+
+    # ---- section 5: grain size — the strength-AND-toughness lever (Phase 5) ----- #
+    st.subheader("Grain size — the strength-and-toughness lever (Phase 5)")
+    st.caption(
+        "The one structural length scale the hardness story above never carried. The "
+        "**austenitizing hold** (how hot and how long you soak before cooling) grows the austenite "
+        "grain; a finer grain seeds a finer **ferrite** grain, which raises **yield strength** "
+        "*and* lowers the **ductile-brittle transition temperature (DBTT)** — the lone lever that "
+        "improves strength and toughness at once. This is the **normalized / slow-cooled** "
+        "ferrite-pearlite regime, with its own knobs below — *not* the quenched parts of the "
+        "sections above (those form martensite, which these laws don't describe)."
+    )
+    gc = st.columns(5)
+    aust_T = gc[0].slider("Austenitize (°C)", 850, 1250, 1000, 25)
+    aust_t = gc[1].slider("Hold time (h)", 0.25, 8.0, 1.0, 0.25, key="grain_hold")
+    gC = gc[2].slider("C %", 0.05, GRAIN_C_MAX, 0.20, 0.05, key="grain_C")
+    gMn = gc[3].slider("Mn %", 0.0, 2.0, 0.75, 0.05, key="grain_Mn")
+    gSi = gc[4].slider("Si %", 0.0, 1.0, 0.20, 0.05, key="grain_Si")
+    gp = grain_outcome(aust_T, aust_t, gC, gMn, gSi)
+    gr = grain_readout(gp)
+    g1, g2, g3, g4 = st.columns(4)
+    g1.metric("Ferrite grain size", gr["ferrite"])
+    g2.metric("Yield strength σy", gr["yield"])
+    g3.metric("DBTT", gr["dbtt"])
+    g3.caption(gr["at_room"])
+    g4.metric("Prior-austenite grain", gr["pags"])
+    if gr["brittle"]:
+        st.warning(
+            f"At this austenitizing hold the DBTT ({gr['dbtt']}) is **above** room temperature "
+            f"({grain.ROOM_TEMPERATURE_C:.0f} °C) — the steel would be brittle in service. Soak "
+            "cooler or shorter for a finer grain and a lower DBTT (the over-austenitizing penalty)."
+        )
+    st.caption(
+        f"Equilibrium pearlite {gr['f_pearlite']} from {gC:.2f} %C. The co-benefit and "
+        "over-austenitizing **directions** follow by construction from the two cited Pickering "
+        "signs — a demonstration, not evidence; Phase 5's only falsifiable teeth are the 5a "
+        "grain-growth holdout (ADR 0002: a figure is reach, never proof)."
+    )
+    try:
+        st.pyplot(grain_overview_figure(gp, gC, {"Mn": gMn, "Si": gSi},
+                                        name="your steel", t_hours=aust_t))
+    except ImportError:
+        st.info(viz_hint)
 
 
 if __name__ == "__main__":

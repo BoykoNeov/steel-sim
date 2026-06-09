@@ -105,6 +105,9 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 3c | `carburize.py`, `demo_carburize.py` | carburizing case-hardening: frozen engine in **mass mode** (erfc carbon profile) → microstructure + hardness gradient (gear-tooth artifact) | **built ✓** (2026-06-08) |
 | 4 | `calphad_backend.py`, `calphad_reference.py`, `demo_calphad.py` | CALPHAD-backed equilibrium (optional pycalphad): boundaries *emerge* from Gibbs-energy minimisation + multicomponent low-alloy steels; frozen reference table keeps the triad green pycalphad-free | **built ✓** (2026-06-08) |
 | 5a | `grain.py` | **post-v1** — austenite grain growth `Dᵐ−D₀ᵐ=K₀·exp(−Q/RT)·t` + ASTM E112 `G↔d`; the grain-size axis Hall–Petch/DBTT (5b/5c) build on. Orthogonal to the hardness model | **built ✓** (2026-06-09) |
+| 5b | `grain.py` (extend) | the **Pickering pair** — Hall–Petch **yield** + Cottrell–Petch **DBTT**, same form / opposite grain-size signs (refine → stronger *and* tougher) | **built ✓** (2026-06-09) |
+| 5c | `grain.py` (extend), `plots.grain_figure`, `demo_grain.py` | **coupling** (austenitize → PAGS → ferrite grain → yield + DBTT) + the banked co-benefit figure; `yield ≤ UTS` consistency check | **built ✓** (2026-06-09) |
+| 5 | `steel.ipynb` §5, `app.py` §5, `plots.grain_interactive_figure` | Phase 5 **surfaced in the §9 interactive twins** — slider-driven austenitize → grain → yield + DBTT, the over-austenitizing penalty (DBTT crossing room temperature); replaces the schematic-cartoon stand-in | **built ✓** (2026-06-09) |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
 

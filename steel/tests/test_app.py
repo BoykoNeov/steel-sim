@@ -217,3 +217,39 @@ def test_custom_figure_builds_when_viz_present():
     fig = app.custom_figure(app.custom_steel_outcome(0.45, 0.75, 1.0, 0.20, 0.0))
     assert len(fig.axes) >= 2                             # path-on-TTT + schematic swatch
     plt.pyplot.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# 8. Grain size (Phase 5): the austenitize → grain → yield + DBTT what-if
+# --------------------------------------------------------------------------- #
+def test_grain_outcome_runs_the_coupled_chain():
+    # The grain helper is a pure re-composition of the validated 5c coupling — a hotter / longer
+    # hold must coarsen the grain (the over-austenitizing direction), nothing more invented here.
+    cool = app.grain_outcome(900.0, 1.0, 0.20, 0.75, 0.20)
+    hot = app.grain_outcome(1200.0, 1.0, 0.20, 0.75, 0.20)
+    assert hot.pags_um > cool.pags_um
+    assert hot.ferrite_um > cool.ferrite_um < cool.pags_um   # ferrite finer than its parent PAGS
+    # The co-benefit / penalty: the finer (cooler) hold is stronger AND tougher (lower DBTT).
+    assert cool.yield_MPa > hot.yield_MPa
+    assert cool.dbtt_C < hot.dbtt_C
+
+
+def test_grain_readout_is_display_ready_and_flags_brittleness():
+    gr = app.grain_readout(app.grain_outcome(900.0, 1.0, 0.20, 0.75, 0.20))
+    assert set(gr) == {"pags", "ferrite", "yield", "dbtt", "at_room", "brittle", "f_pearlite"}
+    assert gr["ferrite"].endswith(")") and "ASTM G" in gr["ferrite"]   # µm + grain-size number
+    assert gr["yield"].endswith("MPa") and gr["dbtt"].endswith("°C")
+    # A cool, normalized hold is ductile at room temperature; an over-austenitized one is brittle.
+    cool = app.grain_readout(app.grain_outcome(900.0, 1.0, 0.20, 0.75, 0.20))
+    hot = app.grain_readout(app.grain_outcome(1250.0, 1.0, 0.20, 0.75, 0.20))
+    assert cool["brittle"] is False and cool["at_room"] == "ductile at room temperature"
+    assert hot["brittle"] is True and hot["at_room"] == "brittle at room temperature"
+
+
+def test_grain_overview_figure_builds_when_viz_present():
+    plt = pytest.importorskip("matplotlib")
+    plt.use("Agg")
+    gp = app.grain_outcome(1000.0, 1.0, 0.20, 0.75, 0.20)
+    fig = app.grain_overview_figure(gp, 0.20, {"Mn": 0.75, "Si": 0.20}, name="your steel")
+    assert len(fig.axes) == 3                             # grain-growth panel + yield/DBTT twin axis
+    plt.pyplot.close(fig)

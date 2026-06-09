@@ -233,6 +233,16 @@ DEFAULT_N_FREE_PCT = 0.005
 # triggers the nan; a bainitic structure is loosely-out-of-domain, not guarded.
 MARTENSITE_NAN_LIMIT = 0.5
 
+# Room temperature (°C) — the reference service temperature a DBTT is read *against*: a steel
+# whose DBTT sits above it is brittle in the hand, below it ductile. This is a display /
+# interpretation reference for the readouts and the interactive figure (``plots`` and the
+# notebook/app surfaces), NOT used by any physics function here — DBTT is returned as an absolute
+# temperature, and where it lands relative to service temperature is the engineering question the
+# surfaces frame. Exposed here (the matplotlib-free physics module) so every consumer shares one
+# value. 20 °C is the conventional "room temperature"; the demo steel's DBTT crosses it across the
+# austenitizing range (the ductile→brittle story, test_grain.py).
+ROOM_TEMPERATURE_C = 20.0
+
 
 def _d_mm(d_um: float) -> float:
     """µm → mm at the cited-equation boundary (the registered unit trap). d must be > 0."""

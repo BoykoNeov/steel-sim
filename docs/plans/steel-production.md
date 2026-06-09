@@ -1063,3 +1063,28 @@ Remaining "future of steel" menu items (§11: residual-stress / deepen-gaps / in
 `[available]`, appetite-driven, blocking nothing. The grain *morphology* upgrade (Voronoi swatch in
 the notebook/app) remains the ADR-0002 viz-reach deferral ([[steel-grain-physics-deferred]]), not
 physics.
+
+**Phase 5 surfaced in the interactive twins ✓** (2026-06-09) — the §9 surfaces (`steel.ipynb`
+slice 1, `app.py` slice 2) now carry a **§5 grain section**, closing the §11 option-1 prophecy that
+grain physics "replaces the schematic-cartoon stand-in" (the build of 5a/5b/5c shipped the module +
+the banked `grain_figure` + `demo_grain`, but left **both interactive surfaces still rendering the
+pre-Phase-5 cartoon**, the notebook literally still saying "real grain-size physics is a future
+phase" — now false). Both §5 sections drive the *validated* `grain.coupled_grain_properties`
+(austenitize T, hold t, C ≤ eutectoid, Mn, Si → PAGS + ASTM G → ferrite grain → yield + DBTT) via a
+new render-layer figure **`plots.grain_interactive_figure`** (single-state, slider-driven companion
+to the fixed fine/coarse `grain_figure`): **left** = grain-growth kinetics (the new length scale +
+ASTM G), **right** = yield ↑ / DBTT ↓ vs austenitizing T with the **room-temperature service line**
+(`grain.ROOM_TEMPERATURE_C = 20 °C`) — the **over-austenitizing penalty** as the live hook (drag T
+up → grain coarsens, DBTT crosses room temperature, ductile→brittle). Thin-skin held (ADR 0002):
+the figure is render-layer-owned, the app's `grain_outcome`/`grain_readout` are
+matplotlib/streamlit-free + always-green tested (`test_app.py` §8, 3 new), `grain.py` gained only a
+**display reference** constant (`ROOM_TEMPERATURE_C`, used by no physics function — so app.py stays
+matplotlib-free while sharing one value). **Advisor-enforced honesty in BOTH surfaces:** the
+by-construction caveat is carried inline (the over-austenitizing/co-benefit *directions* follow from
+the two cited Pickering signs — a demonstration, teeth = 5a's holdout); the grain section is named
+the **normalized / slow-cool ferrite-pearlite regime**, with its **own** austenitizing/composition
+knobs that deliberately do **not** reach the quench-medium slider (those quench toward martensite,
+which the laws `nan` — the §3 isolation idiom). Steel gate fast `not slow` **288 → 291**, full **299**;
+the schematic swatch itself **stays** (areas ∝ validated fractions are honest), its caption reworded
+to point at §5 instead of calling the physics unbuilt. Grain *morphology* (Voronoi) still deferred
+([[steel-grain-physics-deferred]]).

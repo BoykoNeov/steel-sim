@@ -754,3 +754,94 @@ def grain_figure(
     )
     fig.tight_layout(rect=(0, 0, 1, 0.95))
     return fig
+
+
+# Colours for the two grain sizes in the kinetics panel — austenite parent vs ferrite product.
+PAGS_COLOR = "#c79a3a"           # amber — prior-austenite grain (the coarser parent)
+FERRITE_COLOR = "#3a7d5d"        # green — ferrite grain (the product the 5b laws act on)
+
+
+def grain_interactive_figure(
+    gp: GrainProperties, C: float, comp: dict, *,
+    name: str = "", t_hours: float = 1.0, T_range: tuple[float, float] = (850.0, 1250.0),
+    room_T: float = grain.ROOM_TEMPERATURE_C, n: int = 160,
+) -> "plt.Figure":
+    """The **interactive single-state** Phase-5 view — one austenitizing hold, the whole chain.
+
+    The slider-driven companion to the banked :func:`grain_figure` (which contrasts a fixed
+    fine/coarse pair). Here a *single* operating point — ``gp``, the
+    :class:`~projects.steel.grain.GrainProperties` for the **current** austenitizing (T, t) — is
+    marked on two curves swept over austenitizing temperature, so dragging the temperature slides
+    the marker and tells the **over-austenitizing** story live: a hotter hold coarsens the grain,
+    which lowers yield *and* raises DBTT (both worse). The two panels show *different* quantities:
+
+      * **Left — the grain grows (Phase 5a kinetics).** Prior-austenite grain (PAGS) and the
+        seeded ferrite grain vs austenitizing T (for the current hold ``t_hours``) — the genuinely
+        new length scale the hardness chain never carried, annotated with the ferrite ASTM E112
+        grain-size number ``G`` at the current hold.
+      * **Right — the property payoff (Phase 5b/5c).** Yield (``↑``, left axis) and DBTT (``↓``,
+        right axis) vs austenitizing T, with the **room-temperature** service reference drawn:
+        where the DBTT curve crosses it is the ductile→brittle line. The current hold is marked
+        on both axes.
+
+    All curves evaluate the **validated** 5a/5b/5c laws over a plotting range (the ``plot_ttt``
+    sample-a-validated-function idiom; ADR 0002 — a figure is reach, never evidence). The
+    over-austenitizing direction, like the co-benefit, follows **by construction** from the two
+    cited Pickering signs — a demonstration; Phase 5's only falsifiable teeth are 5a's
+    grain-growth holdout. ``C`` / ``comp`` are the steel the curves are sampled for; ``gp`` must
+    be the coupled result for that same steel and hold.
+    """
+    Ts = np.linspace(T_range[0], T_range[1], n)
+    gps = [grain.coupled_grain_properties(float(t), t_hours, C, comp=comp) for t in Ts]
+    pags = np.array([g.pags_um for g in gps])
+    ferr = np.array([g.ferrite_um for g in gps])
+    yld = np.array([g.yield_MPa for g in gps])
+    dbt = np.array([g.dbtt_C for g in gps])
+    T_now = gp.austenitizing_T
+
+    fig, (ax_grain, ax_prop) = plt.subplots(1, 2, figsize=(14, 5.4))
+
+    # -- left: grain growth (5a kinetics) — the new length scale ------------------ #
+    ax_grain.plot(Ts, pags, color=PAGS_COLOR, lw=2.4, label="prior-austenite grain (PAGS)")
+    ax_grain.plot(Ts, ferr, color=FERRITE_COLOR, lw=2.4,
+                  label="ferrite grain  d$_\\alpha$  (the 5b input)")
+    ax_grain.axvline(T_now, color="0.6", ls=":", lw=1.2)
+    ax_grain.plot([T_now], [gp.pags_um], "o", color=PAGS_COLOR, ms=8, zorder=5)
+    ax_grain.plot([T_now], [gp.ferrite_um], "o", color=FERRITE_COLOR, ms=8, zorder=5)
+    G_ferrite = grain.astm_grain_size_number(gp.ferrite_um)
+    ax_grain.annotate(f"{gp.ferrite_um:.0f} µm\nASTM G {G_ferrite:.1f}", (T_now, gp.ferrite_um),
+                      textcoords="offset points", xytext=(9, -3), fontsize=9, color=FERRITE_COLOR)
+    ax_grain.set_xlabel(f"austenitizing temperature  (°C, {t_hours:g} h hold)   →  hotter")
+    ax_grain.set_ylabel("grain size  (µm)")
+    ax_grain.set_title("the hold grows the grain (5a) — hotter ⇒ coarser", fontsize=10.5)
+    ax_grain.legend(loc="upper left", fontsize=9, frameon=False)
+    ax_grain.grid(True, alpha=0.2)
+
+    # -- right: yield ↑ / DBTT ↓ vs T, with the room-temperature service line ------ #
+    ax_prop.plot(Ts, yld, color=YIELD_COLOR, lw=2.4)
+    ax_prop.axvline(T_now, color="0.6", ls=":", lw=1.2)
+    ax_prop.plot([T_now], [gp.yield_MPa], "o", color=YIELD_COLOR, ms=8, zorder=5)
+    ax_prop.set_xlabel(f"austenitizing temperature  (°C, {t_hours:g} h hold)   →  hotter")
+    ax_prop.set_ylabel("yield strength  σ$_y$  (MPa)", color=YIELD_COLOR)
+    ax_prop.tick_params(axis="y", labelcolor=YIELD_COLOR)
+    ax_T = ax_prop.twinx()
+    ax_T.plot(Ts, dbt, color=DBTT_COLOR, lw=2.4, ls="--")
+    ax_T.plot([T_now], [gp.dbtt_C], "s", color=DBTT_COLOR, ms=8, zorder=5)
+    ax_T.set_ylabel("DBTT  (°C)", color=DBTT_COLOR)
+    ax_T.tick_params(axis="y", labelcolor=DBTT_COLOR)
+    ax_T.axhline(room_T, color="0.45", ls="-.", lw=1.2)
+    ax_T.annotate("room temperature", (Ts[0], room_T), textcoords="offset points",
+                  xytext=(4, 4), fontsize=8.5, color="0.35")
+    verdict = "BRITTLE at room T" if gp.dbtt_C > room_T else "ductile at room T"
+    ax_T.annotate(f"{gp.dbtt_C:.0f} °C\n{verdict}", (T_now, gp.dbtt_C),
+                  textcoords="offset points", xytext=(9, -3), fontsize=9, color=DBTT_COLOR)
+    ax_prop.set_title("over-austenitizing: σ$_y$ ↓ and DBTT ↑ (both worse)", fontsize=10.5)
+
+    label = f"{name}  " if name else ""
+    fig.suptitle(
+        f"Phase 5 — {label}grain refinement is the lone strength-AND-toughness lever "
+        f"(refine ⇒ σ$_y$ ↑ and DBTT ↓)",
+        fontsize=13, fontweight="bold",
+    )
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    return fig
