@@ -70,6 +70,13 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   only `st.*` calls can raise — every value is computed/formatted in a tested helper. Needs
   `pip install -e .[viz,app]`. The temper view uses streamlit-native `st.line_chart`, one chart per
   quantity (HV/HRC/UTS/toughness live on different scales).
+- **To work on grain growth (Phase 5a):** `grain.py` + `tests/test_grain.py`. The grain-size axis —
+  austenite grain growth `Dᵐ−D₀ᵐ=K₀·exp(−Q/RT)·t` + ASTM E112 `G↔d`; **orthogonal** to the hardness
+  chain (no engine touch, no frozen benchmark moved). Its kinetics are pinned to a cited S960MC
+  study (`Q` cited, `m/D₀/K₀` calibrated to the isothermal table); the benchmark with teeth is a
+  cross-temperature **holdout**. Units **µm/hours/K** (the registered trap — 5b's Pickering laws use
+  `d` in mm). The Hall–Petch yield + Cottrell–Petch DBTT (5b) and the coupling/figure (5c) build on
+  it; plan §12.
 - The Fe-C boundaries in `fe_c.py` are **parametrized approximations** (linear between
   pinned invariant points). Phase 4 (`calphad_backend.py`) computes them from real
   thermodynamics instead — `CalphadBackend().phase_fractions(C0, T)` is a drop-in for
@@ -97,6 +104,7 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 3b | `properties.py` (extend) | tempering (Hollomon–Jaffe master curve) + ISO-18265 strength + rough strength/toughness trade-off | **built ✓** (2026-06-08) |
 | 3c | `carburize.py`, `demo_carburize.py` | carburizing case-hardening: frozen engine in **mass mode** (erfc carbon profile) → microstructure + hardness gradient (gear-tooth artifact) | **built ✓** (2026-06-08) |
 | 4 | `calphad_backend.py`, `calphad_reference.py`, `demo_calphad.py` | CALPHAD-backed equilibrium (optional pycalphad): boundaries *emerge* from Gibbs-energy minimisation + multicomponent low-alloy steels; frozen reference table keeps the triad green pycalphad-free | **built ✓** (2026-06-08) |
+| 5a | `grain.py` | **post-v1** — austenite grain growth `Dᵐ−D₀ᵐ=K₀·exp(−Q/RT)·t` + ASTM E112 `G↔d`; the grain-size axis Hall–Petch/DBTT (5b/5c) build on. Orthogonal to the hardness model | **built ✓** (2026-06-09) |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
 
@@ -645,6 +653,35 @@ swatch, at a fixed oil quench — the same view the notebook's §3 carries), and
 `tests/test_app.py` exercises every compute helper always-green, asserts importing `app` does
 **not** pull Streamlit (the layering guard), and build-smoke-tests the figures under the optional
 `[viz]` extra.
+
+## Phase 5a — austenite grain growth (`grain.py`)
+
+Steel's first **post-v1** phase (plan §12). Phases 1–4 mapped a cooling path to a
+microstructure and that to **hardness**; Phase 5 adds the structural *length scale* none of
+that carried — the **grain size** — and through it (in 5b/5c) the two quantities the hardness
+chain withholds: **yield strength** (Hall–Petch) and the **ductile-brittle transition
+temperature** (Cottrell–Petch). 5a builds the foundation: the austenite grain a part inherits
+from its austenitizing hold, and the ASTM E112 bookkeeping. It is **orthogonal** — it touches
+neither the frozen engine nor any frozen benchmark.
+
+```python
+from projects.steel import grain
+grain.austenite_grain_size(1100.0, t_hours=2.0)   # PAGS after 2 h at 1100 °C → ~45 µm
+grain.astm_grain_size_number(22.5)                # → ASTM G ≈ 8  (G↔d round-trips exactly)
+```
+
+The kinetics `Dᵐ−D₀ᵐ=K₀·exp(−Q/RT)·t` are pinned to a cited open-access S960MC study: the
+**activation energy `Q = 329.95 kJ/mol` is CITED** (the Arrhenius temperature scaling — the
+benchmark's teeth), while `m≈4.22 / D₀≈14.46 µm / K₀` are **calibrated** to that study's
+isothermal grain-size table (the paper's headline `m=3.03` is a continuous-heating fit; its
+isothermal data prefer `m≈4.2` — named, since the literature spread is large). **Validated**
+(`test_grain.py`): the law is exactly linear in `t` and `D∝t^(1/m)` for `D≫D₀`, `Q` recovers
+from two temperatures, ASTM `G↔d` round-trips (G1→254 µm, G8→22.5 µm); growth is monotone and
+the rate decelerates (the dissipative-direction invariant — grain growth has no
+mass-conservation analogue); and **the teeth are a holdout** — fit on the 900 & 1200 °C rows,
+**predict the held-out 1000 & 1100 °C rows within ~16 %**. Units are **µm / hours / K** (the
+registered trap: 5b's Pickering laws cite `d` in mm). The Hall–Petch yield + DBTT (5b) and the
+co-benefit figure (5c) are next.
 
 ## Run the tests
 

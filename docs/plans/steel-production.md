@@ -953,3 +953,22 @@ grain-size laws: Hall–Petch yield **and** Cottrell–Petch DBTT, `nan` for mar
 cited Pickering pair) → 5c (coupling at fixed cooling rate + the banked **co-benefit** figure +
 the sign-opposition teeth + the `yield ≤ UTS` and DBTT-sanity guards). Each banks a testable
 artifact; 5a alone is demonstrable (PAGS vs austenitizing T).
+
+**Phase 5a is built ✓** (2026-06-09) — `projects/steel/grain.py` + `tests/test_grain.py`
+(13 tests; steel gate **249 → 262**, all `not slow`). Austenite grain growth
+`Dᵐ − D₀ᵐ = K₀·exp(−Q/RT)·t` (closed-form isothermal) + the ASTM E112 `G ↔ d` bookkeeping;
+orthogonal/additive (no engine touch, no frozen benchmark moved). **Source pinned** →
+[[grain-growth-source]] (S960MC, open-access PMC9737238): **Q = 329.95 kJ/mol CITED** (the
+Arrhenius temperature scaling = the teeth), `m ≈ 4.22 / D₀ ≈ 14.46 µm / K₀` **calibrated** to
+the study's *isothermal* grain-size table — with the named caveat that the paper's headline
+`m = 3.03` is a continuous-heating fit while its isothermal data prefer `m ≈ 4.2` (literature
+spread `n ≈ 2.6–6.5`, `Q ≈ 256–572`). Triad as planned: *analytic* = the law is exactly linear
+in `t`, the power-law asymptote `D ∝ t^(1/m)`, `Q` recovered from two temperatures, ASTM `G↔d`
+exact round-trip + the G1→254 µm / G8→22.5 µm anchors; *dissipative invariant* = `D` monotone in
+`t` and `T`, rate `≥ 0` and decelerating, rate rises ~69× over 1000→1200 °C (read at fixed grain
+size); *benchmark = the HOLDOUT with teeth* — fit the constants on the 900 & 1200 °C rows only,
+**predict the held-out 1000 & 1100 °C rows within ~16 %** (mean 3.6 µm); the full-table
+reproduction (mean ~3 µm) asserted only *loosely* (`Q` weakly determined → real-but-modest
+teeth, named). Units pinned **µm/hours/K** (the registered trap). **Next: 5b** (Hall–Petch yield
++ Cottrell–Petch DBTT — the Pickering pair, source (2) still to pin) → **5c** (coupling + the
+co-benefit figure).
