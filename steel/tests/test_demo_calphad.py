@@ -16,6 +16,13 @@ pytest.importorskip("pycalphad")
 from projects.steel import calphad_backend as cb       # noqa: E402
 from projects.steel import demo_calphad as demo        # noqa: E402
 
+# Every test here drives a live pycalphad solve through the module-scoped fixtures
+# below (`binary_data`/`alloy_data`) — including the figure smoke-test, which shares
+# `binary_data`. So the whole file is `slow` (ADR 0003): a per-test mark would leak the
+# 15-80 s fixture setup into the fast inner loop. Deselected by `pytest -m "not slow"`,
+# always run in the full commit gate.
+pytestmark = pytest.mark.slow
+
 
 @pytest.fixture(scope="module")
 def binary_data():

@@ -37,7 +37,10 @@ NOTEBOOK = Path(__file__).resolve().parents[1] / "steel.ipynb"
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
+@pytest.mark.slow
 def test_steel_notebook_executes_clean():
+    # @slow (ADR 0003): spawns a fresh kernel in a child process (~5 s) — deselected from
+    # the fast inner loop (`pytest -m "not slow"`), always run in the full commit gate.
     # Gate on the optional execution stack (the [notebook] extra) + the render dep.
     pytest.importorskip("nbformat")
     pytest.importorskip("nbclient")
