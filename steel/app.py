@@ -426,6 +426,27 @@ def main() -> None:
     except ImportError:
         st.info(viz_hint)
 
+    with st.expander("⌬ Going deeper — the crystal structures behind the story"):
+        st.markdown(
+            "Everything above is really a story about **how iron atoms pack** and **where the "
+            "carbon goes**. Iron is *allotropic* — it changes crystal structure with temperature:\n\n"
+            "| Phase | Structure | Carbon it dissolves | Why |\n"
+            "|---|---|---|---|\n"
+            "| **Austenite (γ)** | **FCC** — face-centred cubic | up to **2.1 %** | close-packed, but its octahedral holes are *large* — carbon fits |\n"
+            "| **Ferrite (α)** | **BCC** — body-centred cubic | only **0.02 %** | looser packing, yet tiny distorted interstices — carbon barely fits |\n"
+            "| **Martensite (α′)** | **BCT** — body-centred *tetragonal* | all of it, **trapped** | BCC stretched along one axis by carbon it had no time to reject |\n\n"
+            "**This table is the whole hardness story.** You austenitize to reach FCC, which "
+            "*dissolves* the carbon. On cooling, iron wants to become BCC ferrite — which **can't "
+            "hold that carbon** — so it has to go somewhere, and *how fast you cool decides where*:\n\n"
+            "- **Slow** → carbon diffuses out into **cementite (Fe₃C)**; ferrite + cementite "
+            "lamellae = **pearlite** (soft).\n"
+            "- **Fast** → no time to diffuse; the FCC→BCC shear happens anyway but the carbon stays "
+            "**trapped**, stretching the lattice into **BCT martensite**. That trapped carbon + "
+            "lattice strain + a high dislocation density is *why martensite is hard*.\n\n"
+            "So \"miss the nose → martensite\" is really \"cool too fast for the carbon to "
+            "diffuse.\" The TTT C-curve is a **diffusion clock**."
+        )
+
     # ---- section 2: the composition × cooling-rate comparison -------------- #
     st.subheader("Composition × cooling rate — the hardenability grid")
     st.caption(
@@ -477,6 +498,33 @@ def main() -> None:
         st.pyplot(custom_figure(custom))
     except ImportError:
         st.info(viz_hint)
+
+    with st.expander("⚗ Going deeper — what each alloying element actually does"):
+        st.markdown(
+            "The sliders give you C, Mn, Cr, Mo, Ni — but real steels are designed element by "
+            "element. Two families, by *how the atom sits in the iron lattice*:\n\n"
+            "- **Interstitial** (small atoms — **C, N**): squeeze into the gaps between iron "
+            "atoms. A little goes a long way — large localized lattice strain → strong hardening "
+            "per atom. Free **nitrogen** also strengthens but **embrittles** (the `N_free` DBTT "
+            "term in the Grain section).\n"
+            "- **Substitutional** (Fe-sized — **Mn, Si, Cr, Mo, Ni, V**): *replace* iron atoms. "
+            "Milder per atom, but they set **phase stability** and **hardenability**.\n\n"
+            "| Element | What it buys you |\n"
+            "|---|---|\n"
+            "| **C** | the potential hardness (interstitial); austenite stabilizer |\n"
+            "| **Mn** | hardenability + deoxidizer; ties up sulfur as MnS; austenite stabilizer |\n"
+            "| **Cr** | hardenability + hard carbides (wear); **corrosion resistance** (stainless ≳ 11 %) |\n"
+            "| **Mo** | hardenability + **suppresses temper embrittlement** + high-temperature strength |\n"
+            "| **Ni** | hardenability + **toughness** (it *lowers* DBTT — opposite of Si); austenite stabilizer |\n"
+            "| **Si** | deoxidizer + solid-solution strength, but **raises DBTT** (the Grain-section Si term) |\n"
+            "| **V, Nb, Ti** | **grain refinement** + precipitation strengthening (microalloyed HSLA) |\n\n"
+            "**Austenite stabilizers** (Ni, Mn, C, N) widen the γ field — push enough (≈ 8 % Ni + "
+            "18 % Cr) and you get *austenitic stainless*, FCC even at room temperature. **Ferrite "
+            "stabilizers** (Cr, Si, Mo, V, Ti) do the opposite. Note the toughness fork: **Ni "
+            "lowers DBTT, Si raises it** — same \"add a substitutional solute\" move, opposite "
+            "outcome. The one lever that helps *both* strength and toughness is **grain "
+            "refinement** (the Grain section) — exactly what the V/Nb/Ti row buys."
+        )
 
     # ---- section 4: the quench-and-temper response (martensite-only) ------- #
     st.subheader(f"{grade}: quench-and-temper response ({temper_hours:g} h temper)")
@@ -544,6 +592,29 @@ def main() -> None:
                                         name="your steel", t_hours=aust_t))
     except ImportError:
         st.info(viz_hint)
+
+    with st.expander("🔬 Going deeper — why grain refinement uniquely improves both"):
+        st.markdown(
+            "The headline above — refinement raises strength *and* toughness — comes from grain "
+            "boundaries playing **two roles at once**:\n\n"
+            "1. **They block dislocations** (the carriers of plastic flow): a dislocation gliding "
+            "through a grain piles up at the boundary, and the next grain's misoriented planes "
+            "resist it. More boundary area (finer grain) → **higher yield**. That's Hall–Petch, "
+            "`σ_y = σ₀ + k·d^(−½)` — the *positive* grain term.\n"
+            "2. **They deflect and arrest cleavage cracks** (the carriers of brittle fracture): a "
+            "running crack must change direction at every misoriented boundary, which costs "
+            "energy. Finer grain → harder to propagate a brittle crack → **lower DBTT** — the "
+            "*negative* grain term.\n\n"
+            "The *same* feature — grain-boundary area — helps both, which is why grain refinement "
+            "escapes the usual strength↔toughness trade-off. Every *other* strengthening lever "
+            "(more carbon, more pearlite, solid solution) adds obstacles *inside* the grain — "
+            "raising strength but giving cleavage an easier path, so toughness falls.\n\n"
+            "**In practice:** keep the austenitizing temperature low (the slider above) and add "
+            "**microalloying** — tiny amounts of **V, Nb, Ti** form carbonitride particles that "
+            "*pin* the austenite grain boundaries and stop them coarsening during the soak. That "
+            "is the design idea behind modern HSLA (high-strength low-alloy) steels — and the "
+            "S960MC grade whose grain-growth data calibrates this section's kinetics."
+        )
 
 
 if __name__ == "__main__":
