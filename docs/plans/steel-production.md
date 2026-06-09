@@ -777,9 +777,12 @@ discipline — **never a notebook tweak** ([[steel-grain-physics-deferred]]).
    straining to be two curves at once). So **"real bainite bay" + "A₁-not-A₃" are the same new
    modeling**: competing diffusional C-curves (ferrite/pearlite/bainite) with element-specific
    retardation, the Li/Kirkaldy–Venugopalan model. **Phase 6a (the proeutectoid-ferrite bay) is
-   BUILT** (§13); **6b** (bainite bay + Maynier bainite hardness) and **6c** (the **D_I**
-   cross-check) remain. CALPHAD coupling lands as the **Ae3-ceiling seam** (6a): always-green
-   default = cited Andrews Ae3, optional override = a CALPHAD-computed transus.
+   BUILT** (§13); **6b is BUILT but descoped** — the cited bainite reaction + the scale-free
+   coefficient teeth (the §4 mechanism), but a four-round probe *proved the bay cannot be realised in
+   continuous cooling here* (modest Jominy-pinned `M` + carbon-flat pearlite nose + the 8620
+   carbon-spread ceiling), so the reaction is standalone and `pathint` is byte-identical (§13);
+   **6c** (the **D_I** cross-check) remains. CALPHAD coupling lands as the **Ae3-ceiling seam** (6a):
+   always-green default = cited Andrews Ae3, optional override = a CALPHAD-computed transus.
 
 4. **Inverse design capstone — `[available]`.** Flip the forward model into a design
    tool: target a hardness/depth (or yield) → search composition × quench × temper for
@@ -1158,7 +1161,9 @@ divergence is now **mechanistic** (cited Cr/Mo), not a single-curve shift. The 1
 
 **Named scope caveats.** (1) One global scale across all carbon levels leaves a residual — it cannot
 fully close 1045 without over-softening low-C cores; **per-reaction *absolute* kinetics (a fuller
-KV treatment of pearlite too) would lift it — deferred to 6b.** (2) The ferrite *nose* runs fast/cool
+KV treatment of pearlite too) would lift it — this is the unified KV-pearlite rebuild, *not* attempted
+in 6b (which proved it cannot be bolted on beside the calibrated curve; see the §13 Phase-6b
+forward-options).** (2) The ferrite *nose* runs fast/cool
 (~600 °C) vs published ferrite TTT — irreducible in KV's coarse ΔT³ at this Q (a scale prefactor
 cannot move the nose temperature); 6a captures the hardenability *consequence*, not the absolute TTT
 position. (3) `properties` aggregates proeutectoid ferrite onto the **ferrite-pearlite hardness**
@@ -1172,12 +1177,64 @@ section); `test_carburize` (reframed — the as-quenched core now dips below the
 *potential* by the proeutectoid ferrite it really forms, landing ~40 HRC in the published 8620 band,
 the more-physical result the module docstring anticipated).
 
-### Phase 6b / 6c — PENDING
+### Phase 6b — the bainite reaction & the bay's mechanism (BUILT ✓ 2026-06-09, **descoped**)
 
-* **6b — the bainite bay** (the second new reaction): the KV bainite C-curve (own ceiling Bs, ΔT¹,
-  `BC = exp(−10.23 + 10.18C + 0.85Mn + 0.55Ni + 0.90Cr + 0.36Mo)`) raced alongside ferrite/pearlite,
-  + the deferred Maynier bainite hardness terms (the least-anchored constituent, Phase 3a). This is
-  also where the **per-reaction absolute kinetics** that would lift 6a's single-scale residual live.
+`projects/steel/kinetics.py` §6 (`BainiteReaction`, `bainite_BC`, `steven_haynes_Bs`, the shared
+`_kv_shape_g`/`_kv_site_saturation_step`/`_kv_shape_integral` helpers) + `demo_bainite.py` +
+`plots.bainite_figure` + `tests/test_bainite.py` (10) + `tests/test_demo_bainite.py` (2). **Full steel
+fast gate 307 → 319.** Source pinned → [[ferrite-bay-source]] (the bainite row recorded for 6b).
+
+**6b came out smaller than planned, and the corrected understanding is the content (the 6a
+"design-fork" pattern).** The plan was a second *competing* C-curve raced alongside ferrite/pearlite
+in `pathint`, so the bainite bay would open in the continuous-cooling microstructure. A **four-round
+empirical investigation falsified that** for *this* model. What 6b delivers instead:
+
+* **The cited bainite reaction object** — the bainite member of the same Li (1998) / KV family as 6a:
+  ceiling **Bs** (Steven & Haynes 1956, `Bs = 830 − 270C − 90Mn − 37Ni − 70Cr − 83Mo`), undercooling
+  exponent **n = 1** (ΔT¹, Li 1998 — *not* ferrite/pearlite's ΔT³, verified against the pinned
+  source), composition factor `BC = exp(−10.23 + 10.18C + 0.85Mn + 0.55Ni + 0.90Cr + 0.36Mo)`. The
+  ferrite `completion_step` was refactored onto the shared `_kv_site_saturation_step` (behaviour-
+  preserving; 6a stays green).
+* **THE TEETH — the cited, scale-free coefficient ratio.** `BC`'s Cr (0.90) / Mo (0.36) are far
+  smaller than ferrite `FC`'s Cr (2.70) / Mo (4.06): alloy retards the *displacive* bainite reaction
+  weakly (~5.7× for 4140) but the *reconstructive* ferrite reaction strongly (~166×). That ~29× gap
+  **is the mechanism of the bay**, purely the published coefficients — the §4 simplification ("one
+  factor shifts pearlite and bainite together") fixed *at the mechanism level*, the 6a FC-ratio
+  analogue. Banked as `docs/figures/steel-bainite.png` (left panel) + the isothermal bainite C-curve
+  (right panel, nose below Bs; absolute times **unanchored** = a demonstration scale, named).
+
+**WHY THE BAY CANNOT BE REALISED HERE (the proven negative result — durable, and why `pathint` is
+left byte-identical, the 540-split untouched):** three structural facts, each empirically established
+and each off-limits to "fix":
+1. **The pearlite curve is deliberately under-shifted.** Its alloy retardation is the Grossmann `M`
+   ≈ 8× for 4140 — *calibrated to the Phase-2c Jominy hardenability*; a real bay needs pearlite pushed
+   out ~100×. `M` cannot be retuned without breaking that validated anchor.
+2. **The pearlite nose is carbon-flat at ~550 °C**, which for a lean medium-carbon steel sits *inside*
+   the bainite band (1045 Bs = 641 > 550). The single curve already smears pearlite and bainite into
+   one nose, so relabelling either way mislabels (sub-550 product "pearlite" loses real bainite;
+   all-sub-Bs "bainite" over-labels 1045's 550 °C pearlite).
+3. **The 8620 carbon-spread ceiling.** `BC`'s large carbon coefficient (10.18) makes *low*-carbon
+   bainite explode: the 0.20 %C 8620 core has the fastest bainite of any benchmark steel (~800× the
+   eutectoid). **Any competing scale large enough to put bainite into 1045/4140 drives the 8620 oil
+   core out of its published 30–40 HRC band** (the same band that pinned 6a's ferrite scale). At every
+   scale that keeps 8620 in band, bainite is *negligible* in 1045/4140 — and the crude 540-split is
+   then a *better* (more, morphology-correctly-labelled) bainite stand-in. Wiring the reaction in
+   would be a **regression**, so it is consumed standalone by the demo/tests only.
+
+Consequently `BAINITE_KINETIC_SCALE` is now a **demonstration parameter** (sets the isothermal nose
+position, nothing in the validated pipeline); the absolute austempering times it implies are slow (the
+same modest-`M` compression) and **named, not validated**. Bainite *hardness* stays the carbon-only
+placeholder — confirmed concretely (the reaction is unwired, so the placeholder is never load-bearing,
+and Maynier's `−323+185C` base would break the `comp=None` byte-identity; `properties` docstring).
+
+**Forward options for the human (at merge-review):** (a) the **full unified KV-pearlite rebuild** §13
+flags as the optional deepening — replace the Grossmann-shifted single curve with KV pearlite + bainite
++ ferrite as one self-consistent competing-reaction system (this is what would actually open the bay,
+but it discards the calibrated pearlite curve the four-curves demo and the 1045/4140 Jominy benchmark
+rest on — a large, risky rebuild); or (b) **proceed to 6c**.
+
+### Phase 6c — PENDING
+
 * **6c — the D_I ideal-critical-diameter cross-check** (now against the *post-6a* model). **Teeth
   caveat (advisor):** must use an **independent measured D_I**, not a Grossmann-derived one (kinetics
   already uses Grossmann relative potencies → a Grossmann D_I would be a tautology).

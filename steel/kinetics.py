@@ -467,6 +467,34 @@ _FERRITE_INCUBATION_SEED = 1e-6             # deliberate site-saturation seed: g
                                             # (it sets the incubation; the start time is insensitive to its exact value)
 
 
+def _kv_shape_g(U: float) -> float:
+    """The KV sigmoidal shape function ``g(U) = U^{0.4(1−U)}·(1−U)^{0.4U}`` (0 at both endpoints).
+
+    Shared by the ferrite (Phase 6a) and bainite (Phase 6b) reactions — the two differ only in
+    their rate coefficient ``K(T)`` (ceiling, undercooling exponent, composition factor), not in
+    this completion shape. ``g(0) = g(1) = 0``; it peaks near ``U = 0.5``.
+    """
+    if U <= 0.0 or U >= 1.0:
+        return 0.0
+    return U ** (0.4 * (1.0 - U)) * (1.0 - U) ** (0.4 * U)
+
+
+def _kv_site_saturation_step(U: float, K: float, dt: float) -> float:
+    """One KV site-saturation increment ``U ← min(1, U + K·g(U)·dt)`` (shared ferrite/bainite step).
+
+    ``K`` is the reaction's rate coefficient at the current temperature (:meth:`FerriteReaction.rate`
+    / :meth:`BainiteReaction.rate`); ``K = 0`` (inert, or above the ceiling) leaves ``U`` unchanged.
+    Because ``g(0) = 0`` would never ignite, the first increment is seeded from
+    :data:`_FERRITE_INCUBATION_SEED` (a deliberate incubation seed; the start time is insensitive to
+    its exact value). The two Li/KV diffusional reactions (proeutectoid ferrite, bainite) share this
+    stepper — only their ``K(T)`` differs.
+    """
+    if K == 0.0:
+        return U
+    U_seed = U if U > 0.0 else _FERRITE_INCUBATION_SEED
+    return min(1.0, U + K * _kv_shape_g(U_seed) * dt)
+
+
 def ferrite_FC(C: float, Mn: float = 0.0, Si: float = 0.0, Ni: float = 0.0,
                Cr: float = 0.0, Mo: float = 0.0) -> float:
     """Li/KV ferrite composition factor ``FC = exp(Σ bᵢ·wtᵢ)`` (wt%) — larger ⇒ slower ferrite.
@@ -517,18 +545,14 @@ class FerriteReaction:
         """Advance the ferrite completion ``U ∈ [0, 1]`` one isothermal step ``dt`` (s) at ``T`` (°C).
 
         The site-saturation step ``U ← min(1, U + K(T)·g(U)·dt)`` with the KV sigmoidal shape
-        ``g(U) = U^{0.4(1−U)}·(1−U)^{0.4U}``. Because ``g(0) = 0`` would never ignite, the first
-        increment is seeded from :data:`_FERRITE_INCUBATION_SEED` (a deliberate incubation seed;
-        the start time is insensitive to its exact value). Returns ``U`` unchanged when the
-        reaction is inert or above ``Ae3`` (``rate`` is 0 there). :mod:`pathint` calls this per
-        step within the ``Ms < T < Ae3`` window and multiplies the final ``U`` by ``f_pro``.
+        ``g(U) = U^{0.4(1−U)}·(1−U)^{0.4U}`` (:func:`_kv_site_saturation_step`). Because ``g(0) = 0``
+        would never ignite, the first increment is seeded from :data:`_FERRITE_INCUBATION_SEED` (a
+        deliberate incubation seed; the start time is insensitive to its exact value). Returns ``U``
+        unchanged when the reaction is inert or above ``Ae3`` (``rate`` is 0 there). :mod:`pathint`
+        calls this per step within the ``Ms < T < Ae3`` window and multiplies the final ``U`` by
+        ``f_pro``.
         """
-        K = self.rate(T)
-        if K == 0.0:
-            return U
-        U_seed = U if U > 0.0 else _FERRITE_INCUBATION_SEED
-        gU = U_seed ** (0.4 * (1.0 - U_seed)) * (1.0 - U_seed) ** (0.4 * U_seed)
-        return min(1.0, U + K * gU * dt)
+        return _kv_site_saturation_step(U, self.rate(T), dt)
 
 
 def ferrite_reaction_for_steel(
@@ -550,6 +574,209 @@ def ferrite_reaction_for_steel(
         Ae3 = andrews_Ae3({"C": C, "Mn": Mn, "Ni": Ni, "Cr": Cr, "Mo": Mo, "Si": Si})
     FC = ferrite_FC(C, Mn=Mn, Si=Si, Ni=Ni, Cr=Cr, Mo=Mo)
     return FerriteReaction(Ae3=Ae3, FC=FC, f_pro=f_pro, G=G)
+
+
+# --------------------------------------------------------------------------- #
+# 6. The bainite reaction — the cited KV bainite C-curve, and why the bay can't be realised here
+# --------------------------------------------------------------------------- #
+# WHAT §4 LEFT OPEN. Sections 2–4 model bainite as the *low-temperature label* of the single pearlite
+# curve: the diffusional product is "pearlite" above ``Bs`` (=:data:`BS_DEFAULT`) and "bainite" below
+# it, but it is the **same curve**, shifted by the **same** Grossmann hardenability factor ``M``. So
+# alloying shifts pearlite and bainite *together* — the §4 caveat "one factor shifts pearlite and
+# bainite together … the separate **bainite bay** Cr/Mo open is not reproduced". Phase 6b set out to
+# give bainite its **own** C-curve, with its own alloy retardation, so the bay could open in the
+# continuous-cooling microstructure. It does add the cited curve — but **a four-round empirical
+# investigation proved the bay cannot be realised in *this* model**, and the corrected understanding
+# is itself the Phase-6b content (the same "design-fork" lesson as Phase 6a, where a first-instinct
+# fix was falsified by probing).
+#
+# WHAT 6B *DOES* DELIVER (the honest, smaller scope):
+#   1. **The cited bainite reaction object** (:class:`BainiteReaction`) — the **bainite** member of
+#      the same Li (1998) / Kirkaldy–Venugopalan (1983) family as 6a's ferrite (see
+#      [[ferrite-bay-source]]). Same site-saturation rate form ``dU/dt = K(T)·g(U)`` and shape ``g``
+#      (:func:`_kv_shape_g`); only three reaction-specific pieces differ from ferrite: the **ceiling**
+#      is the bainite-start ``Bs`` (Steven & Haynes 1956, :func:`steven_haynes_Bs`), NOT Ae3; the
+#      **undercooling exponent is n = 1** (``ΔT¹``, Li 1998 for bainite — verified against the pinned
+#      source, NOT the ``ΔT³`` of ferrite/pearlite, the one easy slip); the **composition factor** is
+#      ``BC`` (:func:`bainite_BC`).
+#   2. **THE TEETH — the cited, scale-free coefficient ratio.** BC's **Cr (0.90) / Mo (0.36)**
+#      coefficients are far smaller than ferrite ``FC``'s **Cr (2.70) / Mo (4.06)**: alloy retards the
+#      displacive bainite reaction **weakly** but the reconstructive ferrite/pearlite reaction
+#      **strongly**. For 4140 that is ~2.6× vs ~33× — the *mechanism* of the bay, purely the published
+#      coefficients, independent of any calibration (the 6a FC-ratio analogue). This fixes §4 **at the
+#      mechanism level**.
+#   3. **The isothermal demonstration** — the bainite C-curve has its own nose (:meth:`BainiteReaction.nose`);
+#      the reaction is real and transforms. This is where it genuinely lives (demo + tests).
+#
+# WHY THE BAY CANNOT BE REALISED IN CONTINUOUS COOLING (the proven negative result — durable content,
+# the reason the reaction is **not wired into** :mod:`pathint` and the 540-split is kept untouched):
+#   * **The project pearlite curve is deliberately under-shifted.** Its alloy retardation is the
+#     Grossmann ``M`` ≈ 8× for 4140 (section 4), *calibrated to the Phase-2c Jominy hardenability*;
+#     a real bay needs pearlite pushed out ~100×. ``M`` cannot be retuned without breaking that
+#     validated anchor.
+#   * **The pearlite nose is carbon-flat at ~550 °C** (a section-4 simplification), which for a lean
+#     medium-carbon steel sits *inside* the bainite band (1045 Bs = 641 > 550). So the single curve
+#     already smears pearlite and bainite into one nose; relabelling either way mislabels (calling
+#     sub-550 product "pearlite" loses real bainite; calling all sub-Bs product "bainite" over-labels
+#     1045's 550 °C pearlite).
+#   * **The 8620 carbon-spread ceiling.** ``BC``'s large carbon coefficient (10.18) makes *low*-carbon
+#     bainite explode: the 0.20 %C 8620 carburising core has the fastest bainite of any benchmark
+#     steel (~800× the eutectoid). Any competing scale large enough to put bainite into 1045/4140
+#     drives the 8620 oil core to a dead-soft mostly-bainite structure, **out of its published
+#     30–40 HRC band** (the same band that pinned 6a's ferrite scale). At every scale that keeps 8620
+#     in band, bainite is *negligible* in 1045/4140 — and the crude 540-split is then a **better**
+#     bainite stand-in than the principled reaction (it produces more, and morphology-correctly
+#     labelled, bainite). Replacing it would be a regression, so :mod:`pathint` is left byte-identical.
+#
+# CITED vs CALIBRATED:
+#   * CITED & VALIDATED — the BC coefficients, the Steven–Haynes Bs, the ΔT¹ form, Q, the grain
+#     factor, and the **scale-free coefficient ratio** (the teeth). These stand on their own.
+#   * UNANCHORED — :data:`BAINITE_KINETIC_SCALE` is now only a **demonstration parameter** (it sets
+#     where the isothermal nose sits, nothing in the validated microstructure pipeline). Because the
+#     reaction is not wired into the benchmark there is no constraint to calibrate it against; the
+#     absolute isothermal times it produces are slow (the same modest-``M`` time-base compression that
+#     blocks the bay, resurfacing as absolute time) and are **named, not validated** — only the nose's
+#     existence and the composition response are.
+#   * STILL DEFERRED — bainite *hardness* stays the carbon-only placeholder (:mod:`properties`):
+#     Maynier's bainite coefficients are fit against his own ``−323+185C`` base (negative for plain
+#     carbon), so they cannot graft onto a carbon-only baseline without breaking the ``comp=None``
+#     byte-identity the other constituents honour. With bainite unwired, the placeholder is never
+#     load-bearing — confirming the deferral with a now-concrete reason.
+BAINITE_BC_COEFFS = {                       # KV bainite composition-factor exponent coefficients (per wt%)
+    "const": -10.23, "C": 10.18, "Mn": 0.85, "Ni": 0.55, "Cr": 0.90, "Mo": 0.36,
+}
+BAINITE_UNDERCOOLING_EXP = 1.0              # ΔT¹ for bainite (Li 1998) — NOT the ΔT³ of ferrite/pearlite
+# Steven & Haynes (1956) bainite-start temperature Bs(comp) (°C, wt%; their 65-steel linear
+# regression), valid ~0.1–0.55 %C low-alloy — the bainite reaction's CEILING (above Bs, no bainite).
+STEVEN_HAYNES_BS_BASE = 830.0
+STEVEN_HAYNES_BS_COEFFS = {"C": -270.0, "Mn": -90.0, "Ni": -37.0, "Cr": -70.0, "Mo": -83.0}
+# A DEMONSTRATION parameter (NOT a validated calibration): it sets where the bainite isothermal nose
+# sits relative to the pearlite curve, nothing in the validated microstructure pipeline (the reaction
+# is not wired into pathint — see the §6 negative result above). Chosen only so the isothermal C-curve
+# nose is readable beside the pearlite nose; the absolute austempering times it implies are slow and
+# unanchored (named, not validated). The teeth — the scale-free BC/FC coefficient ratio — do not use it.
+BAINITE_KINETIC_SCALE = 10.0
+
+
+def steven_haynes_Bs(C: float, Mn: float = 0.0, Ni: float = 0.0,
+                     Cr: float = 0.0, Mo: float = 0.0) -> float:
+    """Bainite-start temperature ``Bs`` (°C) from composition (wt%), Steven & Haynes (1956).
+
+    ``Bs = 830 − 270·C − 90·Mn − 37·Ni − 70·Cr − 83·Mo``. Every alloying addition lowers ``Bs``
+    (narrowing the bainite window), carbon most strongly. The cited regression is for ~0.1–0.55 %C
+    low-alloy steels; it is the **ceiling** of the bainite reaction (above ``Bs`` the rate is 0).
+    """
+    comp = {"C": C, "Mn": Mn, "Ni": Ni, "Cr": Cr, "Mo": Mo}
+    return STEVEN_HAYNES_BS_BASE + sum(STEVEN_HAYNES_BS_COEFFS[el] * comp[el] for el in STEVEN_HAYNES_BS_COEFFS)
+
+
+def bainite_BC(C: float, Mn: float = 0.0, Ni: float = 0.0, Cr: float = 0.0, Mo: float = 0.0) -> float:
+    """Li/KV bainite composition factor ``BC = exp(Σ bᵢ·wtᵢ)`` (wt%) — larger ⇒ slower bainite.
+
+    The cited coefficients (:data:`BAINITE_BC_COEFFS`). Crucially Cr (0.90) and Mo (0.36) are **weak**
+    bainite retarders — far weaker than their ferrite ``FC`` counterparts (2.70 / 4.06) — which is
+    *why* the bainite nose barely shifts in an alloy steel while pearlite/ferrite shift strongly: the
+    bay opens. (Si has no cited BC coefficient and does not enter.)
+    """
+    comp = {"C": C, "Mn": Mn, "Ni": Ni, "Cr": Cr, "Mo": Mo}
+    expo = BAINITE_BC_COEFFS["const"] + sum(BAINITE_BC_COEFFS[el] * comp[el] for el in comp)
+    return math.exp(expo)
+
+
+def _kv_shape_integral(X: float, seed: float = _FERRITE_INCUBATION_SEED, n_grid: int = 20000) -> float:
+    """The KV shape integral ``S(X) = ∫₀ˣ dU/g(U)`` — the isothermal time to fraction ``X`` is ``S/K``.
+
+    For a site-saturation reaction ``dU/dt = K(T)·g(U)`` the isothermal time to reach completion
+    ``X`` is ``t = S(X)/K(T)`` (separable). ``g(U) → U^{0.4}`` as ``U → 0`` so the integral converges
+    at the lower limit; it is evaluated from the incubation ``seed`` upward on a fine grid. This makes
+    a reaction's **nose** (shortest time over ``T``) computable as ``S(X)/max_T K(T)`` — the metric
+    the bainite/pearlite nose comparison uses.
+    """
+    U = np.linspace(seed, X, n_grid)
+    g = U ** (0.4 * (1.0 - U)) * (1.0 - U) ** (0.4 * U)
+    return float(np.trapezoid(1.0 / g, U))
+
+
+@dataclass(frozen=True)
+class BainiteReaction:
+    """The cited Li/KV bainite reaction — a **standalone** kinetic object (Phase 6b).
+
+    Mirrors :class:`FerriteReaction` (same Li/KV site-saturation family, same shape ``g``) but with
+    the bainite-specific ceiling ``Bs`` (Steven & Haynes, :func:`steven_haynes_Bs`), undercooling
+    exponent ``n = 1`` (:data:`BAINITE_UNDERCOOLING_EXP`) and composition factor ``BC``
+    (:func:`bainite_BC`). Unlike ferrite there is no equilibrium cap (bainite is a non-equilibrium
+    product). **It is deliberately NOT attached to :class:`CCurve` or integrated into :mod:`pathint`**
+    — the §6 negative result shows that, at any scale keeping the 8620 core in its hardness band, a
+    competing bainite would form negligibly in the benchmark steels and would *regress* the crude but
+    morphology-correct 540-split. The reaction is consumed standalone by the Phase-6b demo and tests:
+    the **scale-free coefficient teeth** (``BC`` Cr/Mo ≪ ``FC`` Cr/Mo) and the **isothermal C-curve**
+    (:meth:`nose`). :meth:`rate` is ``K(T)``; :meth:`completion_step` advances an isothermal hold.
+    """
+
+    Bs: float
+    BC: float
+    G: float = FERRITE_ASTM_GRAIN
+    scale: float = BAINITE_KINETIC_SCALE
+
+    def rate(self, T: float) -> float:
+        """Site-saturation rate coefficient ``K(T)`` (per s) — 0 at/above ``Bs``.
+
+        ``K = scale·2^(0.41·G)·(Bs − T)¹·exp(−Q/RT)/BC`` with ``T`` in kelvin and ``Q`` in cal/mol
+        (gas constant :data:`R_CAL`) — the same form as :meth:`FerriteReaction.rate` but with the
+        ``ΔT¹`` bainite undercooling and the ``Bs`` ceiling. The ``dU/dt = K·g(U)`` step is
+        :func:`_kv_site_saturation_step` (via :meth:`completion_step`).
+        """
+        if T >= self.Bs:
+            return 0.0
+        T_K = T + ABS_ZERO
+        dTu = self.Bs - T
+        return (self.scale * 2.0 ** (0.41 * self.G) * dTu ** BAINITE_UNDERCOOLING_EXP
+                * math.exp(-KV_Q / (R_CAL * T_K)) / self.BC)
+
+    def completion_step(self, U: float, T: float, dt: float) -> float:
+        """Advance the bainite completion ``U ∈ [0, 1]`` one isothermal step ``dt`` (s) at ``T`` (°C).
+
+        The shared KV site-saturation step (:func:`_kv_site_saturation_step`) — identical to ferrite's
+        but driven by the bainite ``rate``. Returns ``U`` unchanged at/above ``Bs`` (``rate`` is 0).
+        The Phase-6b isothermal demo/tests step this within the ``Ms < T < Bs`` window to follow a
+        constant-temperature bainite hold; it is not part of the :mod:`pathint` cooling-path pipeline.
+        """
+        return _kv_site_saturation_step(U, self.rate(T), dt)
+
+    def nose(self, X: float = 0.01, T_low: float = 100.0, n_scan: int = 4000) -> tuple[float, float]:
+        """The bainite C-curve nose ``(T_nose °C, t_nose s)`` — the fastest time to fraction ``X``.
+
+        Scans ``K(T)`` over ``(T_low, Bs)`` for its maximum (the rate peak), then converts to a time
+        ``t_nose = S(X)/K_max`` with the shape integral :func:`_kv_shape_integral`. ``K(T)`` has an
+        interior maximum regardless of ``T_low`` (undercooling kills it as ``T → Bs``; Arrhenius kills
+        it as ``T`` falls), so a fixed floor suffices. This is the metric the bay comparison uses
+        against :meth:`CCurve.nose` — same fraction ``X``, comparable seconds.
+        """
+        temps = np.linspace(T_low, self.Bs - 1.0, n_scan)
+        rates = np.array([self.rate(float(T)) for T in temps])
+        i = int(np.argmax(rates))
+        K_max = float(rates[i])
+        t_nose = math.inf if K_max <= 0.0 else _kv_shape_integral(X) / K_max
+        return float(temps[i]), t_nose
+
+
+def bainite_reaction_for_steel(
+    C: float, Mn: float = 0.0, Ni: float = 0.0, Cr: float = 0.0, Mo: float = 0.0,
+    Si: float = 0.0, Bs: float | None = None, G: float = FERRITE_ASTM_GRAIN,
+) -> BainiteReaction:
+    """Build the :class:`BainiteReaction` for a steel composition (wt%) — Phase 6b.
+
+    Computes the cited composition factor ``BC`` (:func:`bainite_BC`) and the ceiling ``Bs`` from the
+    **Steven & Haynes** equation (:func:`steven_haynes_Bs`) by default. Pass ``Bs=`` to override the
+    ceiling (e.g. a measured bainite-start). Unlike :func:`ferrite_reaction_for_steel` there is no
+    equilibrium cap (bainite is non-equilibrium); the reaction is **standalone** (not attached to a
+    :class:`CCurve`, see :class:`BainiteReaction`). ``Si`` is accepted for a uniform composition
+    signature but does not enter ``BC`` (no cited Si coefficient).
+    """
+    if Bs is None:
+        Bs = steven_haynes_Bs(C, Mn=Mn, Ni=Ni, Cr=Cr, Mo=Mo)
+    BC = bainite_BC(C, Mn=Mn, Ni=Ni, Cr=Cr, Mo=Mo)
+    return BainiteReaction(Bs=Bs, BC=BC, G=G)
 
 
 def ccurve_for_steel(

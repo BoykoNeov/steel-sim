@@ -296,7 +296,10 @@ def vickers_bainite(C: float, comp: dict | None = None, Vr: float | None = None)
     bainite alloy/Vr coefficients are large and fit against his own ``−323+185C`` base, so
     grafting them onto this placeholder baseline gives unphysical (> martensite) hardness —
     so the bainite refinement is deliberately deferred (module docstring), and this stays the
-    carbon-only placeholder.
+    carbon-only placeholder. **Phase 6b confirmed the deferral concretely**: the cited Li/KV
+    bainite reaction (``kinetics`` §6) is left *unwired* from :mod:`pathint`, so this placeholder
+    is never load-bearing in the validated microstructure — the ``−323+185C`` base would still
+    break the ``comp=None`` carbon-only byte-identity the other constituents honour.
     """
     if C < 0.0:
         raise ValueError(f"carbon content must be ≥ 0, got {C}")

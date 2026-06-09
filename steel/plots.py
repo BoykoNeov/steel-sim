@@ -849,3 +849,72 @@ def grain_interactive_figure(
     )
     fig.tight_layout(rect=(0, 0, 1, 0.95))
     return fig
+
+
+def bainite_figure(d):
+    """The Phase-6b artifact: the bainite bay's **mechanism** (the teeth) and the cited C-curve.
+
+    ``d`` is a :class:`~projects.steel.demo_bainite.BainiteDemo` (already-validated arrays — this
+    layer only draws them, ADR 0002). Two panels:
+
+    * **left — the coefficient bay (scale-free, cited):** as Cr is added, the reconstructive ferrite
+      reaction (``FC``) is retarded steeply while the displacive bainite reaction (``BC``) is retarded
+      gently. The gap between the two curves *is* the bay's cause — purely the published Li/KV
+      coefficients, the §4 fix at the mechanism level.
+    * **right — the 4140 pearlite + bainite TTT start curves:** the bainite reaction is real and has
+      its own nose below ``Bs``, but the two noses sit close in absolute time (no bay gap a continuous
+      cool could exploit). The time axis is **unanchored** (a demonstration scale — named, not
+      validated); the validated content is the coefficient ratio on the left, not the nose position.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_c, ax_ttt) = plt.subplots(1, 2, figsize=(12.5, 5.4))
+
+    # --- left: the coefficient bay (the teeth) ------------------------------- #
+    # A darker tan than the pale ferrite *phase* swatch — a thin line needs the contrast.
+    ax_c.plot(d.cr, d.ferrite_retardation, color="#c8941f", lw=2.6,
+              label="ferrite  FC  (reconstructive)")
+    ax_c.plot(d.cr, d.bainite_retardation, color=PHASE_COLORS["bainite"], lw=2.6,
+              label="bainite  BC  (displacive)")
+    ax_c.fill_between(d.cr, d.bainite_retardation, d.ferrite_retardation,
+                      color="0.85", alpha=0.6, zorder=0)
+    ax_c.set_yscale("log")
+    ax_c.set_xlim(d.cr[0], d.cr[-1])
+    ax_c.set_xlabel("chromium added  (wt %)")
+    ax_c.set_ylabel("reaction slowed  (× vs plain 0.40 %C)")
+    ax_c.set_title("the bay's cause: alloy retards bainite far less than ferrite", fontsize=10.5)
+    ax_c.legend(loc="upper left", fontsize=9, framealpha=0.9)
+    ax_c.annotate("the gap IS the bay\n(cited coefficients,\nno calibration)",
+                  (d.cr[-1], np.sqrt(d.bainite_retardation[-1] * d.ferrite_retardation[-1])),
+                  textcoords="offset points", xytext=(-12, -6), ha="right", fontsize=8.5, color="0.3")
+
+    # --- right: the 4140 pearlite + bainite TTT start curves ----------------- #
+    keep_p = np.isfinite(d.pearlite_tau) & (d.pearlite_tau < 1e8)
+    keep_b = np.isfinite(d.bainite_tau)
+    ax_ttt.plot(d.pearlite_tau[keep_p], d.temps[keep_p], color=PHASE_COLORS["pearlite"], lw=2.4,
+                label="pearlite start (project curve)")
+    ax_ttt.plot(d.bainite_tau[keep_b], d.temps[keep_b], color=PHASE_COLORS["bainite"], lw=2.4,
+                label="bainite start (cited Li/KV)")
+    for nose, col in ((d.pearlite_nose, PHASE_COLORS["pearlite"]), (d.bainite_nose, PHASE_COLORS["bainite"])):
+        ax_ttt.plot([nose[1]], [nose[0]], "o", color=col, ms=6, mec="0.2")
+    ax_ttt.axhline(d.bs_4140, color=PHASE_COLORS["bainite"], ls=":", lw=1.3)
+    ax_ttt.text(ax_ttt.get_xlim()[0], d.bs_4140 + 5, "  Bₛ (Steven–Haynes)", va="bottom", ha="left",
+                color=PHASE_COLORS["bainite"], fontsize=8.5)
+    ax_ttt.set_xscale("log")
+    ax_ttt.set_xlabel("time  (s)")
+    ax_ttt.set_ylabel("temperature  (°C)")
+    ax_ttt.set_title("4140: the bainite reaction is real, but its nose sits near pearlite's", fontsize=10.5)
+    ax_ttt.legend(loc="upper right", fontsize=9, framealpha=0.9)
+    ax_ttt.annotate("absolute time scale unanchored\n(a demonstration parameter — §6)",
+                    (0.5, 0.02), xycoords="axes fraction", ha="center", va="bottom",
+                    fontsize=8, color="0.4", style="italic")
+
+    fig.suptitle(
+        "Phase 6b — the cited bainite reaction & the bay's mechanism "
+        "(the bay itself is not realised in continuous cooling — see §6)",
+        fontsize=12.5, fontweight="bold",
+    )
+    # Explicit margins (not tight_layout): the two log panels + long y-label otherwise trip
+    # matplotlib's auto-layout into a spurious "axes too small" warning.
+    fig.subplots_adjust(left=0.075, right=0.975, top=0.88, bottom=0.12, wspace=0.22)
+    return fig
