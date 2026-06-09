@@ -1,6 +1,7 @@
 # 0003 — Test execution policy (the tiered gate)
 
-Status: Accepted — 2026-06-09 (amended same day — see Amendment)
+Status: Accepted — 2026-06-09 (amended same day — see Amendment; the per-project Successor
+was built 2026-06-09 once Microchip landed — see *Successor*)
 Scope: Program-level invariant; inherited by every per-project plan.
 
 ## Context
@@ -219,7 +220,7 @@ Why wait for Microchip rather than build it now: with one project the per-projec
 a single trivial entry that no second consumer could validate. Microchip is the first
 point the mapping has two distinct entries to get right.
 
-**Still open to settle at that milestone** (not yet committed):
+**Still open to settle at that milestone** (settled at build — see *Built* below):
 
 - **The `slow` set** — Microchip adds its own potentially-heavy tests (Deal–Grove,
   litho, any live numerics) to classify by the same live-solver/kernel/subprocess rule.
@@ -229,3 +230,47 @@ point the mapping has two distinct entries to get right.
   Microchip milestone, settle instead: does Microchip add its slow tests to the same
   workflow, and is the known multicomponent flake still unresolved (then either pin the
   solve / loosen the band, or add `pytest-rerunfailures`)?
+
+### Built 2026-06-09 — `tools/gate.py` (manifest + runner)
+
+The successor is built. `tools/gate.py` holds the manifest — `GATES`, a hand-declared
+`project -> used modules` dict — and a thin runner; `python -m tools.gate <project>
+[pytest args]` expands one entry into the pytest path set (`tools/tests` self-check +
+`projects/<project>/tests` + each used module's `tests/`) and passes everything else
+through. Cross-platform on purpose: the *same* command runs locally (Windows) and in CI.
+Measured: `python -m tools.gate chip -m "not slow"` → 116 (chip 96 + engine 18 + gate 2,
+no slow); `… steel …` → 242 + 8 slow deselected; whole-repo fast lane → 338 + 8. Neither
+per-project gate runs the other's tests — the test-isolation win the manifest existed for.
+
+Decisions settled at build (the ones the ADR left open / flagged):
+
+- **Hand-declared, not auto-derived-from-imports** (the open design call; advisor-reviewed).
+  ADR §4 / *Alternatives* already committed to an explicit single source of truth over an
+  auto-detecting heuristic; the build holds that line. Decisive at today's scale: with
+  **one engine** the two approaches produce the *identical* manifest (every project imports
+  the one engine), so auto-derivation buys nothing, while a scanner that silently misses a
+  dependency is the very silent-under-test failure mode §4 warns against.
+- **Honest read of "two distinct entries to validate":** the premise the ADR waited for is
+  only *half* met. Microchip uses the **same single engine** as Steel, so `uses =
+  ["engines/diffusion"]` for both — a second *row*, not a second distinct *value*. The
+  test-isolation win does not depend on `uses` differing (it comes from the per-project
+  test folders), so the build proceeds; but the manifest's **discriminating feature stays
+  unvalidated** until a project uses a different module set. The machinery is kept minimal
+  for exactly that reason.
+- **The `slow` set is unchanged:** Microchip's modules (Deal–Grove oxidation, litho aerial
+  image, MOS `V_t`, dopant diffusion) are all closed-form / fast numerics — **zero** new
+  `slow` tests (`grep` confirms, and chip's gate deselects nothing under `-m "not slow"`).
+  The slow set stays the 8 Steel live-CALPHAD + notebook tests.
+- **Rot mitigation:** full-gate CI on push (the Amendment's `full-gate.yml`) already runs
+  bare `pytest`, which picks up the 2 new `tools/tests` automatically via `testpaths`; no
+  workflow change needed. The known multicomponent flake (Open Issue) remains unresolved
+  and full-gate-visible — not touched by this build.
+- **The self-check, and what is deliberately *deferred*:** the gate ships one guard — a
+  manifest-**completeness** test (`tools/tests/test_gate.py`: `GATES` covers exactly the
+  `projects/*` packages, and every gated path exists). That is the acceptance test for the
+  artifact *and* the trip-wire for the near-term event (project #3 added without a manifest
+  entry). The **import-drift guard** (assert each project's actual `engines.*` imports are
+  all declared in `GATES`) is **deferred to engine #2** — at one engine it cannot fail and
+  has nothing to check (§8: name the extension, don't build it). Forward note: when built it
+  must run *inside* the per-project gate, not only the whole-repo lane, or it won't fire on
+  a per-project commit.
