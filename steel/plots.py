@@ -20,9 +20,11 @@ from __future__ import annotations
 import numpy as np
 import matplotlib.pyplot as plt
 
+from . import grain
 from .kinetics import CCurve
 from .pathint import TransformResult
 from .cooling import CoolingPath
+from .grain import GrainProperties
 from .properties import JominyHardness, RELIABLE_HRC_MIN
 from .carburize import CarburizedProfile, CarburizedTraverse
 
@@ -614,4 +616,141 @@ def single_steel_figure(
     microstructure_schematic(ax_micro, result.fractions(),
                              title=schematic_title or "microstructure at this quench", seed=seed)
     fig.subplots_adjust(left=0.06, right=0.97, bottom=0.20, wspace=0.22)
+    return fig
+
+
+# Stable colours for the two coupled grain-size properties (Phase 5c). Yield = strength axis,
+# DBTT = toughness axis — opposite directions under grain refinement (the co-benefit).
+YIELD_COLOR = "#1f4e79"          # deep blue — yield strength (rises as grain refines)
+DBTT_COLOR = "#c0392b"           # red — DBTT (falls as grain refines; the co-benefit)
+
+
+def grain_figure(
+    fine: GrainProperties, coarse: GrainProperties, C: float, comp: dict, *,
+    name: str = "", d_um_range: tuple[float, float] = (3.0, 120.0),
+    T_range: tuple[float, float] = (850.0, 1250.0), t_hours: float = 1.0, n: int = 200,
+) -> "plt.Figure":
+    """The banked **Phase-5c artifact**: grain refinement, the lone strength-AND-toughness lever.
+
+    Three panels telling the option-(b) story — yield and DBTT moving *opposite* ways under
+    grain refinement (the famous exception to the strength↔toughness trade-off), made a model
+    output rather than narrated. ``fine`` / ``coarse`` are the demo's two operating points (a cool
+    vs a hot austenitize) as :class:`~projects.steel.grain.GrainProperties`; ``C`` / ``comp`` the
+    steel the smooth curves are sampled for.
+
+      * **Left — the co-benefit, vs ``d^(−½)``.** Yield (left axis, ``↑``) and DBTT (right axis,
+        ``↓``) sampled across ferrite grain size, plotted against ``d^(−½)`` (the Hall–Petch
+        abscissa; finer grain → right). Both *improve* toward the right — the co-improvement, the
+        whole point of option (b). The two operating points are marked.
+      * **Middle — the lever comparison, in the (yield, DBTT) plane.** From the coarse-grain
+        baseline, three ways to reach the *same* higher yield: **refine the grain** (down-right —
+        yield up, DBTT *down*), or **add pearlite / add Si** (up-right — yield up, DBTT *up*). The
+        grain arrow breaks the conventional strength–toughness front the solute/pearlite arrows
+        trace; "the same strength two ways", with opposite toughness outcomes — the sign-opposition
+        of the two Pickering laws, drawn.
+      * **Right — the overheating penalty, vs austenitizing T.** The coupled yield (``↓``) and DBTT
+        (``↑``) as the austenitizing temperature rises: a hotter hold coarsens the PAGS → coarsens
+        the ferrite → costs *both* strength and toughness. The cautionary companion to the
+        co-benefit.
+
+    All curves are evaluations of the **validated** 5b/5c laws over plotting ranges (the
+    ``plot_ttt`` idiom — the render layer samples a validated function, it does not invent
+    physics; ADR 0002). The co-benefit / lever direction is **by construction** from the two
+    cited Pickering signs — a demonstration, not a benchmark with teeth (those are 5a's holdout).
+    """
+    fp = fine.f_pearlite                                       # same steel ⇒ same equilibrium pearlite
+    fig, (ax_co, ax_lever, ax_over) = plt.subplots(1, 3, figsize=(17, 5.4))
+
+    # -- panel A: the co-benefit — yield ↑ & DBTT ↓ vs d^(−½) --------------------- #
+    d = np.linspace(d_um_range[1], d_um_range[0], n)          # coarse → fine (left → right)
+    inv_sqrt = (d / 1000.0) ** -0.5                            # mm^(−½), the Hall–Petch abscissa
+    yld = np.array([grain.hall_petch_yield_MPa(di, comp=comp, f_pearlite=fp) for di in d])
+    dbt = np.array([grain.cottrell_petch_dbtt_C(di, comp=comp, f_pearlite=fp) for di in d])
+
+    ax_co.plot(inv_sqrt, yld, color=YIELD_COLOR, lw=2.4)
+    ax_co.set_xlabel("ferrite grain size  d$^{-1/2}$  (mm$^{-1/2}$)   →  finer grain")
+    ax_co.set_ylabel("yield strength  σ$_y$  (MPa)", color=YIELD_COLOR)
+    ax_co.tick_params(axis="y", labelcolor=YIELD_COLOR)
+    ax_T = ax_co.twinx()
+    ax_T.plot(inv_sqrt, dbt, color=DBTT_COLOR, lw=2.4, ls="--")
+    ax_T.set_ylabel("DBTT  (°C)", color=DBTT_COLOR)
+    ax_T.tick_params(axis="y", labelcolor=DBTT_COLOR)
+    ax_T.axhline(0.0, color="0.7", ls=":", lw=1.0)
+    # the two operating points
+    for g, tag in ((coarse, "coarse"), (fine, "fine")):
+        xi = (g.ferrite_um / 1000.0) ** -0.5
+        ax_co.plot([xi], [g.yield_MPa], "o", color=YIELD_COLOR, ms=7, zorder=5)
+        ax_T.plot([xi], [g.dbtt_C], "s", color=DBTT_COLOR, ms=7, zorder=5)
+        ax_co.annotate(f"{tag}\n{g.ferrite_um:.0f} µm", (xi, g.yield_MPa),
+                       textcoords="offset points", xytext=(0, 9), ha="center",
+                       fontsize=8, color="0.25")
+    ax_co.set_title("grain refinement raises σ$_y$ AND lowers DBTT (the co-benefit)", fontsize=10.5)
+
+    # -- panel B: the lever comparison in the (yield, DBTT) plane ----------------- #
+    # From the coarse baseline, raise yield by Δσ three ways and read where DBTT lands. Yield is
+    # linear in f_pearlite and in Si, so the matching increments are closed-form (grain constants).
+    d_sigma = fine.yield_MPa - coarse.yield_MPa
+    y0, T0 = coarse.yield_MPa, coarse.dbtt_C
+    # endpoints, all at yield = fine.yield_MPa:
+    grain_pt = (fine.yield_MPa, fine.dbtt_C)                                    # refine grain
+    pearl_dT = (grain.ITT_K_PEARLITE / grain.YIELD_K_PEARLITE) * d_sigma        # add pearlite
+    si_dT = (grain.ITT_K_SI / grain.YIELD_K_SI) * d_sigma                       # add Si
+    pearl_pt = (fine.yield_MPa, T0 + pearl_dT)
+    si_pt = (fine.yield_MPa, T0 + si_dT)
+
+    ax_lever.plot([y0], [T0], "ko", ms=8, zorder=6)
+    ax_lever.annotate("coarse-grain\nbaseline", (y0, T0), textcoords="offset points",
+                      xytext=(-10, 8), ha="right", fontsize=8.5, color="0.2")
+    arrows = [
+        (grain_pt, DBTT_COLOR, "refine grain", "tougher (DBTT ↓)"),
+        (pearl_pt, "#e67e22", "add pearlite", "brittle (DBTT ↑)"),
+        (si_pt, "#8e44ad", "add Si", "brittle (DBTT ↑)"),
+    ]
+    for (yp, Tp), col, lab, sub in arrows:
+        ax_lever.annotate("", xy=(yp, Tp), xytext=(y0, T0),
+                          arrowprops=dict(arrowstyle="-|>", color=col, lw=2.2))
+        ax_lever.plot([yp], [Tp], "o", color=col, ms=7, zorder=6)
+        ax_lever.annotate(f"{lab}\n{sub}", (yp, Tp), textcoords="offset points",
+                          xytext=(8, 0), va="center", fontsize=8.2, color=col)
+    # Headroom so the right-hand arrow labels (at the target yield) are not clipped.
+    span = max(fine.yield_MPa - y0, 1.0)
+    ax_lever.set_xlim(y0 - 0.10 * span, fine.yield_MPa + 0.65 * span)
+    ax_lever.axvline(fine.yield_MPa, color="0.8", ls=":", lw=1.2)
+    ax_lever.text(fine.yield_MPa, ax_lever.get_ylim()[1], "same yield,\nthree ways",
+                  ha="center", va="top", fontsize=8, color="0.45")
+    ax_lever.axhline(0.0, color="0.7", ls=":", lw=1.0)
+    ax_lever.set_xlabel("yield strength  σ$_y$  (MPa)")
+    ax_lever.set_ylabel("DBTT  (°C)")
+    ax_lever.set_title("same strength, three levers — only grain refinement also toughens",
+                       fontsize=10.5)
+    ax_lever.grid(True, alpha=0.2)
+
+    # -- panel C: the overheating penalty — both worse as austenitizing T rises --- #
+    Ts = np.linspace(T_range[0], T_range[1], n)
+    gps = [grain.coupled_grain_properties(float(t), t_hours, C, comp=comp) for t in Ts]
+    yld_o = np.array([g.yield_MPa for g in gps])
+    dbt_o = np.array([g.dbtt_C for g in gps])
+
+    ax_over.plot(Ts, yld_o, color=YIELD_COLOR, lw=2.4)
+    ax_over.set_xlabel(f"austenitizing temperature  (°C, {t_hours:.0f} h hold)   →  hotter")
+    ax_over.set_ylabel("yield strength  σ$_y$  (MPa)", color=YIELD_COLOR)
+    ax_over.tick_params(axis="y", labelcolor=YIELD_COLOR)
+    ax_o2 = ax_over.twinx()
+    ax_o2.plot(Ts, dbt_o, color=DBTT_COLOR, lw=2.4, ls="--")
+    ax_o2.set_ylabel("DBTT  (°C)", color=DBTT_COLOR)
+    ax_o2.tick_params(axis="y", labelcolor=DBTT_COLOR)
+    ax_o2.axhline(0.0, color="0.7", ls=":", lw=1.0)
+    for g, tag in ((fine, "cool"), (coarse, "hot / over-austenitized")):
+        ax_over.plot([g.austenitizing_T], [g.yield_MPa], "o", color=YIELD_COLOR, ms=7, zorder=5)
+        ax_o2.plot([g.austenitizing_T], [g.dbtt_C], "s", color=DBTT_COLOR, ms=7, zorder=5)
+    ax_over.set_title("over-austenitizing coarsens the grain → σ$_y$ ↓ and DBTT ↑ (both worse)",
+                      fontsize=10.5)
+
+    label = f"{name}  " if name else ""
+    fig.suptitle(
+        f"Phase 5c — {label}grain refinement: the lone strength-AND-toughness lever "
+        f"(σ$_y$ ↑ with DBTT ↓)",
+        fontsize=13, fontweight="bold",
+    )
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
     return fig

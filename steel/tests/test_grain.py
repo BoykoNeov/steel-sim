@@ -27,6 +27,7 @@ import pytest
 from scipy.optimize import least_squares
 
 from projects.steel import grain
+from projects.steel import fe_c
 from projects.steel.kinetics import R_GAS, ABS_ZERO
 
 
@@ -343,3 +344,86 @@ def test_pickering_invalid_inputs_raise():
         grain.cottrell_petch_dbtt_C(-5.0)
     with pytest.raises(ValueError):
         grain.hall_petch_yield_MPa(15.0, N_free_pct=-0.001)   # negative free N
+
+
+# =========================================================================== #
+# Phase 5c — coupling: austenitizing hold → PAGS → ferrite grain → yield + DBTT
+# =========================================================================== #
+# 5c is pure *reuse* — 5a's grain growth, the calibrated PAGS→ferrite ratio, fe_c's
+# equilibrium pearlite, and 5b's two laws, composed. No new physics, no new teeth (those
+# stay 5a's holdout). What its tests check (the plan's split):
+#   * the coupling wiring (the chain composes the pieces it claims to);
+#   * the co-benefit / overheating *directions* — by construction from the two Pickering signs;
+#   * the yield ≤ UTS CONSISTENCY / scope-boundary cross-check (NOT a benchmark — it never
+#     bites in the realistic FP window; it would only at sub-micron ferrite).
+_DEMO_C = 0.18
+_DEMO_COMP = {"Mn": 0.75, "Si": 0.20}     # ≈ AISI 1018, the demo steel (in-distribution)
+
+
+def test_ferrite_grain_finer_than_pags_and_proportional():
+    # d_α = ratio · d_PAGS, ratio < 1 (several ferrite grains nucleate per austenite grain).
+    assert grain.ferrite_grain_size(40.0) == pytest.approx(40.0 * grain.FERRITE_PAGS_RATIO)
+    assert grain.ferrite_grain_size(40.0) < 40.0
+    assert grain.ferrite_grain_size(80.0) == pytest.approx(2.0 * grain.ferrite_grain_size(40.0))
+
+
+def test_ferrite_grain_invalid_inputs_raise():
+    with pytest.raises(ValueError):
+        grain.ferrite_grain_size(0.0)
+    with pytest.raises(ValueError):
+        grain.ferrite_grain_size(40.0, ratio=0.0)
+
+
+def test_coupled_chain_matches_its_pieces():
+    # The wiring check: coupled_grain_properties is exactly 5a → ratio → fe_c → 5b composed.
+    g = grain.coupled_grain_properties(1000.0, 1.0, _DEMO_C, comp=_DEMO_COMP)
+    pags = grain.austenite_grain_size(1000.0, 1.0)
+    d_ferrite = grain.ferrite_grain_size(pags)
+    fp = fe_c.equilibrium_constituents(_DEMO_C).f_pearlite
+    assert g.pags_um == pytest.approx(pags)
+    assert g.ferrite_um == pytest.approx(d_ferrite)
+    assert g.f_pearlite == pytest.approx(fp)
+    assert g.yield_MPa == pytest.approx(
+        grain.hall_petch_yield_MPa(d_ferrite, comp=_DEMO_COMP, f_pearlite=fp))
+    assert g.dbtt_C == pytest.approx(
+        grain.cottrell_petch_dbtt_C(d_ferrite, comp=_DEMO_COMP, f_pearlite=fp))
+
+
+def test_coupling_co_benefit_and_overheating_penalty():
+    # A cool austenitize (fine grain) vs a hot one (coarse grain): the co-benefit and its
+    # converse, the overheating penalty — a by-construction demonstration.
+    cool = grain.coupled_grain_properties(900.0, 1.0, _DEMO_C, comp=_DEMO_COMP)
+    hot = grain.coupled_grain_properties(1200.0, 1.0, _DEMO_C, comp=_DEMO_COMP)
+    assert hot.pags_um > cool.pags_um and hot.ferrite_um > cool.ferrite_um   # hotter ⇒ coarser
+    # Overheating costs BOTH: weaker AND more brittle (the cautionary direction).
+    assert hot.yield_MPa < cool.yield_MPa
+    assert hot.dbtt_C > cool.dbtt_C
+    # Equivalently, refining (cool) is the lone co-improver: stronger AND tougher.
+    assert cool.yield_MPa > hot.yield_MPa and cool.dbtt_C < hot.dbtt_C
+
+
+def test_demo_steel_dbtt_crosses_room_temperature():
+    # The reason 1018 is the demo steel (not 1045): its coupled DBTT spans the ductile→brittle
+    # crossover across the austenitizing range — tough when normalized, brittle when overheated.
+    cool = grain.coupled_grain_properties(900.0, 1.0, _DEMO_C, comp=_DEMO_COMP)
+    hot = grain.coupled_grain_properties(1200.0, 1.0, _DEMO_C, comp=_DEMO_COMP)
+    assert cool.dbtt_C < 0.0 < hot.dbtt_C
+
+
+def test_yield_below_uts_across_austenitizing_range():
+    # The CONSISTENCY / scope-boundary cross-check: Pickering yield stays below the
+    # hardness-derived UTS for a realistic steel across the whole austenitizing window (it
+    # never bites here — yield ≈ 0.4–0.7·UTS; it would only at sub-micron ferrite).
+    for T in np.linspace(850.0, 1250.0, 9):
+        g = grain.coupled_grain_properties(float(T), 1.0, _DEMO_C, comp=_DEMO_COMP)
+        assert g.yield_below_uts
+        assert g.yield_MPa < g.uts_MPa
+
+
+def test_yield_below_uts_property_logic():
+    base = dict(austenitizing_T=900.0, austenitizing_t=1.0, pags_um=15.0,
+                ferrite_um=7.5, f_pearlite=0.2, dbtt_C=0.0)
+    assert grain.GrainProperties(yield_MPa=400.0, uts_MPa=700.0, **base).yield_below_uts is True
+    assert grain.GrainProperties(yield_MPa=900.0, uts_MPa=500.0, **base).yield_below_uts is False
+    # A nan UTS (carbon outside the ISO-18265 table band) ⇒ "no violation detectable", not a fail.
+    assert grain.GrainProperties(yield_MPa=400.0, uts_MPa=float("nan"), **base).yield_below_uts is True

@@ -9,10 +9,11 @@ module is *orthogonal* to the hardness model: it touches neither the frozen
 `engines/diffusion` nor any frozen benchmark.
 
 This file implements **Phase 5a** — austenite grain *growth* during the austenitizing hold
-and the ASTM E112 grain-size-number bookkeeping — and **Phase 5b** — the two grain-size
+and the ASTM E112 grain-size-number bookkeeping — **Phase 5b** — the two grain-size
 *property* laws (Hall–Petch yield + Cottrell–Petch DBTT, the cited Pickering ferrite-pearlite
-pair). Their coupling + the banked co-benefit figure (5c) land on top; see
-`docs/plans/steel-production.md` §12.
+pair) — and **Phase 5c** — the coupling (austenitizing hold → PAGS → ferrite grain → *both*
+yield and DBTT) and the ``yield ≤ UTS`` consistency cross-check. The banked co-benefit figure
+sits in :mod:`plots` (``grain_figure``); see `docs/plans/steel-production.md` §12.
 
 5b — the Pickering pair: yield ↑ and DBTT ↓ with grain refinement
 ----------------------------------------------------------------
@@ -68,9 +69,12 @@ enters both laws under a √, so a wt%/ppm mix-up is a ~√1000 error) — also 
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 import numpy as np
 
+from . import fe_c
+from . import properties as prop
 from .kinetics import R_GAS, ABS_ZERO
 
 # --------------------------------------------------------------------------- #
@@ -313,4 +317,123 @@ def cottrell_petch_dbtt_C(
         + ITT_K_NF * math.sqrt(N_free_pct)
         + ITT_K_PEARLITE * 100.0 * f_pearlite
         - grain
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 4. Coupling (Phase 5c) — austenitizing hold → PAGS → ferrite grain → yield + DBTT
+# --------------------------------------------------------------------------- #
+# 5a gives the prior-austenite grain size (PAGS) a part inherits from its austenitizing
+# hold; 5b's two laws act on the *ferrite* grain size. 5c bridges them: austenite grain
+# boundaries are the nucleation sites for pro-eutectoid ferrite, so a finer austenite grain
+# seeds a finer ferrite grain — the metallurgical reason over-austenitizing (hotter / longer)
+# costs *both* strength and toughness, and the reason grain refinement is the lone lever that
+# improves both at once.
+#
+# ISOLATED AT A FIXED COOLING RATE (named, deliberate — the 3c single-quench analogue). The
+# ferrite grain size depends on the cooling rate too — often *more* than on the PAGS (faster
+# cooling undercools further → more nucleation → finer ferrite). 5c reads the PAGS effect at
+# *one* cooling rate, folding that rate's influence into the calibrated proportionality below,
+# exactly as 3c read the carbon gradient at one quench. A cooling-rate axis on ferrite grain
+# size is a later refinement, not this coupling.
+#
+# FERRITE_PAGS_RATIO is the ONE CALIBRATED constant of 5c (flagged, like 5a's m/D₀/K₀ and 5b's
+# pearlite-in-yield slope). d_α = ratio · d_PAGS with ratio < 1 (several ferrite grains nucleate
+# per austenite grain → ferrite is finer than the austenite it forms from). ~0.5 is a
+# representative normalized-/air-cool value; the precise number does not change the co-benefit
+# *direction* (that is by-construction from the two Pickering signs — see the module doc), only
+# the absolute grain sizes, so it is documented once and not agonized over. NOT a benchmark.
+FERRITE_PAGS_RATIO = 0.5
+
+
+def ferrite_grain_size(pags_um: float, *, ratio: float = FERRITE_PAGS_RATIO) -> float:
+    """Ferrite grain size (µm) seeded by a prior-austenite grain size ``pags_um`` (µm).
+
+    ``d_α = ratio · d_PAGS`` — austenite grain boundaries nucleate pro-eutectoid ferrite, so a
+    finer austenite grain gives a finer ferrite grain (``ratio < 1``: several ferrite grains per
+    austenite grain). ``ratio`` is the **calibrated** :data:`FERRITE_PAGS_RATIO` at a fixed
+    cooling rate (the named single-variable isolation); override per call. Linear and monotone:
+    the coupling carries the *direction* (coarser PAGS → coarser ferrite), not a benchmarked
+    absolute.
+    """
+    if pags_um <= 0.0:
+        raise ValueError(f"PAGS must be > 0 µm, got {pags_um}")
+    if ratio <= 0.0:
+        raise ValueError(f"ferrite/PAGS ratio must be > 0, got {ratio}")
+    return ratio * pags_um
+
+
+@dataclass(frozen=True)
+class GrainProperties:
+    """The coupled Phase-5c result: an austenitizing hold → grain size → yield + DBTT.
+
+    All grain sizes **µm**, ``yield_MPa`` / ``uts_MPa`` **MPa**, ``dbtt_C`` **°C**,
+    ``f_pearlite`` a mass fraction ``[0, 1]``. ``uts_MPa`` is the hardness-derived ultimate
+    tensile strength of the *same* ferrite-pearlite structure (``properties`` model), carried
+    only for the :attr:`yield_below_uts` consistency cross-check (see
+    :func:`coupled_grain_properties`).
+    """
+
+    austenitizing_T: float       # °C
+    austenitizing_t: float       # hours
+    pags_um: float               # prior-austenite grain size (5a)
+    ferrite_um: float            # coupled ferrite grain size (5c)
+    f_pearlite: float            # equilibrium pearlite fraction from carbon (fe_c, 1b)
+    yield_MPa: float             # Hall–Petch / Pickering lower yield (5b)
+    dbtt_C: float                # Cottrell–Petch / Pickering DBTT (5b)
+    uts_MPa: float               # hardness-derived UTS of the FP structure (properties)
+
+    @property
+    def yield_below_uts(self) -> bool:
+        """``True`` when the Pickering yield does not exceed the hardness-derived UTS.
+
+        The Phase-5c **consistency / scope-boundary** cross-check (NOT a benchmark with teeth —
+        the only teeth in Phase 5 are 5a's grain-growth holdout). In the realistic
+        ferrite-pearlite window ``yield ≈ 0.4–0.6·UTS``, so this never bites; it would fail only
+        at **sub-micron ferrite** (~1 µm), which the austenitizing route never reaches — the
+        scope boundary made explicit. A ``nan`` UTS (carbon outside the ISO-18265 table's
+        ~150–550 HV band) is treated as "no violation detectable", not a failure.
+        """
+        return not (self.yield_MPa > self.uts_MPa)   # nan UTS ⇒ comparison False ⇒ True
+
+
+def coupled_grain_properties(
+    T_austenitize: float, t_hours: float, C: float, *,
+    comp: dict | None = None, d0: float = GROWTH_D0,
+    ferrite_ratio: float = FERRITE_PAGS_RATIO, N_free_pct: float = DEFAULT_N_FREE_PCT,
+) -> GrainProperties:
+    """Couple an austenitizing hold to the ferrite-pearlite yield **and** DBTT (Phase 5c).
+
+    The whole 5c chain in one call, all *reuse* of validated pieces — no new physics:
+
+        austenitize (T, t) → PAGS (:func:`austenite_grain_size`, 5a)
+          → ferrite grain (:func:`ferrite_grain_size`, the calibrated coupling)
+          → yield (:func:`hall_petch_yield_MPa`) + DBTT (:func:`cottrell_petch_dbtt_C`) (5b)
+
+    ``%pearlite`` is the **equilibrium** slow-cool value from carbon
+    (:func:`fe_c.equilibrium_constituents`, Phase 1b) — the structure these ferrite-pearlite
+    laws describe, read at the fixed cooling rate the coupling assumes. The PAGS kinetics are the
+    S960MC-calibrated grain-growth model (one calibrated model, reused for any steel, exactly as
+    5a treats it); the ``comp`` minor-alloy dict (``Steel.minor()`` — Mn/Si read by Pickering)
+    feeds the yield/DBTT laws.
+
+    ``uts_MPa`` is computed from the same structure's ferrite-pearlite hardness
+    (:func:`properties.vickers_ferrite_pearlite` → :func:`properties.tensile_strength_MPa`) for
+    the :attr:`GrainProperties.yield_below_uts` cross-check; it is *not* part of the grain
+    physics. ``T`` is °C, ``t`` hours, ``C`` wt%; grain sizes returned in µm.
+    """
+    pags = austenite_grain_size(T_austenitize, t_hours, d0=d0)
+    d_ferrite = ferrite_grain_size(pags, ratio=ferrite_ratio)
+    f_pearlite = fe_c.equilibrium_constituents(C).f_pearlite
+    sigma_y = hall_petch_yield_MPa(
+        d_ferrite, comp=comp, f_pearlite=f_pearlite, N_free_pct=N_free_pct,
+    )
+    dbtt = cottrell_petch_dbtt_C(
+        d_ferrite, comp=comp, f_pearlite=f_pearlite, N_free_pct=N_free_pct,
+    )
+    uts = float(prop.tensile_strength_MPa(prop.vickers_ferrite_pearlite(C, comp=comp)))
+    return GrainProperties(
+        austenitizing_T=T_austenitize, austenitizing_t=t_hours,
+        pags_um=pags, ferrite_um=d_ferrite, f_pearlite=f_pearlite,
+        yield_MPa=sigma_y, dbtt_C=dbtt, uts_MPa=uts,
     )

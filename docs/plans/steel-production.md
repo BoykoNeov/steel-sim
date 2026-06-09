@@ -867,7 +867,11 @@ Austenitizing T → PAGS (5a) → effective ferrite grain via a **calibrated pro
 too — often *more* than on PAGS — so the PAGS effect is read at one cooling rate, the same
 single-variable isolation as 3c's single-quench carbon gradient. Named.
 
-**Banked artifact (`docs/figures/steel-grain.png`) — the co-benefit shown, not narrated.** Two
+**Banked artifact (`docs/figures/steel-grain.png`) — the co-benefit shown, not narrated.**
+*(As built, 5c uses a **three-panel** layout — see the "Phase 5c built ✓" paragraph for the one
+conscious divergence: the lever comparison is drawn in the **(yield, DBTT) trade-off plane**, not
+on a shared `d^(−½)` axis, because that plane is where the exception to the strength–toughness
+front actually reads.)* Two
 panels sharing the `d^(−½)` axis: (left) **yield ↑ and DBTT ↓ together** as the grain refines —
 the famous exception to the strength↔toughness trade-off, now a model output; (right) the **lever
 comparison** — refine the grain vs. add pearlite/Si to reach the *same* strength, and the model
@@ -1006,3 +1010,56 @@ is a *temperature* on a different axis). No figure / no coupling / no `demo_grai
 `yield ≤ UTS` and DBTT-sanity guards). The co-benefit is already visible numerically (1045 refined
 80 µm → 5 µm: yield **299 → 484 MPa** while DBTT **127 → 5 °C** — strength up, brittleness down).
 **Next: 5c.**
+
+**Phase 5c is built ✓** (2026-06-09) — `grain.py` §4 (`ferrite_grain_size`, `GrainProperties`,
+`coupled_grain_properties`) + `plots.grain_figure` + `demo_grain.py` + 10 new tests (7 in
+`test_grain.py` §5c + 3 in `test_demo_grain.py`); steel gate **278 → 288** fast lane (`not slow`).
+The **coupling that closes Phase 5**: an austenitizing hold → **PAGS** (5a) → **ferrite grain** via
+the *one* calibrated `FERRITE_PAGS_RATIO ≈ 0.5` (austenite GBs nucleate pro-eutectoid ferrite, so
+finer γ → finer α; `ratio < 1` = several ferrite grains per austenite grain) → equilibrium
+**%pearlite** from carbon (`fe_c.equilibrium_constituents`, Phase 1b) → **both** the Pickering
+yield and DBTT (5b). **Isolated at a fixed cooling rate** (named — the cooling-rate dependence of
+ferrite grain size, often *stronger* than the PAGS effect, is folded into the calibrated ratio at
+one rate; the 3c single-quench analogue). Takes `(C, comp)` not a `Steel` (keeps `grain.py` off
+`sweep.py`'s heavy import; `grain → fe_c, properties` is acyclic). **ENGINE NOT TOUCHED, no frozen
+benchmark moved** (orthogonal); `properties.toughness_index` untouched.
+
+**The demo steel is 1018 (0.18 %C), deliberately NOT 1045 (advisor).** The "leaner-hypothetical"
+trap is a `ccurve_for_steel(Mn=0)` **kinetics** caution — 5c never calls it (only
+`austenite_grain_size`, `fe_c.equilibrium_constituents(C)`, the Pickering laws), so it does not
+bind here; conflating it with a registry requirement was the trap. 1045's ~58 % pearlite (i) leans
+the headline on the **one calibrated coefficient** (pearlite-in-yield) and (ii) keeps the coupled
+DBTT brittle throughout (39 → 103 °C, no crossover). **1018's ~21 % pearlite puts the coupled DBTT
+window at −43 °C (normalized 900 °C) → +21 °C (overheated 1200 °C) — it crosses room temperature**,
+so the ductile→brittle story lands. The banked numbers: refining **31 µm → 8 µm** ferrite raises
+**yield 261 → 358 MPa (+97)** while DBTT **+21 → −43 °C (−64)** — *stronger AND tougher* from the
+lone co-improving lever.
+
+**Banked figure (`docs/figures/steel-grain.png`) — three panels.** (A) the **co-benefit** —
+yield (↑) and DBTT (↓) vs `d^(−½)`, both improving toward finer grain; (B) **the lever comparison
+in the (yield, DBTT) trade-off plane** — the *conscious divergence* from the drafted "two panels
+sharing the `d^(−½)` axis": from the coarse-grain baseline, three arrows reach the *same* higher
+yield — **refine grain** (down-right, DBTT ↓) vs **add pearlite / add Si** (up-right, DBTT ↑) — so
+the grain arrow visibly breaks the conventional strength–toughness front the solute arrows trace
+(the closed-form lever endpoints are exact from the cited Pickering coefficient ratios); (C) the
+**overheating penalty** — coupled yield (↓) and DBTT (↑) vs austenitizing T. The render layer
+evaluates the validated 5b/5c laws over plotting ranges (the `plot_ttt` idiom), invents no physics
+(ADR 0002).
+
+**The non-circularity posture (as planned).** The co-benefit / lever **directions are by
+construction** from the two cited Pickering signs — a *demonstration* (the Phase-4 wiring-check
+status), **not** teeth; Phase 5's only teeth stay **5a's grain-growth holdout**. The new
+**`yield ≤ UTS`** check is **consistency / scope-boundary, NOT teeth** (advisor — the plan files it
+under "consistency cross-checks"): Pickering yield vs the **hardness-derived ISO-18265 UTS of the
+same ferrite-pearlite structure** (`properties.vickers_ferrite_pearlite` → `tensile_strength_MPa`)
+— it **never bites in the realistic window** (yield ≈ 0.48–0.66·UTS), and would fail only at
+**sub-micron ferrite** the austenitizing route never reaches (the scope boundary made explicit). A
+`nan` UTS (carbon outside the ISO-18265 ~150–550 HV band) ⇒ "no violation detectable", not a fail.
+Carried as the `GrainProperties.yield_below_uts` field, asserted across the austenitizing range.
+
+**Phase 5 COMPLETE (5a / 5b / 5c).** Grain size, Hall–Petch yield, the Cottrell–Petch DBTT, and the
+demonstrated strength-and-toughness co-benefit are all built — Steel's first post-v1 phase is done.
+Remaining "future of steel" menu items (§11: residual-stress / deepen-gaps / inverse-design) stay
+`[available]`, appetite-driven, blocking nothing. The grain *morphology* upgrade (Voronoi swatch in
+the notebook/app) remains the ADR-0002 viz-reach deferral ([[steel-grain-physics-deferred]]), not
+physics.
