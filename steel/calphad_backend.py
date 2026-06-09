@@ -574,9 +574,15 @@ def download_mc_fe(dest: Path | None = None) -> Path:
     The file is **never committed** (``.gitignore`` covers ``*.tdb`` and ``data/``);
     we ship only numbers computed *from* it (:mod:`calphad_reference`), per plan §6.
     """
+    import shutil
     import urllib.request
 
     dest = dest or (_repo_root() / "data" / "tdb" / "mc_fe_v2.060.tdb")
     dest.parent.mkdir(parents=True, exist_ok=True)
-    urllib.request.urlretrieve(MC_FE_URL, dest)  # noqa: S310 (known ODbL source)
+    # matcalc.at (a Joomla host) 403s the default ``Python-urllib`` User-Agent, so send a
+    # browser one — verified empirically (default UA → 403, browser UA → 200). Without this
+    # the bare ``urlretrieve`` below fails on any fresh fetch (CI and a user alike).
+    req = urllib.request.Request(MC_FE_URL, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req) as resp, open(dest, "wb") as fh:  # noqa: S310 (known ODbL source)
+        shutil.copyfileobj(resp, fh)
     return dest
