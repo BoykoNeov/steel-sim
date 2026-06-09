@@ -8,10 +8,28 @@ engineering quantities the hardness chain deliberately withholds: **yield streng
 module is *orthogonal* to the hardness model: it touches neither the frozen
 `engines/diffusion` nor any frozen benchmark.
 
-This file currently implements **Phase 5a** — austenite grain *growth* during the
-austenitizing hold, and the ASTM E112 grain-size-number bookkeeping. The Hall–Petch yield
-and the Cottrell–Petch DBTT (5b) and their coupling/figure (5c) land on top of it; see
+This file implements **Phase 5a** — austenite grain *growth* during the austenitizing hold
+and the ASTM E112 grain-size-number bookkeeping — and **Phase 5b** — the two grain-size
+*property* laws (Hall–Petch yield + Cottrell–Petch DBTT, the cited Pickering ferrite-pearlite
+pair). Their coupling + the banked co-benefit figure (5c) land on top; see
 `docs/plans/steel-production.md` §12.
+
+5b — the Pickering pair: yield ↑ and DBTT ↓ with grain refinement
+----------------------------------------------------------------
+Two laws of the *same* Hall–Petch form with **opposite grain-size signs** — the headline
+metallurgical fact that grain refinement is the **only** lever that raises strength *and*
+improves toughness at once:
+
+    σ_y  = f_σ(Mn, Si, N_free, %pearlite) + k_y·d^(−½)     grain term POSITIVE  (refine → stronger)
+    DBTT = g_T(Si, N_free, %pearlite)     − k_T·d^(−½)     grain term NEGATIVE  (refine → tougher)
+
+Si / free-N / pearlite raise **both** (strength↑ *and* DBTT↑ = embrittle); only the grain
+term flips sign, so grain refinement is the lone co-improving lever. Coefficients are the
+**cited Pickering ferrite-pearlite correlation** (Pickering, *Physical Metallurgy and the
+Design of Steels*, 1978) — see [[pickering-strength-dbtt-source]]. This sign-opposition is a
+**by-construction demonstration**, not a benchmark with teeth: both equations are cited, so
+no held-out quantity could falsify it (the Phase-4 "wiring check" status). Phase 5's
+falsifiable weight lives entirely in 5a's grain-growth holdout.
 
 5a — austenite grain growth `Dᵐ − D₀ᵐ = K₀·exp(−Q/RT)·t`
 -------------------------------------------------------
@@ -42,8 +60,10 @@ Units (the registered trap — cf. chip's CGS/SI, oxidation's µm)
 ---------------------------------------------------------------
 Internal grain size is **µm** (the cross-module currency), hold time **hours**, temperature
 input **°C** (converted to **K** for the Arrhenius factor), ``Q`` in **J/mol**. The 5b
-Hall–Petch / Pickering laws cite coefficients with grain size in **mm** — that conversion
-lives at *their* boundary, registry-tested, not here.
+Hall–Petch / Pickering laws cite their coefficients with grain size in **mm** (so
+``k_y ≈ 17.4 MPa·mm^(−½) ≡ 0.55 MPa·m^(−½) ≈ 0.6 MPa·√m``) — that µm→mm conversion lives at
+*their* boundary (``_d_mm``), registry-tested. Free nitrogen ``N_free`` is in **wt %** (it
+enters both laws under a √, so a wt%/ppm mix-up is a ~√1000 error) — also registry-tested.
 """
 from __future__ import annotations
 
@@ -156,3 +176,141 @@ def grain_diameter_um(G: float) -> float:
     N_A = ASTM_NA_PER_G1 * 2.0 ** (G - 1.0)        # grains per mm²
     d_mm = 1.0 / math.sqrt(N_A)
     return d_mm * 1000.0
+
+
+# --------------------------------------------------------------------------- #
+# 3. The Pickering pair — Hall–Petch yield + Cottrell–Petch DBTT (Phase 5b)
+# --------------------------------------------------------------------------- #
+# Two laws of the SAME Hall–Petch form with OPPOSITE grain-size signs (module docstring).
+# Coefficients are the cited Pickering ferrite-pearlite correlation — see
+# [[pickering-strength-dbtt-source]]. Grain size enters in MILLIMETRES in both cited forms;
+# we convert µm→mm at this boundary (_d_mm), registry-tested.
+#
+# --- Lower yield stress, ferrite-pearlite (MPa; d in mm) ----------------------
+# σ_y = 53.9 + 32.34·Mn + 83.16·Si + 354.2·√N_free + (pearlite) + 17.4·d^(−½)
+# The Mn/Si/N/grain coefficients are CITED (web-confirmed). With comp=None and no pearlite
+# this reduces to the bare two-constant ferrite Hall–Petch teaching limit σ₀ + k_y·d^(−½).
+YIELD_SIGMA0 = 53.9          # MPa — friction/base stress (composition- & grain-independent)
+YIELD_K_MN = 32.34           # MPa per wt% Mn  (substitutional solid solution)
+YIELD_K_SI = 83.16           # MPa per wt% Si  (substitutional solid solution)
+YIELD_K_NF = 354.2           # MPa per (wt% free N)^(1/2)  (interstitial solid solution, √c)
+YIELD_KY_MM = 17.402         # MPa·mm^(1/2) — Hall–Petch grain coefficient (d in mm)
+
+# The pearlite contribution to YIELD is the ONE CALIBRATED coefficient (Pickering's cited
+# yield equation is ferrite-matrix-controlled and carries no pearlite term). Grounded in a
+# rule of mixtures: eutectoid pearlite lower-yield ≈ 400–450 MPa vs ferrite matrix ≈
+# 200–250 MPa ⇒ (425 − 225)/100 ≈ 2 MPa per percent pearlite. Flagged calibrated; NOT tuned
+# to the 5c figure (the sign-opposition is by-construction regardless — tuning buys nothing).
+YIELD_K_PEARLITE = 2.0       # MPa per % pearlite  (rule-of-mixtures slope; calibrated, flagged)
+
+# --- Impact transition temperature, ferrite-pearlite (°C; d in mm) ------------
+# DBTT = −19 + 44·Si + 700·√N_free + 2.2·%pearlite − 11.5·d^(−½)
+# The grain coefficient (−11.5) and the Si coefficient (+44) are web-confirmed; the −19 base,
+# the 700·√N and the 2.2·%pearlite are recalled-canonical Pickering, cross-checked
+# structurally (see source memory). The grain term carries the OPPOSITE sign to the yield law
+# — the whole point of option (b).
+ITT_BASE = -19.0             # °C — base transition temperature
+ITT_K_SI = 44.0              # °C per wt% Si        (embrittles — raises DBTT)
+ITT_K_NF = 700.0             # °C per (wt% free N)^(1/2)  (embrittles — raises DBTT)
+ITT_K_PEARLITE = 2.2         # °C per % pearlite    (embrittles — raises DBTT)
+ITT_KT_MM = 11.5             # °C·mm^(1/2) — grain coefficient, applied with a NEGATIVE sign
+
+# Free nitrogen is not in the STEELS registry → a flagged default (a typical small value, wt%).
+# It enters BOTH laws under a √ (raises strength AND DBTT — an embrittler), so it does NOT
+# affect the grain-term sign-opposition; the grain / Si / pearlite terms carry the story.
+# Override per call. 0.005 wt% ≈ 50 ppm free N (semi-killed steel); a clean Al-killed steel
+# is lower (~0.002).
+DEFAULT_N_FREE_PCT = 0.005
+
+# Above this martensite fraction the diffusional ferrite-pearlite laws do not apply → nan
+# (the HRC-nan-on-a-soft-tail idiom; martensite strength is carbon/lath-dominated and its
+# packet/block Hall–Petch is deferred). NAMED limit: bainite is *also* strictly outside the
+# ferrite-pearlite domain (the bainite-deferral idiom), but — per plan — only martensite
+# triggers the nan; a bainitic structure is loosely-out-of-domain, not guarded.
+MARTENSITE_NAN_LIMIT = 0.5
+
+
+def _d_mm(d_um: float) -> float:
+    """µm → mm at the cited-equation boundary (the registered unit trap). d must be > 0."""
+    if d_um <= 0.0:
+        raise ValueError(f"grain diameter must be > 0 µm, got {d_um}")
+    return d_um / 1000.0
+
+
+def _solute_strengthening(comp: dict | None, N_free_pct: float) -> float:
+    """Pickering substitutional (Mn, Si) + interstitial (√N_free) yield contribution (MPa)."""
+    comp = comp or {}
+    if N_free_pct < 0.0:
+        raise ValueError(f"free nitrogen must be ≥ 0 wt%, got {N_free_pct}")
+    return (
+        YIELD_K_MN * comp.get("Mn", 0.0)
+        + YIELD_K_SI * comp.get("Si", 0.0)
+        + YIELD_K_NF * math.sqrt(N_free_pct)
+    )
+
+
+def hall_petch_yield_MPa(
+    d_um: float, *, comp: dict | None = None, f_pearlite: float = 0.0,
+    N_free_pct: float = DEFAULT_N_FREE_PCT, f_martensite: float = 0.0,
+) -> float:
+    """Lower yield strength (MPa) of a ferrite-pearlite steel — Pickering + Hall–Petch.
+
+    ``σ_y = σ₀ + k_Mn·Mn + k_Si·Si + k_N·√N_free + k_pearl·%pearlite + k_y·d^(−½)``
+
+    The grain-size term is **positive**: refine the grain (smaller ``d``) and yield *rises*.
+    ``comp`` is the minor-alloy ``{element: wt%}`` dict (``Steel.minor()`` — only Mn, Si are
+    read by Pickering's yield form). ``f_pearlite`` is the **mass fraction** in ``[0, 1]``
+    (e.g. ``fe_c.equilibrium_constituents(C0).f_pearlite`` — the *equilibrium* slow-cool
+    pearlite from carbon, **not** the actual cooling product), converted to percent for
+    Pickering's per-percent coefficient internally. With ``comp=None``, ``f_pearlite=0`` *and*
+    ``N_free_pct=0`` this is the bare two-constant ferrite Hall–Petch teaching limit
+    ``σ₀ + k_y·d^(−½)`` (the default ``N_free`` adds its ~25 MPa interstitial term).
+
+    Returns **nan** when ``f_martensite`` exceeds :data:`MARTENSITE_NAN_LIMIT` — the
+    ferrite-pearlite laws do not describe a martensitic structure (carbon/lath-dominated;
+    its packet Hall–Petch is deferred), the HRC-``nan``-on-a-soft-tail idiom. ``d`` is µm.
+    """
+    if f_martensite > MARTENSITE_NAN_LIMIT:
+        return float("nan")
+    grain = YIELD_KY_MM * _d_mm(d_um) ** -0.5
+    return (
+        YIELD_SIGMA0
+        + _solute_strengthening(comp, N_free_pct)
+        + YIELD_K_PEARLITE * 100.0 * f_pearlite
+        + grain
+    )
+
+
+def cottrell_petch_dbtt_C(
+    d_um: float, *, comp: dict | None = None, f_pearlite: float = 0.0,
+    N_free_pct: float = DEFAULT_N_FREE_PCT, f_martensite: float = 0.0,
+) -> float:
+    """Ductile-brittle transition temperature (°C) — Cottrell–Petch / Pickering ITT.
+
+    ``DBTT = −19 + 44·Si + 700·√N_free + 2.2·%pearlite − 11.5·d^(−½)``
+
+    The grain-size term is **negative** — the *opposite* sign to :func:`hall_petch_yield_MPa`
+    — so refining the grain *lowers* DBTT (tougher) while it *raises* yield (stronger): the
+    lone co-improving lever, the headline of option (b). Si / free-N / pearlite raise DBTT
+    (embrittle), the same direction they raise yield. ``f_pearlite`` is the **mass fraction**
+    in ``[0, 1]`` (the equilibrium value from carbon, as in the yield law).
+
+    This is a transition **temperature**, *not* a Charpy energy: no shelf energies, no
+    absolute J, no tempering-axis non-monotonicity — those stay Phase 3b's named ceiling
+    (``properties.toughness_index`` is untouched). Returns **nan** for a martensitic
+    structure (``f_martensite`` past :data:`MARTENSITE_NAN_LIMIT`), as the yield law does.
+    ``d`` is µm.
+    """
+    if f_martensite > MARTENSITE_NAN_LIMIT:
+        return float("nan")
+    comp = comp or {}
+    if N_free_pct < 0.0:
+        raise ValueError(f"free nitrogen must be ≥ 0 wt%, got {N_free_pct}")
+    grain = ITT_KT_MM * _d_mm(d_um) ** -0.5
+    return (
+        ITT_BASE
+        + ITT_K_SI * comp.get("Si", 0.0)
+        + ITT_K_NF * math.sqrt(N_free_pct)
+        + ITT_K_PEARLITE * 100.0 * f_pearlite
+        - grain
+    )

@@ -972,3 +972,37 @@ reproduction (mean ~3 µm) asserted only *loosely* (`Q` weakly determined → re
 teeth, named). Units pinned **µm/hours/K** (the registered trap). **Next: 5b** (Hall–Petch yield
 + Cottrell–Petch DBTT — the Pickering pair, source (2) still to pin) → **5c** (coupling + the
 co-benefit figure).
+
+**Phase 5b is built ✓** (2026-06-09) — `grain.py` §3 (`hall_petch_yield_MPa`,
+`cottrell_petch_dbtt_C`) + 16 new tests in `test_grain.py` (steel gate **262 → 278** fast lane,
+`not slow`; 286 with the slow optional stack). The **two grain-size property laws** the hardness
+chain refuses to give — yield strength and DBTT — as the **cited Pickering ferrite-pearlite pair**,
+two laws of the *same* Hall–Petch form with **opposite grain-size signs**: `σ_y = σ₀ + k_Mn·Mn +
+k_Si·Si + k_N·√N_free + k_pearl·%pearlite + k_y·d^(−½)` (grain term **+**) and `DBTT = −19 +
+44·Si + 700·√N_free + 2.2·%pearlite − 11.5·d^(−½)` (grain term **−**). Source (2) pinned →
+[[pickering-strength-dbtt-source]] (Pickering 1978), kept **independent** of [[grain-growth-source]]
+so the 5c sign-opposition stays non-circular. **What is cited vs calibrated (the discipline, as in
+2b/3b/4/5a):** the Mn/Si/N/grain yield coefficients + the Si/N/pearlite/grain DBTT coefficients are
+**cited** (the −11.5 grain term and the +44 Si term **web-confirmed**; the −19/700/2.2 recalled-
+canonical, cross-checked structurally — see source); the **one calibrated** coefficient is the
+**pearlite contribution to yield** (`≈ 2 MPa/%`, a rule-of-mixtures slope — Pickering's cited yield
+equation is ferrite-matrix-controlled and carries no pearlite term — flagged, **not** tuned to 5c);
+free nitrogen is a flagged default (`0.005 wt%`, override-able). **The one external anchor with a
+genuine right answer** is the textbook "**refining 10 µm → 1 µm lowers DBTT by ~250 K**" — the model
+gives −248.7 °C, which *is* the −11.5 coefficient and pins the **d-in-mm** convention. Everything
+else is **by construction or in-distribution** and labelled as such: the d^(−½) linearity of both
+laws is exact; the **sign-opposition / lever comparison is a demonstration that passes by
+construction** (both equations cited → no holdout can falsify it — the Phase-4 "wiring check"
+status, *not* teeth); a real mild steel landing near ~260–290 MPa yield at 10 µm is a *loose,
+in-distribution* sanity (Pickering is a general correlation). **`nan` for a martensitic structure**
+(`f_martensite > 0.5` → the FP laws don't apply; the HRC-`nan`-on-a-soft-tail idiom — martensite's
+packet Hall–Petch deferred; **bainite named loosely-out-of-domain**, not guarded). `%pearlite` is
+the **equilibrium** slow-cool value from carbon (`fe_c.equilibrium_constituents`, Phase 1b), not the
+kinetic product. **Units trap registry-tested** (µm→mm at the `_d_mm` boundary: k_y ≈ 17.4 MPa·mm^(−½)
+≡ 0.55 MPa·m^(−½) ≈ the plan's 0.6 MPa·√m; N_free in **wt%** under a √, a wt%/ppm mix-up = ~√1000
+error). `properties.toughness_index` **untouched** (3b's tempering-axis Charpy ceiling intact — DBTT
+is a *temperature* on a different axis). No figure / no coupling / no `demo_grain` yet — that is
+**5c** (couple PAGS→ferrite grain at fixed cooling rate + the banked co-benefit figure + the
+`yield ≤ UTS` and DBTT-sanity guards). The co-benefit is already visible numerically (1045 refined
+80 µm → 5 µm: yield **299 → 484 MPa** while DBTT **127 → 5 °C** — strength up, brittleness down).
+**Next: 5c.**
