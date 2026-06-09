@@ -1,6 +1,7 @@
 # 0002 — Visualization & UX strategy
 
-Status: Accepted — 2026-06-08
+Status: Accepted — 2026-06-08 (status note appended 2026-06-09 — see end:
+`viz/` is not yet built; rule-of-three holds by *count* but not by *substance*)
 Scope: Program-level invariant; inherited by every per-project plan.
 
 ## Context
@@ -91,3 +92,25 @@ pick what fits. This keeps the doctrine lean-by-default (ARCHITECTURE.md §6).
 - **Plotly / Bokeh everywhere as the floor** — heavier and less agent-fluent than
   matplotlib for the universal static floor; used selectively at the deep end
   instead.
+
+## Status note — 2026-06-09: `viz/` not yet built; the rule-of-three substance check
+
+Three projects now each carry a project-local `plots.py` (steel, chip, planet), so
+Decision 3's rule-of-three trigger is satisfiable **by count**. A read of all three
+bodies (the "visual engine" session, 2026-06-09) found it is **not** satisfied **by
+substance**: they share **conventions and styling** — near-identical doctrine
+docstrings, color-constant blocks, the `axvline/axhline + marker + annotate-arrow`
+idiom, grid/legend defaults — but **almost no copy-pasted code**. Of the named
+primitives, the 2-D field/heatmap and the stacked bars are effectively *steel-only*
+today, and **time-animation exists nowhere** in the repo. Promoting on the strength of
+the count would build the thin styling shim Decision 3 itself warns against ("DRY by
+rule-of-three, **not premature abstraction**").
+
+**So `viz/` stays unbuilt, deliberately.** A *thin* extraction (the doctrine docstring +
+axis/marker/styling helpers) is the leaned-to next step — **not yet done**; the
+genuinely additive primitives (a real 2-D field/heatmap and a **time-animation**) are
+better built *with* their first consumer than extracted from thin air. The Planet
+**interactive-map layer registry** (ADR 0004 #1) — which exercises exactly the 2-D-field
+and annotated-overlay primitives — is the awaited **third consumer** that will *earn* the
+promotion to `viz/`. This note is recorded so a future session does not read the three
+`plots.py` as a standing mandate to stand up `viz/` on the count alone.
