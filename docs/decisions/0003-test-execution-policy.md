@@ -95,8 +95,9 @@ tests anyway, so not collecting them is *harmless* here, not a real loss. It onl
 matters when you actually edit the engine, which is the cross-cutting **full-gate**
 case. So whole-repo fast lane wins on (a)+(b), not on "scoping would miss a regression."
 
-**Trigger to revisit:** mechanize only when the *fast lane itself* crosses ~30 s (i.e.
-when project #2+ makes whole-repo scope actually bite).
+**When this gets built:** the committed point is **after Microchip lands** — a
+manifest-backed per-project gate (see *Successor* below). The ~30 s fast-lane time is an
+*earlier* signal: revisit sooner if it trips before Microchip is done.
 
 ## Consequences
 
@@ -150,9 +151,11 @@ reason or pin the solve. Until then it is a known, full-gate-visible flake.
   cost in 8 tests (some serialized behind a shared solver/import) parallelism
   yields far less than simply not running them in the inner loop. Reconsider at
   the ~30 s fast-lane trigger.
-- **Per-project / dependency-aware selection (`pytest-testmon`) now** — rejected
-  as premature (§8): two packages and an ~8 s core do not justify the machinery.
-  Named as the breadth-axis mechanism to add at the trigger, not before.
+- **Per-project / dependency-aware selection now** — rejected as premature (§8): two
+  packages and an ~8 s core do not justify the machinery. The committed successor (see
+  *Successor* below) is a **declared manifest** (project → used modules → test suites),
+  not an auto-detecting heuristic like `pytest-testmon` — an explicit single source of
+  truth, built once Microchip gives it a second entry to validate against.
 
 ## Amendment (2026-06-09)
 
@@ -178,26 +181,29 @@ is a deliberate separate step the user opts into; a cheap interim is CI running
 `-m "not slow"` (no optional stack). **Recommended, not yet built** — flagged to the
 user at the time of this amendment.
 
-## Scheduled revisit — after Microchip (project #2) lands
+## Successor — a per-project gate, after Microchip (project #2) lands
 
-By user direction (2026-06-09), the whole gate/tests system is to be **re-examined
-once Microchip is complete** — the first moment a second project exists, where the
-"whole-repo fast lane ≈ one project's tests" identity that justifies *not* scoping by
-path (Decision #4) stops holding. At that revisit, reconsider:
+This whole-repo tiered gate is **interim**. By user direction (2026-06-09), once
+Microchip lands the gate becomes **per-project**: *a commit to a project runs only the
+tests concerning that project* — its own tests **plus the tests of the modules it
+uses** — not the whole-repo fast lane. Detailed design is deliberately deferred to that
+build ("develop it there and then"), but the shape is fixed now:
 
-- **Per-project scoping vs whole-repo fast lane** — is the fast lane still under the
-  ~30 s trigger with two projects' tests in it, or does path-scoping / a changed-files
-  gate now earn its keep? (A steel-only commit re-running chip's tests, and vice versa,
-  is the cost to weigh.)
+- **A single source of truth** declaring, per project, *what it uses and which tests
+  run for it* (project → used engines/modules → test suites). The per-project gate reads
+  that manifest; it is **not** a heuristic git-diff guesser. Including the used modules'
+  tests is the whole point of the manifest — "tests concerning the project" means the
+  engine tests it depends on run *with* it, not just its own folder.
+
+Why wait for Microchip rather than build it now: with one project the per-project scope
+*is* the whole-repo fast lane (Decision #4 — identical sets), so the manifest would hold
+a single trivial entry that no second consumer could validate. Microchip is the first
+point the mapping has two distinct entries to get right.
+
+**Still open to settle at that milestone** (not yet committed):
+
 - **The `slow` set** — Microchip adds its own potentially-heavy tests (Deal–Grove,
   litho, any live numerics) to classify by the same live-solver/kernel/subprocess rule.
 - **The rot mitigation actually in place** — was full-gate CI on push set up (the
   Amendment's recommendation), or do the live-CALPHAD tests + the known flake still run
-  ~never? If still uncaught, this is the moment to fix it, not defer again.
-- *(Resolved 2026-06-09 — no longer pending.)* An earlier draft of Decision #4 / the
-  Amendment leaned on "narrowing to `pytest projects/steel` would drop the
-  `engines/diffusion` tests a steel change uses" as a *reason*. That was overstated and
-  has been corrected: it is only mechanically true (those test *files* aren't collected),
-  and because the engine is **frozen** a project-only commit cannot regress them, so it is
-  harmless — §4 now states the load-bearing reasons as "identical sets for one project" +
-  "classifier silent-skip risk." Kept here as a record of the correction.
+  ~never? If still uncaught, that milestone is the moment to fix it, not defer again.
