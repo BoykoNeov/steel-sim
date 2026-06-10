@@ -567,6 +567,123 @@ def sweep_comparison_figure(
     return fig
 
 
+def design_figure(result, grid, title=None) -> "plt.Figure":
+    """The banked **inverse-design artifact**: target a hardness, see the recipes that meet it.
+
+    Two panels — the *landscape* and the *answer*:
+
+      * **Left — the as-quenched feasibility map.** A hardness heat-map (HRC; soft cells <~20 HRC
+        greyed) over grades (rows) × quench media (cols), the same grid the forward surface draws —
+        but here each cell is judged against the **target band**. A cell already in band as-quenched
+        gets a **solid** border; a martensitic cell that reaches the band only **after tempering**
+        gets a **dashed** border with its tempered hardness noted; the **recommended** (cheapest)
+        recipe is starred. Cells with no border are infeasible — the honest "this grade/quench can't
+        be made to hit the spec."
+      * **Right — the feasible recipes, cheapest first.** A cost-ranked bar (the recommendation at
+        top), each annotated with its treatment and achieved hardness, coloured by whether the 0-D
+        lumped model holds (a severe quench of a thick section is flagged ⚠, not hidden). The
+        **cost ordering is a transparent convenience** (leaner alloy + milder quench + no extra
+        temper step) — *not* a validated cost model (see :mod:`~steel.design`).
+
+    ``result`` is a :class:`~steel.design.DesignResult`; ``grid`` is the matching
+    :func:`~steel.sweep.sweep_grid` (rows = the same grades, cols = the same media, same diameter) —
+    the as-quenched landscape the map colours. All numbers are computed upstream (ADR 0002: this
+    layer draws validated arrays, never derives them).
+    """
+    lo, hi = result.target_band
+    band_HRC = (_safe_hrc(lo), _safe_hrc(hi))               # the target band, on the HRC colorbar
+    steels = [row[0].steel for row in grid]
+    media = [o.medium for o in grid[0]]
+    n_steel, n_media = len(steels), len(media)
+
+    # Lookup: which (grade, medium) cells are feasible, and the recipe sitting on each.
+    recipe_at = {(r.steel.label(), r.medium): r for r in result.recipes}
+    rec = result.recommended
+
+    fig, (ax_map, ax_rank) = plt.subplots(
+        1, 2, figsize=(13.5, 6.0), gridspec_kw={"width_ratios": [1.15, 1.0]})
+
+    # -- left: the as-quenched hardness map, cells judged against the target band ---- #
+    HRC = np.array([[o.HRC for o in row] for row in grid])
+    HV = np.array([[o.HV for o in row] for row in grid])
+    cmap = plt.get_cmap("inferno").copy()
+    cmap.set_bad("0.85")
+    im = ax_map.imshow(np.ma.masked_invalid(HRC), cmap=cmap, aspect="auto",
+                       vmin=20.0, vmax=66.0, origin="upper")
+    for i in range(n_steel):
+        for j in range(n_media):
+            key = (steels[i].label(), media[j])
+            r = recipe_at.get(key)
+            if np.isfinite(HRC[i, j]):
+                base = f"{HRC[i, j]:.0f} HRC"
+                tcol = "white" if HRC[i, j] < 48 else "black"
+            else:
+                base, tcol = f"soft\n{HV[i, j]:.0f}HV", "0.25"
+            # Annotate feasible cells with how they get there (as-quenched vs +temper).
+            if r is not None and r.tempered:
+                base += f"\n→{r.HRC:.0f} (+temper)"
+            ax_map.text(j, i, base, ha="center", va="center", fontsize=8.2,
+                        color=tcol, fontweight="bold")
+            if r is not None:
+                # solid border = as-quenched-in-band; dashed = reaches band only via tempering.
+                ls = "--" if r.tempered else "-"
+                ax_map.add_patch(plt.Rectangle(
+                    (j - 0.5, i - 0.5), 1, 1, fill=False, edgecolor="#1e8449",
+                    lw=2.4, ls=ls, zorder=4))
+    if rec is not None:
+        ri = steels.index(next(s for s in steels if s.label() == rec.steel.label()))
+        rj = media.index(rec.medium)
+        # Park the star in the cell's top-left corner so it never collides with the annotation.
+        ax_map.plot(rj - 0.34, ri - 0.32, marker="*", ms=18, mfc="#f1c40f", mec="black",
+                    mew=1.2, zorder=6, clip_on=False)
+    ax_map.set_xticks(range(n_media)); ax_map.set_xticklabels([str(m) for m in media])
+    ax_map.set_yticks(range(n_steel)); ax_map.set_yticklabels([s.label() for s in steels])
+    ax_map.set_xlabel("quench medium  (slow → fast)")
+    ax_map.set_ylabel("steel")
+    cb = fig.colorbar(im, ax=ax_map, label="as-quenched hardness (HRC)", fraction=0.046, pad=0.04)
+    cb.ax.axhspan(band_HRC[0], band_HRC[1], color="#1e8449", alpha=0.35)   # the target band
+    ax_map.set_title("feasibility map  (□ feasible, ┄ via temper, ★ recommended)", fontsize=10.5)
+
+    # -- right: the feasible recipes, cost-ranked (the recommendation) -------------- #
+    if not result.recipes:
+        ax_rank.text(0.5, 0.5, "No feasible recipe in this design space\n"
+                     "— target outside the achievable envelope.", ha="center", va="center",
+                     fontsize=12, color="#b03a2e", transform=ax_rank.transAxes)
+        ax_rank.axis("off")
+    else:
+        recipes = list(result.recipes)                       # already cost-sorted (cheapest first)
+        y = np.arange(len(recipes))[::-1]                    # recommended at the TOP
+        costs = [r.cost for r in recipes]
+        colors = ["#1e8449" if r.lumped_valid else "#e67e22" for r in recipes]
+        ax_rank.barh(y, costs, color=colors, edgecolor="0.2", height=0.62)
+        for yi, r in zip(y, recipes):
+            flag = "" if r.lumped_valid else "  ⚠ 0-D stretched"
+            tag = "★ " if r is rec else ""
+            ax_rank.text(0.02, yi, f"{tag}{r.label()}", va="center", ha="left", fontsize=8.6,
+                         fontweight="bold" if r is rec else "normal")
+            ax_rank.text(r.cost, yi, f"  {r.HRC:.0f} HRC{flag}", va="center", ha="left", fontsize=8.2)
+        ax_rank.set_yticks([])
+        ax_rank.set_xlim(0, max(costs) * 1.45)
+        ax_rank.set_xlabel("relative cost  (leaner alloy + milder quench ⇒ lower — convenience, not validated)")
+        ax_rank.set_title("feasible recipes, cheapest first  (green = 0-D valid, orange = stretched)",
+                          fontsize=10.5)
+
+    head = title or (f"Inverse design: reach {result.target_HV:.0f} ± {result.tol_HV:.0f} HV "
+                     f"in a {result.diameter * 1000:.0f} mm section")
+    if rec is not None:
+        head += f"   →   recommend: {rec.label()}  ({rec.HRC:.0f} HRC)"
+    fig.suptitle(head, fontsize=12.5, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    return fig
+
+
+def _safe_hrc(HV: float) -> float:
+    """HV→HRC for the colorbar band marker — clamped to the scale floor so the band still draws."""
+    from .properties import vickers_to_rockwell_c
+    hrc = float(vickers_to_rockwell_c(HV))
+    return hrc if np.isfinite(hrc) else RELIABLE_HRC_MIN
+
+
 def four_curves_figure(
     ccurve: CCurve, paths: list[CoolingPath], results: list[TransformResult],
     hardness: list[tuple[float, float]] | None = None,

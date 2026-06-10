@@ -264,7 +264,7 @@ def bundled_fe_c_database_path() -> Path:
 
 
 def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+    return Path(__file__).resolve().parents[1]
 
 
 def default_steel_database_path() -> Path | None:

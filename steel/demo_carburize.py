@@ -47,7 +47,7 @@ QUENCH = "oil"                             # standard case-hardening quench
 # Heat Treating; Krauss). Drawn as a comparison band, not a test assertion.
 PUBLISHED_SURFACE_HRC = (62.0, 65.0)
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_FIGURE = _REPO_ROOT / "docs" / "figures" / "steel-carburize-gradient.png"
 OUTPUT_FIGURE = _REPO_ROOT / "outputs" / "steel-carburize-gradient.png"
 

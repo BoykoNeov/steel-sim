@@ -33,7 +33,7 @@ from . import fe_c
 
 COMPOSITION_4140 = ref.COMPOSITION_4140
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_FIGURE = _REPO_ROOT / "docs" / "figures" / "steel-calphad.png"
 OUTPUT_FIGURE = _REPO_ROOT / "outputs" / "steel-calphad.png"
 

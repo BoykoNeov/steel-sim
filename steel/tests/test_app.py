@@ -297,3 +297,49 @@ def test_austemper_overview_figure_builds_when_viz_present():
     fig = app.austemper_overview_figure("4340", 380.0, 600.0)
     assert len(fig.axes) == 3                             # diagram + U(t) + hardness-vs-hold
     plt.pyplot.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# 10. Inverse design (Phase 7): the hardness-spec → recipe what-if + its readout
+# --------------------------------------------------------------------------- #
+def test_design_outcome_inverts_to_recipes_in_band():
+    # The helper is a pure inversion of the validated forward chain — every recipe it returns must
+    # actually meet the band (the harness invariant, re-asserted at the app boundary).
+    res = app.design_outcome(45.0, 2.0, 10.0)             # ~45 HRC in a 10 mm section
+    assert res.feasible
+    lo, hi = res.target_band
+    assert all(lo <= r.HV <= hi for r in res.recipes)
+    # The section-size knob is in mm and wired through to metres (a thick section is harder to hit).
+    assert res.diameter == pytest.approx(0.010)
+
+
+def test_design_outcome_reports_infeasible_honestly():
+    # An out-of-envelope spec returns an EMPTY set (no near-miss) — the first-class infeasible.
+    res = app.design_outcome(60.0, 1.0, 60.0)             # ~60 HRC bulk in a 60 mm section
+    assert not res.feasible and res.recipes == ()
+
+
+def test_design_readout_is_display_ready():
+    dr = app.design_readout(app.design_outcome(45.0, 2.0, 10.0), 45.0, 2.0)
+    assert set(dr) == {"target", "band_HV", "feasible", "n", "recommended",
+                       "recommended_hardness", "recommended_valid", "rows"}
+    assert dr["target"] == "45 ± 2 HRC" and dr["band_HV"].endswith("HV")
+    assert dr["feasible"] and dr["n"] == len(dr["rows"])
+    # Each table row is fully formatted strings (main() forwards them, formats nothing).
+    row = dr["rows"][0]
+    assert set(row) == {"recipe", "HV", "HRC", "rel. cost", "0-D model"}
+    assert "4140" in dr["recommended"]                    # the textbook Q&T answer
+
+
+def test_design_readout_handles_infeasible_without_crashing():
+    dr = app.design_readout(app.design_outcome(60.0, 1.0, 60.0), 60.0, 1.0)
+    assert dr["feasible"] is False
+    assert dr["recommended"] is None and dr["rows"] == []
+
+
+def test_design_overview_figure_builds_when_viz_present():
+    plt = pytest.importorskip("matplotlib")
+    plt.use("Agg")
+    fig = app.design_overview_figure(app.design_outcome(45.0, 2.0, 10.0))
+    assert len(fig.axes) >= 2                             # feasibility map + ranked recipes
+    plt.pyplot.close(fig)

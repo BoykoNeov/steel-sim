@@ -34,9 +34,9 @@ root — on ``sys.path``. In that context a relative ``from . import sweep`` rai
 parent package" and a bare ``from steel import sweep`` raises ``ModuleNotFoundError``
 (``projects`` is not on the path). The demos dodge this by running under ``python -m`` (which
 supplies both); ``streamlit run`` supplies neither. So this module puts the repo root on
-``sys.path`` first (the ``parents[2]`` idiom the demos already use for figure paths) and then
-imports **absolutely**. Under pytest the root is already on the path, so the insert is a
-no-op and the test imports the very same module object.
+``sys.path`` first (``parents[1]`` = the repo root, the parent of the ``steel`` package — the
+same idiom the demos use for figure paths) and then imports **absolutely**. Under pytest the root
+is already on the path, so the insert is a no-op and the test imports the very same module object.
 
 Run it
 ------
@@ -57,7 +57,7 @@ from pathlib import Path
 # --- run-as-script bootstrap: put the repo root on sys.path BEFORE the absolute
 #     imports below, so `streamlit run app.py` (a top-level script, no package parent)
 #     resolves `steel.*`. A no-op under pytest, where the root is already there.
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
@@ -66,6 +66,7 @@ import numpy as np
 from steel import austemper as aus
 from steel import sweep
 from steel import grain
+from steel import design
 from steel import properties as prop
 
 
@@ -346,6 +347,49 @@ def austemper_readout(r: aus.AustemperResult) -> dict:
     }
 
 
+def design_outcome(target_HRC: float, tol_HRC: float, diameter_mm: float, t_hours: float = 1.0):
+    """The inverse-design what-if: a hardness spec + section size → the feasible recipe set (Phase 7).
+
+    One :func:`design.find_recipes_for_HRC` — search every grade × quench × temper for recipes
+    hitting ``target_HRC ± tol_HRC`` in a ``diameter_mm`` section. Adds no physics — a pure
+    inversion of the validated forward chain (every recipe is re-checked against the band), exactly
+    like the other helpers. Section size is taken in **mm** here (the slider unit) and converted to
+    the metres :mod:`design`/:mod:`cooling` use. Imports neither Streamlit nor matplotlib.
+    """
+    return design.find_recipes_for_HRC(
+        float(target_HRC), tol_HRC=float(tol_HRC),
+        diameter=float(diameter_mm) / 1000.0, t_hours=float(t_hours))
+
+
+def design_readout(result, target_HRC: float, tol_HRC: float) -> dict:
+    """Display strings for the inverse-design panel — the recommendation + the ranked recipe table.
+
+    Surfaces the spec (in both HRC and the internal HV band), whether it is feasible at all, the
+    cheapest recommended recipe with its 0-D-validity honesty flag, and the full feasible set as
+    table ``rows`` (label / HV / HRC / cost / 0-D model). All nan/format logic lives here, so
+    :func:`main` only forwards strings (and reads the ``feasible``/``recommended_valid`` flags).
+    """
+    lo, hi = result.target_band
+    rec = result.recommended
+    rows = [{
+        "recipe": r.label(),
+        "HV": f"{r.HV:.0f}",
+        "HRC": format_hrc(r.HRC),
+        "rel. cost": f"{r.cost:.2f}",
+        "0-D model": "valid" if r.lumped_valid else "⚠ stretched",
+    } for r in result.recipes]
+    return {
+        "target": f"{target_HRC:.0f} ± {tol_HRC:.0f} HRC",
+        "band_HV": f"{lo:.0f}–{hi:.0f} HV",
+        "feasible": result.feasible,
+        "n": len(result.recipes),
+        "recommended": rec.label() if rec is not None else None,
+        "recommended_hardness": f"{rec.HV:.0f} HV / {format_hrc(rec.HRC)}" if rec is not None else None,
+        "recommended_valid": bool(rec.lumped_valid) if rec is not None else None,
+        "rows": rows,
+    }
+
+
 # --------------------------------------------------------------------------- #
 # 2. Figure builders — thin wrappers over plots.py (matplotlib imported lazily)
 # --------------------------------------------------------------------------- #
@@ -430,6 +474,20 @@ def austemper_overview_figure(steel: str, T_hold: float, t_hold: float):
     with _warnings.catch_warnings():
         _warnings.filterwarnings("ignore", message="high hold", category=UserWarning)
         return austemper_figure(compute(steel, float(T_hold), float(t_hold)))
+
+
+def design_overview_figure(result):
+    """The inverse-design two-panel view — the feasibility map + the cost-ranked recipes.
+
+    A thin wrapper over :func:`steel.plots.design_figure` (the render layer owns the figure; the
+    app invents none of its own). Rebuilds the as-quenched landscape grid from ``result.diameter``
+    over the same grades × media the search used, so the map matches the result it annotates.
+    Raises ``ImportError`` without matplotlib — caught in :func:`main`.
+    """
+    from steel.plots import design_figure
+
+    grid = sweep.sweep_grid(list(sweep.STEELS), media=sweep.DEFAULT_MEDIA, diameter=result.diameter)
+    return design_figure(result, grid)
 
 
 # --------------------------------------------------------------------------- #
@@ -746,6 +804,47 @@ def main() -> None:
     )
     try:
         st.pyplot(austemper_overview_figure(a_steel, a_T, a_t))
+    except ImportError:
+        st.info(viz_hint)
+
+    # ---- section 7: inverse design — name a hardness, get a recipe (Phase 7) ---- #
+    st.subheader("Inverse design — name a hardness, get the recipe (Phase 7)")
+    st.caption(
+        "The whole simulator, run **backwards**. Every section above runs the model *forwards* "
+        "(steel + quench + temper → hardness); here you name the **target hardness** and **section "
+        "size**, and it searches every grade × quench × temper for the recipes that hit it, then "
+        "names the cheapest. It adds **no physics** — it just inverts the validated forward chain, "
+        "so a recipe is reported only if re-running the forward model lands it back in your band. "
+        "An impossible target honestly returns *nothing* — not a near miss."
+    )
+    dc = st.columns(3)
+    d_hrc = dc[0].slider("Target hardness (HRC)", 25, 60, 45, 1, key="design_hrc")
+    d_tol = dc[1].slider("Tolerance (± HRC)", 1, 4, 2, 1, key="design_tol")
+    d_mm = dc[2].slider("Section size (mm)", 5, 60, 10, 5, key="design_mm")
+    d_res = design_outcome(d_hrc, d_tol, d_mm, t_hours=1.0)
+    dr = design_readout(d_res, d_hrc, d_tol)
+    if not dr["feasible"]:
+        st.warning(
+            f"No recipe in the {' / '.join(sweep.STEELS)} × quench × temper space reaches "
+            f"**{dr['target']}** ({dr['band_HV']}) in a {d_mm} mm section — the target is outside the "
+            "achievable envelope. Try a softer target, a smaller section, or a wider tolerance."
+        )
+    else:
+        d1, d2 = st.columns([2, 1])
+        d1.metric("Recommended recipe", dr["recommended"])
+        d1.caption(dr["recommended_hardness"] + " · " + (
+            "0-D model valid" if dr["recommended_valid"]
+            else "⚠ 0-D lumped model stretched here (Biot > 0.1) — see the Jominy spatial view"))
+        d2.metric("Feasible recipes", f"{dr['n']}")
+        st.dataframe(dr["rows"], hide_index=True, width="stretch")
+    st.caption(
+        "Cost ordering is a transparent convenience (leaner alloy + milder quench + no extra temper "
+        "step ⇒ lower) — **not** a validated cost model. A ⚠ recipe needs a quench severe enough "
+        "that the 0-D lumped model is stretched at this section size; the bulk hardness is the "
+        "0-D section value, *not* a radial profile (that is the Jominy / critical-diameter view)."
+    )
+    try:
+        st.pyplot(design_overview_figure(d_res))
     except ImportError:
         st.info(viz_hint)
 

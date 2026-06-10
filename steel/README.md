@@ -96,6 +96,15 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   conversion; SAE J406/Hodge–Orehoski 50 %M hardness) + cited measured H-bands (SAE J1268 / EMJ) — no new physics, no
   engine touch, `pathint`/`kinetics` byte-identical. The module docstring is its contract (the teeth
   caveat: benchmark MEASURED, not Grossmann; the circularity roles anchor/teeth/edge).
+- **To work on inverse design (Phase 7):** `design.py` + `tests/test_design.py` (the harness) and
+  `demo_design.py` + `tests/test_demo_design.py` (the artifact), plus the §7 surfaces in `app.py`
+  and `steel.ipynb`. *Target a hardness, get a recipe* — **pure inversion** of the validated
+  forward chain (`sweep.evaluate` + `properties.tempered_martensite_HV`): no new physics, no engine
+  touch, `pathint`/`kinetics` byte-identical. Structure = **outer grade×quench enumeration × inner
+  temper root-find** (bisection over the monotone public temper curve). Like `sweep.py` it has **no
+  triad of its own** — tests are *harness correctness*, led by the *no-recipe-re-evaluates-out-of-band*
+  invariant. The module docstring is its contract (hardness-only v1; the cost sort is labelled
+  convenience, not validation; `diameter` is 0-D bulk hardness, not a radial profile). Plan §14.
 - The Fe-C boundaries in `fe_c.py` are **parametrized approximations** (linear between
   pinned invariant points). Phase 4 (`calphad_backend.py`) computes them from real
   thermodynamics instead — `CalphadBackend().phase_fractions(C0, T)` is a drop-in for
@@ -131,6 +140,7 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 6b | `kinetics.py` §6 (extend), `demo_bainite.py` | the **cited bainite reaction** (Steven–Haynes `Bs`, ΔT¹, `BC`) + the bay's *mechanism* (BC Cr/Mo ≪ FC Cr/Mo) — **descoped as a proven negative**: wiring it into `pathint` would regress the 8620 band, so it stays standalone (plan §13) | **built ✓** (2026-06-09, descoped) |
 | 6d | `austemper.py`, `demo_austemper.py`, `steel.ipynb` §6, `app.py` §6 | **austempering** — the isothermal bainite hold, the 6b reaction's valid home: per-steel anchors to the US Steel 1951 atlas (scales derived at import), holdout-proven 50 %-line, KM on the remainder, the minimum-full-transform-hold exercise | **built ✓** (2026-06-10) |
 | 6c | `ideal_diameter.py`, `demo_ideal_diameter.py` | the **critical-diameter (D_c) / measured-Jominy cross-check** — compute the critical diameter *from* the model (`fM=0.5` → EMJ p.29 water-quench conversion) vs **measured** H-bands (SAE J1268 / EMJ; *not* Grossmann-computed): the hardenability **ranking is correct**, 4340 **under-predicted** (Ni potency), 4140 in-band by construction (plan §13) | **built ✓** (2026-06-10) |
+| 7 | `design.py`, `demo_design.py`, `plots.design_figure`, `steel.ipynb` §7, `app.py` §7 | **post-v1 — inverse design**: *name a hardness, get the recipe* — outer grade×quench enumeration × inner temper root-find over the validated forward chain; feasible set cheapest-first, infeasible first-class, Biot honesty. No new physics (plan §14) | **built ✓** (2026-06-10) |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
 

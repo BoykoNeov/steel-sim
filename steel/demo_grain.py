@@ -49,7 +49,7 @@ T_AUSTENITIZE_FINE = 900.0       # °C — a sound normalizing temperature → f
 T_AUSTENITIZE_COARSE = 1200.0    # °C — over-austenitized → coarse PAGS (the cautionary case)
 T_HOURS = 1.0
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_FIGURE = _REPO_ROOT / "docs" / "figures" / "steel-grain.png"
 OUTPUT_FIGURE = _REPO_ROOT / "outputs" / "steel-grain.png"
 

@@ -32,7 +32,7 @@ import numpy as np
 
 from . import ideal_diameter as idd
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_FIGURE = _REPO_ROOT / "docs" / "figures" / "steel-ideal-diameter.png"
 OUTPUT_FIGURE = _REPO_ROOT / "outputs" / "steel-ideal-diameter.png"
 

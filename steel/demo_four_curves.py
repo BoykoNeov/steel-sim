@@ -47,7 +47,7 @@ BATH_T = 25.0                # °C — room-temperature quench bath
 
 # Banked artifact lives under docs/ (committed; .gitignore allows docs/**/*.png);
 # a working copy goes to outputs/ (gitignored).
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_FIGURE = _REPO_ROOT / "docs" / "figures" / "steel-four-curves.png"
 OUTPUT_FIGURE = _REPO_ROOT / "outputs" / "steel-four-curves.png"
 

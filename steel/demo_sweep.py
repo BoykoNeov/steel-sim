@@ -32,7 +32,7 @@ from . import properties as prop
 # high-carbon reference steel). Real compositions from the sweep registry.
 DEMO_STEELS = ["1045", "1080", "4140"]
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_FIGURE = _REPO_ROOT / "docs" / "figures" / "steel-sweep.png"
 OUTPUT_FIGURE = _REPO_ROOT / "outputs" / "steel-sweep.png"
 

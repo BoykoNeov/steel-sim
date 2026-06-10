@@ -357,6 +357,21 @@ def vickers_to_rockwell_c(HV: float | np.ndarray) -> float | np.ndarray:
     return float(out) if out.ndim == 0 else out
 
 
+def rockwell_c_to_vickers(HRC: float | np.ndarray) -> float | np.ndarray:
+    """Convert Rockwell-C ``HRC`` → Vickers ``HV`` — the inverse of :func:`vickers_to_rockwell_c`.
+
+    The same ASTM E140 anchor points, inverted: ``_E140_HRC`` is monotone increasing, so a plain
+    ``np.interp`` over it is exact and order-preserving. Returns ``nan`` outside the ~20–67 HRC
+    band the table covers (below ~20 HRC Rockwell-C is undefined — the honest "off the HRC
+    scale", mirroring the forward conversion). Provided so a *target* hardness given in HRC (the
+    engineering spec unit) can be brought into the internal HV currency where hardness is defined
+    everywhere — the :mod:`design` inverse-search reads a target this way. Scalar or array in/out.
+    """
+    HRC_arr = np.asarray(HRC, dtype=float)
+    out = np.interp(HRC_arr, _E140_HRC, _E140_HV, left=np.nan, right=np.nan)
+    return float(out) if out.ndim == 0 else out
+
+
 # --------------------------------------------------------------------------- #
 # 3. The rule of mixtures: phase fractions (+ carbon) → hardness
 # --------------------------------------------------------------------------- #

@@ -62,7 +62,7 @@ PUBLISHED = {
     "4140": [(1.6, 57.0), (6.4, 56.0), (12.7, 54.0), (19.0, 51.0), (25.4, 48.0)],
 }
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_FIGURE = _REPO_ROOT / "docs" / "figures" / "steel-jominy-hardness.png"
 OUTPUT_FIGURE = _REPO_ROOT / "outputs" / "steel-jominy-hardness.png"
 

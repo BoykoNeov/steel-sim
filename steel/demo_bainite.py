@@ -43,7 +43,7 @@ STEEL_1045 = dict(C=0.45, Mn=0.75, Si=0.22)
 CR_SWEEP = np.linspace(0.0, 1.5, 61)
 SWEEP_BASE_C = 0.40
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_FIGURE = _REPO_ROOT / "docs" / "figures" / "steel-bainite.png"
 OUTPUT_FIGURE = _REPO_ROOT / "outputs" / "steel-bainite.png"
 

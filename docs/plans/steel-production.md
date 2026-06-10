@@ -784,10 +784,13 @@ discipline — **never a notebook tweak** ([[steel-grain-physics-deferred]]).
    **6c** (the **D_I** cross-check) remains. CALPHAD coupling lands as the **Ae3-ceiling seam** (6a):
    always-green default = cited Andrews Ae3, optional override = a CALPHAD-computed transus.
 
-4. **Inverse design capstone — `[available]`.** Flip the forward model into a design
-   tool: target a hardness/depth (or yield) → search composition × quench × temper for
-   a recipe. An **optimization + UX** layer over the existing `sweep` harness; **no new
-   core physics**.
+4. **Inverse design capstone — `[ACTIVE → Phase 7]` (chosen 2026-06-10; BUILT ✓).** Flip the
+   forward model into a design tool: target a hardness → search grade × quench × temper for a
+   recipe. An **optimization + UX** layer over the existing `sweep` harness; **no new core
+   physics**. **Built 2026-06-10** (`steel/design.py` + the §7 surfaces) — as-built record in §14
+   below. v1 is **hardness-only** (advisor: yield is `nan` in the martensitic regime an
+   inverse-hardness search returns, so it cannot share a recipe — yield-/case-depth-inversion
+   named as separate future inversions).
 
 Also flagged in the deferred pile but not promoted to the menu (named scope ceilings,
 mostly harder to validate honestly): the **full Charpy curve** — absolute shelf energies and
@@ -1422,3 +1425,82 @@ under-ranks alloyed — named); upper/lower bainite morphology and the toughness
 not computed; S-H Bs extrapolated beyond 0.55 %C for 1080 (worked). **Not in scope:** any
 pathint/CCT wiring, martempering (the same hold machinery is the seam — noted, not built),
 Maynier bainite hardness terms.
+
+---
+
+## 14. Phase 7 — Inverse design / recipe selection (BUILT ✓ 2026-06-10)
+
+Promoted from §11 item 4 (chosen 2026-06-10). The simulator run **backwards**: name a target
+hardness for a section of a given size, and search the real-grade × quench × temper space for the
+recipes that meet it, cheapest first. `steel/design.py` (`Recipe` + `DesignResult` + `find_recipes`
+/ `find_recipes_for_HRC` + the inner temper root-find `_temper_to_target` + the `_recipe_cost`
+sort) + `properties.rockwell_c_to_vickers` (the symmetric E140 inverse, for an HRC target) +
+`plots.design_figure` + `demo_design.py` + notebook §7 + app §7 + `tests/test_design.py` (19) +
+`tests/test_demo_design.py` (3) + 5 app-helper tests. **Full gate → 385 passed / 2 skipped
+(optional pycalphad stack); not-slow → 360.** **No new physics, no engine touch,
+`pathint`/`kinetics`/every frozen benchmark byte-identical** — pure
+inversion of the validated forward chain. Banked: `docs/figures/steel-design.png`. Source: none
+(re-composition only). Detailed pre-build plan: `docs/plans/steady-puzzling-axolotl.md`.
+
+**The shape (advisor-shaped): outer discrete enumeration × inner continuous temper root-find.**
+*Outer* = grade ∈ `sweep.STEELS` × medium ∈ `DEFAULT_MEDIA` at a **given** section `diameter` (the
+part geometry is a *constraint*, not a swept axis). Staying on the **real-grade registry** is the
+non-circularity win, not a limitation — a continuous-composition optimiser would wander into the
+`Mn=0` "leaner-hypothetical" steels `ccurve_for_steel` warns about and no benchmark covers; this is
+**recipe selection / what-if inversion**, not "optimisation over composition space". *Inner* = the
+temper axis is the **one genuinely invertible core**: `properties.tempered_martensite_HV` is
+strictly monotone-decreasing in the Hollomon–Jaffe `P` (hence in temper `T` at fixed `t`) with
+achievable range `[HV_floor, HV_aq]`, so "what temper hits the target?" has a **unique** solution —
+found by **bisection over the public forward function** (so `design` stays decoupled from the
+master-curve's internal shape; it inverts whatever `tempered_martensite_HV` is). The temper branch
+fires **only** for a fully-martensitic as-quenched candidate (the validated martensite-only temper
+scope).
+
+**Validation posture — harness-correctness, NOT a physics triad (advisor, load-bearing).** Like
+`sweep.py`, this phase invents no physics, so it has **no triad of its own**; the tests check
+*solver/plumbing* correctness, honestly labelled: **(1) the lead invariant** (the strongest
+assertion, opens the test file) — *no returned recipe ever re-evaluates out-of-band*: every recipe,
+re-run through the forward model, lands in `[target − tol, target + tol]`; **(2) the temper
+root-find** (the only test with real solver content) — the bisection recovers an interior target to
+tolerance and reports honest **infeasible** (a bracketing failure) above as-quenched / below the
+spheroidite floor; **(3) infeasible is first-class** — an out-of-envelope target returns an
+**empty** set, not a nearest-miss; **(4) the round-trip** (a registry recipe's own hardness is
+recoverable) and **(5) the alloy>carbon deep-section ranking** are **wiring/consistency checks,
+NOT teeth** — they pass *by construction* from the forward model (the Phase-4 "pinned-invariant"
+status), kept as smoke tests and labelled, never dressed as benchmarks.
+
+**The banked worked spec (the demo headline):** ~45 HRC in a 10 mm section → the model recovers the
+**textbook answer, 4140 oil-quench-and-temper ~425 °C/1 h** (the cheapest *lumped-valid* recipe).
+The honest edges it surfaces, each named: plain-carbon **1045 is infeasible** here (its 10 mm water
+quench is only ~0.88 martensite — below the martensite-only temper scope, so the search will not
+dishonestly place it); the same 45 HRC via a more-severe **water** quench costs more *and* trips the
+**Biot flag** (a 10 mm water quench is past the 0-D lumped range); and `diameter` is the **0-D bulk
+hardness** of a section (size enters through cooling rate), **not a radial profile** (that is 6c's
+`D_c`). The **cost ordering is a labelled convenience** (leaner alloy + milder quench + no extra
+temper ⇒ lower), explicitly *not* a validated cost model — the feasible *set* is the deliverable.
+
+**Scope ceiling (named):** **hardness-only target in v1** — yield is incoherent as a co-target
+(`grain.coupled_grain_properties` returns `nan` yield in the martensitic regime an inverse-hardness
+search returns, so it cannot share a recipe); **yield-target** and **case-depth** (carburise — a
+different process axis) inversions named as separate future inversions, not v1 knobs; **no
+continuous-composition optimisation** (the `Mn=0` trap — registry grades only).
+
+**Incidental fix banked alongside (user-approved):** the **`parents[2]` repo-root regression** the
+"flatten to standalone steel-sim layout" left behind — files directly under `steel/` (the 9 demos,
+`app.py`, `calphad_backend.py`) used `parents[2]`, which overshoots one level in the flattened
+layout, so figure-banking wrote *outside* the repo and **`streamlit run app.py` was broken**
+(`ModuleNotFoundError: steel` — the documented "tests green, deliverable broken" trap, silently
+reintroduced). Corrected to `parents[1]` repo-wide (code-only; the committed figures were **not**
+regenerated). `tests/` files keep `parents[2]` — correct there, one directory deeper.
+
+**Surfaces (Slice B):** the §7 sections in `app.py` (the always-green `design_outcome`/`design_readout`
+helpers + a paper-thin `main()` wiring of the target/section sliders → recommendation + ranked
+recipe table + `design_figure`; verified end-to-end via Streamlit `AppTest`, 0 exceptions) and
+`steel.ipynb` (the thin-skin §7 narrative: a direct `design_explorer` compute cell — the
+load-bearing static figure — plus the `interact` slider sugar, the slice-1 discipline).
+
+**This completes Phase 7.** All of Steel's planned phases (1–6) + both post-v1 phases (5 grain, 7
+inverse design) + the full §9 experimentation surface are built. The remaining §11 menu items
+(residual-stress/distortion, the unified KV-pearlite rebuild from 6b, and the smaller deferrals —
+`D(C)` carburising, mixed-structure tempering, martempering, grain morphology) stay `[available]`,
+appetite-driven, blocking nothing.

@@ -43,7 +43,7 @@ DEMO_HOLD_S = 600.0          # s — comfortably past the minimum full-transform
 # The hardness-vs-hold-time sweep (panel 3): seconds, log-spaced through the whole window.
 SWEEP_HOLDS = np.geomspace(1.0, 1.0e4, 41)
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_FIGURE = _REPO_ROOT / "docs" / "figures" / "steel-austemper.png"
 OUTPUT_FIGURE = _REPO_ROOT / "outputs" / "steel-austemper.png"
 
