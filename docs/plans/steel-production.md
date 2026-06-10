@@ -1128,11 +1128,16 @@ Bounded cells via the standard mirror-padding trick (reflect seeds across 4 edge
 **plumbing/consistency, not teeth** (ADR 0002): size-accuracy (`(W/d)²`, monotone in `d`, determinism,
 bounded geometry) in `test_plots_grain_swatch.py` (5) + the demo build in `test_demo_grain_morphology.py`
 (2) + the app builder in `test_app.py` (1, fixed-field coarsening). Full gate **385 → 393 passed / 2
-skipped**; no physics, no engine touch, every frozen benchmark byte-identical. **Notebook §5 cell deferred
-(advisor):** the swatch already renders in the banked demo figure + the app, so a notebook cell is pure
-duplication, and the committed-notebook discipline needs a full "Run All" re-execution (a noisy
-all-figures diff) that the CI smoke-test won't even verify (it is `[infra]`-skipped, commit a00f66a) — an
-available opt-in, not done here.
+skipped**; no physics, no engine touch, every frozen benchmark byte-identical. **Notebook §5 cell ADDED
+(option B — clean partial re-exec):** for twin-parity with app §5, a §5 "see it: the grain, drawn to scale"
+markdown + a direct-render cell (the fine/coarse pair) were inserted via a **surgical** insertion — execute
+ONLY `[setup cell + the new cell]` in a fresh kernel, embed just that cell's figure, leaving the other 37
+cells' committed outputs **byte-identical** (a no-op `nbformat` round-trip proved formatting is preserved;
+diff = **80 insertions, 0 deletions**). Verified clean three ways (isolated `pytest`, the executor child in
+7.9 s returncode 0, the insertion's own kernel run). NB: the `slow` notebook smoke-test stays a **documented
+infra flake** — it wedges past its per-cell timeout under full-suite/CI load (CI-skipped, commit a00f66a;
+"REMOVE once root-caused"), so it can fail the *full local gate* while the **fast lane (`-m "not slow"`,
+the commit gate) is green** and the notebook executes clean in isolation. This phase did not touch that.
 
 ---
 
