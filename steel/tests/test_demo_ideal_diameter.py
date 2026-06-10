@@ -11,7 +11,7 @@ The figure itself is **not** in the correctness path (ADR 0002): rendering is ch
 import numpy as np
 import pytest
 
-from projects.steel.demo_ideal_diameter import compute
+from steel.demo_ideal_diameter import compute
 
 
 def test_demo_pipeline_ranking_anchor_and_teeth():
@@ -36,7 +36,7 @@ def test_ideal_diameter_figure_builds():
     # Viz smoke test only (never a correctness check): skip cleanly without the extra.
     plt = pytest.importorskip("matplotlib")
     plt.use("Agg")
-    from projects.steel.plots import ideal_diameter_figure
+    from steel.plots import ideal_diameter_figure
 
     fig = ideal_diameter_figure(compute())
     assert len(fig.axes) == 2                          # the two panels

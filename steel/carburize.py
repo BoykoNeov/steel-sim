@@ -93,7 +93,7 @@ the surface sits at the top of, or just past, that range). So, following the sam
 non-circularity discipline as the 1045 knee and the bainite deferral:
 
   * The **surface-hardness benchmark** is anchored to the martensite **potential**
-    ``HV = `` :func:`~projects.steel.properties.vickers_martensite` ``(C_surface, comp)``
+    ``HV = `` :func:`~steel.properties.vickers_martensite` ``(C_surface, comp)``
     — the hardness of the case *as designed* (martensite by intent), which is what a
     published surface-hardness spec represents. This is the clean cross-check to the
     independently-anchored as-quenched-martensite curve. It is :attr:`CarburizedTraverse.HV`.

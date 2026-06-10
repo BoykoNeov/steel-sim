@@ -4,6 +4,13 @@ Status: Accepted — 2026-06-09 (amended same day — see Amendment; the per-pro
 was built 2026-06-09 once Microchip landed — see *Successor*)
 Scope: Program-level invariant; inherited by every per-project plan.
 
+> **Extraction note (standalone repo).** This ADR was written for the BigSim monorepo. In this
+> single-project repo the per-project `python -m tools.gate <project>` runner and the `GATES`
+> manifest it describes **stayed in the monorepo** (they coordinate multiple projects); here the
+> tiered gate collapses to plain pytest — `pytest -m "not slow"` (routine fast lane) and `pytest`
+> (the full gate, adding the slow live-solver / kernel tests). The *rationale* below still holds;
+> only the multi-project tooling is absent.
+
 ## Context
 
 The program grows by accretion: many loosely-coupled modules across `engines/`
@@ -82,13 +89,13 @@ derived convenience, never a competing invariant.
 **4. Breadth scoping is a principle, not a system (the §8 deferral).** Don't build
 per-project markers, a git-diff classifier, dependency-aware selection
 (`pytest-testmon`), or parallelism (`pytest-xdist`) now. The two load-bearing reasons:
-(a) **with one project the scopes are identical sets** — `pytest projects/steel` *is*
+(a) **with one project the scopes are identical sets** — `pytest steel` *is*
 essentially the whole repo's fast tests today, so a classifier distinguishes the same
 thing twice; and (b) the fast lane is already ~8 s, so scoping buys ~nothing while a
 classifier adds a real **silent-skip failure mode** (a path rule that quietly omits a
 test that should have run is worse than a convention) plus a dependency map to maintain.
 
-A secondary note, *not* a load-bearing reason: `pytest projects/steel` collects only
+A secondary note, *not* a load-bearing reason: `pytest steel` collects only
 the test *files* under that path, so the engine's own `engines/diffusion/tests/` are
 not run **as tests**. The engine *code* is still exercised (steel imports it), and —
 because the engine is **frozen** — a steel-only commit cannot regress those engine

@@ -25,10 +25,10 @@ import warnings
 import numpy as np
 import pytest
 
-from projects.steel import sweep
-from projects.steel import properties as prop
-from projects.steel.kinetics import ccurve_for_steel, hardenability_factor, andrews_Ms
-from projects.steel.sweep import (
+from steel import sweep
+from steel import properties as prop
+from steel.kinetics import ccurve_for_steel, hardenability_factor, andrews_Ms
+from steel.sweep import (
     Steel, STEELS, evaluate, cooling_rate_sweep, composition_sweep, sweep_grid, temper_sweep,
 )
 
@@ -60,7 +60,7 @@ def test_evaluate_is_exact_recomposition():
     # The wiring smoke-test: evaluate() == the hand-wired pipeline, byte-for-byte. Near
     # tautological (it IS the same calls) — it guards against the harness silently dropping
     # a step or an argument, not against a physics error.
-    from projects.steel import cooling, pathint
+    from steel import cooling, pathint
     s = STEELS["1045"]
     out = evaluate(s, medium="oil")
 

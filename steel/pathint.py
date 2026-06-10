@@ -151,7 +151,7 @@ class TransformResult:
     """The microstructure a cooling path produces — mass fractions summing to 1.
 
     ``ferrite`` is the **proeutectoid ferrite** (Phase 6a — the Li/KV reaction below A₃, ``0`` for
-    a eutectoid/hypereutectoid steel or a bare :class:`~projects.steel.kinetics.CCurve` with no
+    a eutectoid/hypereutectoid steel or a bare :class:`~steel.kinetics.CCurve` with no
     ferrite reaction); ``pearlite``/``bainite`` are the rest of the diffusional product (split by
     formation temperature at ``Bs``); ``martensite``/``retained_austenite`` are the athermal fate
     of the austenite that survived to ``Mₛ``. ``X_diffusional`` is the diffusional total
@@ -183,7 +183,7 @@ class TransformResult:
         Always carries the ``ferrite`` key (``0.0`` when there is no proeutectoid-ferrite
         reaction — the stable key set the ``fe_c`` idiom keeps), so consumers index without a
         ``KeyError`` and the rule of mixtures iterates it in lockstep with
-        :data:`~projects.steel.properties.CONSTITUENT_HV`.
+        :data:`~steel.properties.CONSTITUENT_HV`.
         """
         return {
             "ferrite": self.ferrite,

@@ -19,8 +19,8 @@ import sys
 import numpy as np
 import pytest
 
-from projects.steel import app
-from projects.steel import sweep
+from steel import app
+from steel import sweep
 
 
 # --------------------------------------------------------------------------- #

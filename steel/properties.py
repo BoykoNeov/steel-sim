@@ -421,7 +421,7 @@ def jominy_hardness(
 
     For each sampled distance, take that position's cooling history ``(t, T)`` from the
     thermal ``field`` (any object exposing ``.x`` cell centres and ``.history(i)`` —
-    a :class:`~projects.steel.jominy.ThermalField`), integrate it to a microstructure
+    a :class:`~steel.jominy.ThermalField`), integrate it to a microstructure
     with :func:`pathint.transform_along_path` under the steel's ``ccurve`` (which carries
     its hardenability shift), and map the resulting fractions to hardness with the rule
     of mixtures. This is the full Phase-2 chain in one call — the data behind the banked
@@ -430,9 +430,9 @@ def jominy_hardness(
     Parameters
     ----------
     field
-        The solved thermal field (:func:`~projects.steel.jominy.solve_thermal_field`).
+        The solved thermal field (:func:`~steel.jominy.solve_thermal_field`).
     ccurve
-        The steel's TTT curve (:func:`~projects.steel.kinetics.ccurve_for_steel`) — its
+        The steel's TTT curve (:func:`~steel.kinetics.ccurve_for_steel`) — its
         ``tau_factor`` is the validated hardenability shift that makes 4140 harden deeper.
     C
         Carbon content (wt %), the property model's dominant variable.

@@ -13,8 +13,8 @@ The figure itself is **not** in the correctness path (ADR 0002): rendering is ch
 import numpy as np
 import pytest
 
-from projects.steel.demo_austemper import compute
-from projects.steel.properties import vickers_bainite
+from steel.demo_austemper import compute
+from steel.properties import vickers_bainite
 
 
 def test_demo_pipeline_holdout_hold_and_sweep():
@@ -45,7 +45,7 @@ def test_austemper_figure_builds():
     # Viz smoke test only (never a correctness check): skip cleanly without the extra.
     plt = pytest.importorskip("matplotlib")
     plt.use("Agg")
-    from projects.steel.plots import austemper_figure
+    from steel.plots import austemper_figure
 
     fig = austemper_figure(compute())
     assert len(fig.axes) == 3                          # the three panels

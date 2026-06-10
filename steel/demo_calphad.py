@@ -19,7 +19,7 @@ multicomponent steel TDB (``$BIGSIM_STEEL_TDB`` / ``data/tdb/`` — see
 
 Run headless (saves the figure, prints the comparison table):
 
-    python -m projects.steel.demo_calphad
+    python -m steel.demo_calphad
 """
 from __future__ import annotations
 
@@ -109,7 +109,7 @@ def print_summary(binary: dict, alloy: dict | None) -> None:
               "phase for it.")
     else:
         print("\n(no multicomponent steel TDB — right panel omitted. Enable it with: "
-              "python -c \"from projects.steel.calphad_backend import download_mc_fe; download_mc_fe()\")")
+              "python -c \"from steel.calphad_backend import download_mc_fe; download_mc_fe()\")")
 
 
 def save_figure(binary: dict, alloy: dict | None) -> Path:

@@ -12,8 +12,8 @@ import math
 import numpy as np
 import pytest
 
-from projects.steel import cooling
-from projects.steel.cooling import (
+from steel import cooling
+from steel.cooling import (
     characteristic_length, biot_number, lumped_time_constant,
     cooling_path, standard_media_paths, CoolingPath,
     RHO_STEEL, CP_STEEL, K_STEEL, MEDIA,

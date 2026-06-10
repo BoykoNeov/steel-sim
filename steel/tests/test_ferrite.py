@@ -25,13 +25,13 @@ The triad, each leg anchored to its own discipline (the program's non-circularit
 import numpy as np
 import pytest
 
-from projects.steel import fe_c, pathint
-from projects.steel import properties as prop
-from projects.steel.kinetics import (
+from steel import fe_c, pathint
+from steel import properties as prop
+from steel.kinetics import (
     CCurve, ccurve_for_steel, andrews_Ms, ferrite_FC, ferrite_reaction_for_steel,
     FerriteReaction, FERRITE_FC_COEFFS, FERRITE_KINETIC_SCALE,
 )
-from projects.steel.jominy import solve_thermal_field, JominyBar, jominy_distances
+from steel.jominy import solve_thermal_field, JominyBar, jominy_distances
 
 STEEL_1045 = dict(Mn=0.75, Si=0.22)
 STEEL_4140 = dict(Mn=0.90, Cr=1.0, Mo=0.20, Si=0.25)
@@ -218,7 +218,7 @@ def test_low_carbon_core_forms_substantial_ferrite_the_named_limitation():
     # at a slow oil quench — the more-physical result (published 8620 oil cores ~30–40 HRC, not
     # the full-martensite ~48 HRC potential). The global scale is held so this stays in-band, not
     # driven to a dead-soft full-ferrite core.
-    from projects.steel import cooling
+    from steel import cooling
     cc = ccurve_for_steel(0.20, **STEEL_8620)
     path = cooling.cooling_path("oil", T0=850.0, warn_biot=False)
     r = pathint.transform_along_path(path.t, path.T, cc)
@@ -244,7 +244,7 @@ def test_calphad_ae3_flows_into_the_ferrite_reaction_live():
     # and it flows through ccurve_for_steel into the reaction. The curved CALPHAD A₃ differs from
     # the Andrews default (the documented chord/curve gap), proving the seam carries a real value.
     pytest.importorskip("pycalphad")
-    from projects.steel import calphad_backend as cb
+    from steel import calphad_backend as cb
     if not cb.available():
         pytest.skip("pycalphad not importable")
     a3_calphad = cb.CalphadBackend().austenite_solvus(0.45)     # binary Fe-C A₃, from Gibbs min

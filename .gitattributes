@@ -1,0 +1,3 @@
+# Normalize shell scripts to LF so they run on the Linux CI runner regardless of
+# the checkout platform (Windows autocrlf would otherwise give them CRLF).
+*.sh text eol=lf

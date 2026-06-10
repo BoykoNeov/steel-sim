@@ -26,7 +26,7 @@ surface hardness ~60–64 HRC after quench (ASM Handbook Vol. 4 *Heat Treating*;
 
 Run headless (saves the figure, prints the table):
 
-    python -m projects.steel.demo_carburize
+    python -m steel.demo_carburize
 """
 from __future__ import annotations
 

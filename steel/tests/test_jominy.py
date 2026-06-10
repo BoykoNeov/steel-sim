@@ -26,9 +26,9 @@ import numpy as np
 import pytest
 
 from engines.diffusion import Diffusion1D, uniform_grid, Robin
-from projects.steel import pathint
-from projects.steel.jominy import JominyBar, solve_thermal_field, jominy_distances
-from projects.steel.cooling import (
+from steel import pathint
+from steel.jominy import JominyBar, solve_thermal_field, jominy_distances
+from steel.cooling import (
     RHO_STEEL, CP_STEEL, K_STEEL,
     lumped_time_constant, characteristic_length,
 )

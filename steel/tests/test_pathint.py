@@ -18,8 +18,8 @@ import math
 import numpy as np
 import pytest
 
-from projects.steel.kinetics import CCurve, andrews_Ms, koistinen_marburger
-from projects.steel import pathint as pi
+from steel.kinetics import CCurve, andrews_Ms, koistinen_marburger
+from steel import pathint as pi
 
 
 def eutectoid_ccurve() -> CCurve:

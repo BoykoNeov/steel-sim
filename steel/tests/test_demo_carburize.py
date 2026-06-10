@@ -13,7 +13,7 @@ The figure itself is **not** in the correctness path (ADR 0002): rendering is ch
 import numpy as np
 import pytest
 
-from projects.steel.demo_carburize import compute, PUBLISHED_SURFACE_HRC
+from steel.demo_carburize import compute, PUBLISHED_SURFACE_HRC
 
 
 def test_demo_pipeline_hard_case_over_soft_core():
@@ -43,7 +43,7 @@ def test_carburize_figure_builds():
     # Viz smoke test only (never a correctness check): skip cleanly without the extra.
     plt = pytest.importorskip("matplotlib")
     plt.use("Agg")
-    from projects.steel.plots import carburize_figure
+    from steel.plots import carburize_figure
 
     profile, traverse = compute(t_hours=8.0)
     fig = carburize_figure(profile, traverse)

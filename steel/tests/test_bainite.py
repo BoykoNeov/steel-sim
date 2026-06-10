@@ -28,8 +28,8 @@ import math
 import numpy as np
 import pytest
 
-from projects.steel import kinetics as k
-from projects.steel.kinetics import (
+from steel import kinetics as k
+from steel.kinetics import (
     BainiteReaction, bainite_reaction_for_steel, bainite_BC, steven_haynes_Bs, ferrite_FC,
     BAINITE_BC_COEFFS, BAINITE_UNDERCOOLING_EXP, STEVEN_HAYNES_BS_COEFFS, BS_DEFAULT,
     FERRITE_FC_COEFFS, ccurve_for_steel, KV_Q, R_CAL, ABS_ZERO, FERRITE_ASTM_GRAIN,

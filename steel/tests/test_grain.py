@@ -26,9 +26,9 @@ import numpy as np
 import pytest
 from scipy.optimize import least_squares
 
-from projects.steel import grain
-from projects.steel import fe_c
-from projects.steel.kinetics import R_GAS, ABS_ZERO
+from steel import grain
+from steel import fe_c
+from steel.kinetics import R_GAS, ABS_ZERO
 
 
 # --------------------------------------------------------------------------- #

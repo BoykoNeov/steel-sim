@@ -1,0 +1,66 @@
+# Build config exists for ONE consumer: full-gate CI (`pip install -e .[…]` to pull the
+# optional stacks). Local dev never installs — pytest's `pythonpath = ["."]` (below) puts
+# the repo root on sys.path, so `engines.*` / `steel.*` import without a build step. The
+# flat layout has two top-level packages, which setuptools won't auto-discover, so name them
+# explicitly here (else `pip install -e .` fails with "Multiple top-level packages discovered").
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["engines*", "steel*"]
+
+[project]
+name = "steel-sim"
+version = "0.1.0"
+description = "Educational steel heat-treatment simulator on a frozen, separately-validated diffusion/heat solver engine."
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+# Visualization is opt-in (ADR 0002): the compute core and the test suite stay
+# headless/matplotlib-free; only the render layer (steel/plots.py, demos, the notebook,
+# the app) needs this. Install with `pip install -e .[viz]`.
+viz = ["matplotlib>=3.7"]
+# The teaching notebook (steel.ipynb) is opt-in: jupyterlab (the editor a human opens it in) +
+# the headless run stack (ipywidgets + nbclient/nbformat/ipykernel) the execution smoke-test
+# (steel/tests/test_steel_notebook.py) uses. matplotlib stays in [viz], so the full runnable
+# combo is `pip install -e .[viz,notebook]`. The committed suite stays notebook-free (the
+# smoke-test is slow-marked and importorskip/kernelspec-gated).
+notebook = ["jupyterlab>=4", "ipywidgets>=8", "nbclient", "nbformat", "ipykernel"]
+# The Streamlit what-if app is opt-in: only steel/app.py (the shareable slider UI) needs
+# streamlit. Its compute helpers are pure sweep re-composition (streamlit/matplotlib-free), so
+# tests/test_app.py stays in the always-green committed suite; only `streamlit run app.py` needs
+# this extra. matplotlib stays in [viz], so the full combo is `pip install -e .[viz,app]`.
+app = ["streamlit>=1.30"]
+# CALPHAD backend is opt-in (Phase 4): only steel/calphad_backend.py (+ its demo/live tests)
+# needs pycalphad; the committed Phase-4 tests validate fe_c against a frozen reference table
+# and stay pycalphad-free. Thermodynamic databases are never bundled; the Fe-C one ships inside
+# pycalphad, the multicomponent steel one is fetched by calphad_backend.download_mc_fe().
+#   NOTE (Python 3.14): pycalphad pins `symengine<0.14`, but only symengine 0.14.1 has
+#   a 3.14 wheel. Override the cap with a two-step install:
+#       pip install symengine==0.14.1
+#       pip install 'pycalphad>=0.11' --no-deps
+#       pip install xarray pint tinydb runtype pandas
+#   (On Python <3.14 a plain `pip install -e .[calphad]` resolves normally.)
+calphad = ["pycalphad>=0.11"]
+
+# Single-command test runner config. `pythonpath = ["."]` puts the repo root on
+# sys.path so tests import the engine as `engines.diffusion...` (and the project as
+# `steel...`) without an install step.
+#
+# Tiered gate (ADR 0003): the routine local gate is the fast lane
+#   `pytest -m "not slow"`   — the always-on suite
+#   `pytest`                 — the full suite, incl. the slow live-CALPHAD + notebook tests (CI / release)
+# `slow` marks the handful of tests that drive a live external solver / kernel / subprocess.
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["engines", "steel"]
+addopts = "-q"
+markers = [
+    "slow: drives a live external solver / kernel / subprocess; deselect in the inner loop with -m 'not slow' (ADR 0003)",
+]

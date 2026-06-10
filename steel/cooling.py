@@ -108,7 +108,7 @@ def cooling_rate_through(t: np.ndarray, T: np.ndarray, T_ref: float = COOLING_RA
 
     The crossing time is interpolated from the (monotone-cooling) history and the
     variable-spacing derivative ``dT/dt`` read there — **the identical definition**
-    :meth:`projects.steel.jominy.ThermalField.cooling_rate` applies per spatial
+    :meth:`steel.jominy.ThermalField.cooling_rate` applies per spatial
     position, so the 0-D demo paths and the Jominy bar report cooling rate the same
     way (the single-metric discipline the Phase-3 property model needs). Returns
     ``nan`` if the path never cools through ``T_ref`` (e.g. it started below it).
@@ -198,7 +198,7 @@ def standard_media_paths(
     """The four anchor-demo cooling paths (furnace → air → oil → water), slow → fast.
 
     One austenitized 1080 specimen, four quench severities — the inputs that, fed
-    through :func:`~projects.steel.pathint.transform_along_path`, become the four
+    through :func:`~steel.pathint.transform_along_path`, become the four
     microstructures of the demo. Ordered by decreasing ``τ_th`` (increasing severity).
     """
     return [

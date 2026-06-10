@@ -13,7 +13,7 @@ for "builds without error", and skipped where the optional viz extra is absent.
 import numpy as np
 import pytest
 
-from projects.steel.demo_jominy import compute, STEELS, PUBLISHED
+from steel.demo_jominy import compute, STEELS, PUBLISHED
 
 
 def test_demo_pipeline_shared_end_then_diverges():
@@ -45,7 +45,7 @@ def test_jominy_figure_builds():
     # Viz smoke test only (never a correctness check): skip cleanly without the extra.
     plt = pytest.importorskip("matplotlib")
     plt.use("Agg")
-    from projects.steel.plots import jominy_hardness_figure
+    from steel.plots import jominy_hardness_figure
 
     _, curves = compute(n_cells=120, per_decade=60)
     fig = jominy_hardness_figure(curves)

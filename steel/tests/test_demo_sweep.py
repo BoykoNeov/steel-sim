@@ -10,7 +10,7 @@ import math
 
 import pytest
 
-from projects.steel.demo_sweep import compute, DEMO_STEELS
+from steel.demo_sweep import compute, DEMO_STEELS
 
 
 def test_demo_grid_tells_the_hardenability_story():
@@ -47,7 +47,7 @@ def test_demo_grid_tells_the_hardenability_story():
 def test_demo_sweep_figure_builds():
     plt = pytest.importorskip("matplotlib")
     plt.use("Agg")
-    from projects.steel.plots import sweep_comparison_figure
+    from steel.plots import sweep_comparison_figure
 
     grid = compute()
     fig = sweep_comparison_figure(grid)

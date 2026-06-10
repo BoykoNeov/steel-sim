@@ -24,7 +24,7 @@ This demo banks that honestly in two panels (``plots.bainite_figure``):
 
 Run headless (saves the figure, prints the summary):
 
-    python -m projects.steel.demo_bainite
+    python -m steel.demo_bainite
 """
 from __future__ import annotations
 

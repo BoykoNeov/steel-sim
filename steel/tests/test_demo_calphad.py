@@ -13,8 +13,8 @@ import numpy as np
 import pytest
 
 pytest.importorskip("pycalphad")
-from projects.steel import calphad_backend as cb       # noqa: E402
-from projects.steel import demo_calphad as demo        # noqa: E402
+from steel import calphad_backend as cb       # noqa: E402
+from steel import demo_calphad as demo        # noqa: E402
 
 # Every test here drives a live pycalphad solve through the module-scoped fixtures
 # below (`binary_data`/`alloy_data`) — including the figure smoke-test, which shares
@@ -66,7 +66,7 @@ def test_calphad_figure_builds(binary_data):
     # exercise the renderer (the alloy panel is covered by its own data test above).
     plt = pytest.importorskip("matplotlib")
     plt.use("Agg")
-    from projects.steel.plots import calphad_figure
+    from steel.plots import calphad_figure
 
     fig = calphad_figure(binary_data, None)
     assert len(fig.axes) == 1

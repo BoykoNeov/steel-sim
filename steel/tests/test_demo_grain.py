@@ -12,7 +12,7 @@ The figure itself is **not** in the correctness path (ADR 0002): rendering is ch
 """
 import pytest
 
-from projects.steel.demo_grain import compute, DEMO_STEEL_C, DEMO_STEEL_COMP
+from steel.demo_grain import compute, DEMO_STEEL_C, DEMO_STEEL_COMP
 
 
 def test_demo_pipeline_co_benefit_and_crossover():
@@ -43,7 +43,7 @@ def test_grain_figure_builds():
     # Viz smoke test only (never a correctness check): skip cleanly without the extra.
     plt = pytest.importorskip("matplotlib")
     plt.use("Agg")
-    from projects.steel.plots import grain_figure
+    from steel.plots import grain_figure
 
     fine, coarse = compute()
     fig = grain_figure(fine, coarse, DEMO_STEEL_C, DEMO_STEEL_COMP, name="1018")

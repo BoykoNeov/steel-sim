@@ -35,8 +35,8 @@ import math
 import numpy as np
 import pytest
 
-from projects.steel import carburize as cb
-from projects.steel import properties as prop
+from steel import carburize as cb
+from steel import properties as prop
 
 
 # --------------------------------------------------------------------------- #

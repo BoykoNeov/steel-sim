@@ -29,7 +29,7 @@ cross-check (it would bite only at sub-micron ferrite the austenitizing route ne
 
 Run headless (saves the figure, prints the table):
 
-    python -m projects.steel.demo_grain
+    python -m steel.demo_grain
 """
 from __future__ import annotations
 

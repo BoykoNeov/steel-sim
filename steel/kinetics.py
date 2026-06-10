@@ -217,7 +217,7 @@ class CCurve:
     thermodynamic ceiling ``T_eq`` (above which there is no driving force) and the
     martensite floor ``Ms`` (below which athermal martensite, not this curve,
     governs). The defaults are the calibrated plain-carbon-eutectoid set; pass
-    ``T_eq``/``Ms`` from :func:`~projects.steel.fe_c.A1` and :func:`andrews_Ms`
+    ``T_eq``/``Ms`` from :func:`~steel.fe_c.A1` and :func:`andrews_Ms`
     for a specific steel.
 
     ``tau_factor`` is the alloy **hardenability** time-shift ``M`` (Phase 2b): ``τ``
@@ -420,7 +420,7 @@ def hardenability_factor(
 # hypereutectoid steel, where there is no proeutectoid ferrite — the four-curves 1080 is untouched).
 # :mod:`pathint` runs this reaction *first*, then the existing pearlite/martensite logic on the
 # ``(1 − f_ferrite)`` remainder (the remaining austenite has been enriched toward the eutectoid the
-# pearlite curve is calibrated for — see :func:`~projects.steel.pathint.transform_along_path`).
+# pearlite curve is calibrated for — see :func:`~steel.pathint.transform_along_path`).
 #
 # WHAT IS CITED vs CALIBRATED (the non-circularity discipline, as in 2b/3b/4/5):
 #   * CITED — the FC *relative* composition coefficients (so the ferrite-retardation **ratio**
@@ -514,7 +514,7 @@ class FerriteReaction:
 
     Carries the Li/KV ferrite kinetics: the ceiling ``Ae3`` (°C), the composition factor ``FC``
     (:func:`ferrite_FC`), the equilibrium proeutectoid-ferrite cap ``f_pro`` (mass fraction, from
-    :func:`~projects.steel.fe_c.equilibrium_constituents`), the ASTM grain number ``G`` and the
+    :func:`~steel.fe_c.equilibrium_constituents`), the ASTM grain number ``G`` and the
     calibrated ``scale``. :meth:`rate` is the completion-rate coefficient ``K(T)``; the path
     integration (and the ``U·f_pro`` cap) lives in :mod:`pathint`. ``f_pro = 0`` (eutectoid /
     hypereutectoid) makes the reaction inert — :meth:`rate` returns 0, so an attached but inert
@@ -532,7 +532,7 @@ class FerriteReaction:
 
         ``K = scale·2^(0.41·G)·(Ae3 − T)³·exp(−Q/RT)/FC`` with ``T`` converted to kelvin and
         ``Q`` in cal/mol (so the gas constant is :data:`R_CAL`). The ``dU/dt = K(T)·g(U)`` step
-        and the cap are applied by :func:`~projects.steel.pathint.transform_along_path`.
+        and the cap are applied by :func:`~steel.pathint.transform_along_path`.
         """
         if self.f_pro <= 0.0 or T >= self.Ae3:
             return 0.0
@@ -562,7 +562,7 @@ def ferrite_reaction_for_steel(
     """Build the :class:`FerriteReaction` for a steel composition (wt%) — Phase 6a.
 
     Computes the cited composition factor ``FC`` (:func:`ferrite_FC`), reads the equilibrium
-    proeutectoid-ferrite cap ``f_pro`` from :func:`~projects.steel.fe_c.equilibrium_constituents`
+    proeutectoid-ferrite cap ``f_pro`` from :func:`~steel.fe_c.equilibrium_constituents`
     (``0`` for eutectoid / hypereutectoid — the reaction is then inert), and takes the ceiling
     ``Ae3`` from the **alloy-aware Andrews Ae3** by default. Pass ``Ae3=`` to override it with a
     CALPHAD-computed transus — the optional "couple CALPHAD into live kinetics" refinement (the

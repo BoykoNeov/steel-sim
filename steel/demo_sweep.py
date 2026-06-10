@@ -14,7 +14,7 @@ ferrite-pearlite to file-hard martensite.
 
 Run headless (prints the tables, saves the figure):
 
-    python -m projects.steel.demo_sweep
+    python -m steel.demo_sweep
 """
 from __future__ import annotations
 

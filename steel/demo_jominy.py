@@ -30,7 +30,7 @@ the figure is for.
 
 Run headless (saves the figure, prints the table):
 
-    python -m projects.steel.demo_jominy
+    python -m steel.demo_jominy
 """
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ def compute(n_cells: int = 200, per_decade: int = 120):
     """Run the whole Phase-2 spatial pipeline; return ``(field, curves)``.
 
     ``curves`` maps each steel label → its
-    :class:`~projects.steel.properties.JominyHardness` traverse. One shared thermal field
+    :class:`~steel.properties.JominyHardness` traverse. One shared thermal field
     feeds both steels — the same bar, the same cooling, only the steel's C-curve differs.
     """
     with warnings.catch_warnings():

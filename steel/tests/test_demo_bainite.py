@@ -12,7 +12,7 @@ The figure itself is **not** in the correctness path (ADR 0002): rendering is ch
 import numpy as np
 import pytest
 
-from projects.steel.demo_bainite import compute
+from steel.demo_bainite import compute
 
 
 def test_demo_pipeline_teeth_and_curves():
@@ -37,7 +37,7 @@ def test_bainite_figure_builds():
     # Viz smoke test only (never a correctness check): skip cleanly without the extra.
     plt = pytest.importorskip("matplotlib")
     plt.use("Agg")
-    from projects.steel.plots import bainite_figure
+    from steel.plots import bainite_figure
 
     fig = bainite_figure(compute())
     assert len(fig.axes) == 2                          # the two panels

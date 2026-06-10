@@ -1,7 +1,7 @@
 """The Phase-6d demo: austempering — the isothermal bainite hold, atlas-anchored.
 
 *Steel + hold in, bainitic microstructure + hardness out — with the anchoring shown.* Phase 6b's
-cited :class:`~projects.steel.kinetics.BainiteReaction` was proven invalid in the continuous-
+cited :class:`~steel.kinetics.BainiteReaction` was proven invalid in the continuous-
 cooling race; the **isothermal hold** is where it becomes validly load-bearing (:mod:`austemper`).
 The headline recipe is the classic one: **1080** (atlas p. 42) quenched to a salt-bath hold in the
 austempering band, held to full bainite, cooled — springs-and-clips territory.
@@ -22,7 +22,7 @@ The figure (``plots.austemper_figure``) banks the story in three panels:
 
 Run headless (saves the figure, prints the summary):
 
-    python -m projects.steel.demo_austemper
+    python -m steel.demo_austemper
 """
 from __future__ import annotations
 

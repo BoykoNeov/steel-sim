@@ -27,8 +27,8 @@ calibrated to):
 import numpy as np
 import pytest
 
-from projects.steel import ideal_diameter as idd
-from projects.steel import sweep
+from steel import ideal_diameter as idd
+from steel import sweep
 
 
 @pytest.fixture(scope="module")

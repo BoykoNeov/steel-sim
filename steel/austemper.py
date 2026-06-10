@@ -1,6 +1,6 @@
 """Austempering: the isothermal bainite hold — the 6b reaction's valid home (Steel Phase 6d).
 
-Phase 6b built the cited Li/KV :class:`~projects.steel.kinetics.BainiteReaction` and then *proved*
+Phase 6b built the cited Li/KV :class:`~steel.kinetics.BainiteReaction` and then *proved*
 it must stay out of the continuous-cooling race (:mod:`kinetics` §6 — at any 8620-safe scale a
 competing bainite is inert, at any visible scale it is wrong). But the **isothermal hold** never
 enters that race: quench *past* the pearlite nose, hold between ``Bs`` and ``Mₛ`` until the
@@ -56,7 +56,7 @@ Named scope edges (each is a measured probe fact, not a guess)
   qualitative.
 * **The model nose sits ~28 °C high** (4340: 458 °C vs ~430 °C measured).
 * **Bainite hardness is the carbon-only placeholder, now load-bearing** for the first time
-  (:func:`~projects.steel.properties.vickers_bainite`): fine for the plain-carbon 1080 headline
+  (:func:`~steel.properties.vickers_bainite`): fine for the plain-carbon 1080 headline
   recipe, under-ranks alloyed bainite (4340) — named, not fixed (Maynier's bainite terms still
   cannot graft, :mod:`properties`).
 * **Steven–Haynes ``Bs`` is extrapolated beyond its 0.55 %C fit range for 1080** (it works:
@@ -71,7 +71,7 @@ The recipe's idealizations (named)
 The quench to the hold is **instantaneous** (a salt-bath quench outruns the pearlite nose by
 construction; the path *to* the hold contributes nothing). The un-modeled **pearlite race** at
 the hold is *policed*, not modeled: the existing single-curve fictitious time
-(:meth:`~projects.steel.kinetics.CCurve.fraction`) is integrated through the live part of the
+(:meth:`~steel.kinetics.CCurve.fraction`) is integrated through the live part of the
 hold and a warning raised when it is non-negligible — loud for high holds near ``Bs`` (where the
 real ferrite/pearlite reactions compete), silent in the anchored austempering band. Bainite
 carbon partitioning into the remaining austenite (which raises real retained γ) is not modeled;
@@ -162,7 +162,7 @@ def _derive_scale(steel: AtlasSteel) -> float:
 
     For the separable site-saturation reaction ``dU/dt = K(T)·g(U)`` the isothermal time to
     fraction ``X`` is ``t = S(X)/K(T)`` with ``S`` the shape integral
-    (:func:`~projects.steel.kinetics._kv_shape_integral`), and ``K`` is linear in the scale — so
+    (:func:`~steel.kinetics._kv_shape_integral`), and ``K`` is linear in the scale — so
     the anchored scale is solved exactly: ``scale = S(0.5) / (K_{scale=1}(T_anchor) · t₅₀)``.
     Derived, never stored: the cited inputs are the atlas anchor point and the Li/KV rate form.
     """
@@ -270,14 +270,14 @@ def austemper(
 
     1. **Quench** — idealized instantaneous to the hold (named; a salt bath outruns the pearlite
        nose by construction, so the path down contributes nothing).
-    2. **Hold** — the anchored :class:`~projects.steel.kinetics.BainiteReaction` advances its
+    2. **Hold** — the anchored :class:`~steel.kinetics.BainiteReaction` advances its
        completion ``U`` by the existing ``completion_step`` (the 6b stepper, unchanged) on a
        uniform grid; the final ``U`` is the bainite fraction. The **holdout-proven** content is
        the 50 %-line position across the austempering band (the Phase-6d teeth).
     3. **Cool** — the remaining austenite ``(1 − U)`` shears per Koistinen–Marburger at
        ``T_quench`` (Andrews ``Mₛ`` from the atlas composition), the rest staying retained γ —
        exactly :mod:`pathint`'s bookkeeping, so fractions sum to 1 by construction.
-    4. **Hardness** — the existing rule-of-mixtures blend (:func:`~projects.steel.properties
+    4. **Hardness** — the existing rule-of-mixtures blend (:func:`~steel.properties
        .hardness_HV`) with the atlas composition's minor-alloy terms; **bainite is the
        carbon-only placeholder, now load-bearing** (named — fine for plain-carbon 1080,
        under-ranks alloyed bainite).

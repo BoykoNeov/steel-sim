@@ -3,7 +3,7 @@
 > **Status: FROZEN — 2026-06-08** (Steel Phase 1a). Sealed behind its passing
 > validation suite (`engines/diffusion/tests/`, run via `./run_tests.ps1`).
 > This one page is the unit of context downstream projects load — Microchip and
-> Planet depend on *this*, never on `projects/steel/`. Changing the frozen
+> Planet depend on *this*, never on `steel/`. Changing the frozen
 > surface below means a new ADR + re-running the seal (ARCHITECTURE.md §5–6).
 
 ## What it solves
@@ -117,7 +117,7 @@ layer (ADR 0002) consumes the same `state` — never a live solver object.
 
 Phase 1a validates the **solver machinery** with constant/given `D`. The
 material parameter *values* — the Arrhenius `D₀, Q` for carbon, the `α` and
-convective `h` for heat — are supplied by the **consumer** (`projects/steel/`)
+convective `h` for heat — are supplied by the **consumer** (`steel/`)
 and validated **there**, against the erfc carbon-profile benchmark and published
 TTT/Jominy data (Steel plan §3, Phases 1–2). The frozen seal here promises a
 *correct generic parabolic solver*, not specific physical constants.

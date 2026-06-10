@@ -14,7 +14,7 @@ values). Then:
 
 Regenerate / verify::
 
-    python -m projects.steel.calphad_reference            # prints REFERENCE vs live diff
+    python -m steel.calphad_reference            # prints REFERENCE vs live diff
 
 The committed numbers are **physical facts computed from cited assessments**, the
 same status as every other phase's benchmark constants (Maynier coefficients,
@@ -182,7 +182,7 @@ def main() -> None:  # pragma: no cover - manual verification helper
     print(json.dumps(live, indent=2, default=str))
     if steel is None:
         print("\n(no multicomponent steel TDB found — run "
-              "`python -c \"from projects.steel.calphad_backend import download_mc_fe; "
+              "`python -c \"from steel.calphad_backend import download_mc_fe; "
               "download_mc_fe()\"` to enable the 4140 entries)")
 
 

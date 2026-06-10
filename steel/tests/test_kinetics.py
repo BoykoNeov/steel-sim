@@ -20,12 +20,12 @@ import math
 import numpy as np
 import pytest
 
-from projects.steel.kinetics import (
+from steel.kinetics import (
     avrami_fraction, avrami_time_for_fraction, fit_avrami,
     CCurve, andrews_Ms, koistinen_marburger,
     KM_ALPHA, ABS_ZERO,
 )
-from projects.steel import fe_c
+from steel import fe_c
 
 EXACT = dict(rel=0.0, abs=1e-12)
 

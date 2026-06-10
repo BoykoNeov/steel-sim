@@ -25,9 +25,9 @@ import math
 
 import pytest
 
-from projects.steel import fe_c
-from projects.steel import calphad_reference as ref
-from projects.steel import calphad_backend as cb  # imports cleanly even without pycalphad
+from steel import fe_c
+from steel import calphad_reference as ref
+from steel import calphad_backend as cb  # imports cleanly even without pycalphad
 
 REF = ref.REFERENCE
 

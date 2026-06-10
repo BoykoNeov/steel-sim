@@ -175,7 +175,7 @@ def microstructure_schematic(
     """A **schematic** microstructure swatch whose cell areas track the phase fractions.
 
     Tiles an ``n × n`` field and allocates cells to each constituent in proportion to
-    ``fractions`` (the validated :meth:`~projects.steel.pathint.TransformResult.fractions`
+    ``fractions`` (the validated :meth:`~steel.pathint.TransformResult.fractions`
     dict — pearlite/bainite/martensite/retained_austenite), coloured by
     :data:`PHASE_COLORS` with a light morphology hatch (pearlite lamellae ``---``,
     martensite laths ``///``, bainite ``xx``). The allocation is **deterministic** (a fixed
@@ -240,8 +240,8 @@ def jominy_hardness_figure(
 ) -> "plt.Figure":
     """The banked **Phase-2 artifact**: hardness vs distance from the quenched end.
 
-    ``curves`` maps a steel label → its :class:`~projects.steel.properties.JominyHardness`
-    traverse (from :func:`~projects.steel.properties.jominy_hardness`). Optional
+    ``curves`` maps a steel label → its :class:`~steel.properties.JominyHardness`
+    traverse (from :func:`~steel.properties.jominy_hardness`). Optional
     ``references`` maps a label → ``(distance_mm, HRC)`` of *published* end-quench points
     (reference facts, supplied by the demo) drawn as markers for comparison.
 
@@ -485,7 +485,7 @@ def sweep_comparison_figure(
 ) -> "plt.Figure":
     """The banked **experimentation-surface artifact**: the composition × cooling-rate grid.
 
-    ``grid`` is the :func:`~projects.steel.sweep.sweep_grid` output — ``grid[i][j]`` is steel
+    ``grid`` is the :func:`~steel.sweep.sweep_grid` output — ``grid[i][j]`` is steel
     ``i`` cooled in medium ``j`` (rows = steels, cols = media). This is the one genuinely-new
     view over the four-curves demo: it adds the **composition axis** a single-steel demo
     cannot show. Two panels (mechanism | consequence), like the four-curves figure:
@@ -606,10 +606,10 @@ def single_steel_figure(
 
     Packaged here (the render layer) so the *free-composition* surfaces compose the same
     two-panel view from validated arrays rather than each hand-rolling it: the Streamlit
-    app's :func:`~projects.steel.app.custom_figure` wraps this (the app's discipline forbids
+    app's :func:`~steel.app.custom_figure` wraps this (the app's discipline forbids
     inventing a figure in ``main()``), and ``steel.ipynb`` §3 draws the same left/right pair.
     Takes the chain **primitives** — ``ccurve`` (the alloy-shifted C-curve), the single
-    cooling ``path`` and its ``result`` — *not* a :class:`~projects.steel.sweep.Outcome`, so
+    cooling ``path`` and its ``result`` — *not* a :class:`~steel.sweep.Outcome`, so
     this module keeps its no-:mod:`sweep`-import boundary (it already depends only on
     kinetics/pathint/cooling/properties). ADR 0002: a figure is reach, never evidence.
     """
@@ -641,7 +641,7 @@ def grain_figure(
     Three panels telling the option-(b) story — yield and DBTT moving *opposite* ways under
     grain refinement (the famous exception to the strength↔toughness trade-off), made a model
     output rather than narrated. ``fine`` / ``coarse`` are the demo's two operating points (a cool
-    vs a hot austenitize) as :class:`~projects.steel.grain.GrainProperties`; ``C`` / ``comp`` the
+    vs a hot austenitize) as :class:`~steel.grain.GrainProperties`; ``C`` / ``comp`` the
     steel the smooth curves are sampled for.
 
       * **Left — the co-benefit, vs ``d^(−½)``.** Yield (left axis, ``↑``) and DBTT (right axis,
@@ -776,7 +776,7 @@ def grain_interactive_figure(
 
     The slider-driven companion to the banked :func:`grain_figure` (which contrasts a fixed
     fine/coarse pair). Here a *single* operating point — ``gp``, the
-    :class:`~projects.steel.grain.GrainProperties` for the **current** austenitizing (T, t) — is
+    :class:`~steel.grain.GrainProperties` for the **current** austenitizing (T, t) — is
     marked on two curves swept over austenitizing temperature, so dragging the temperature slides
     the marker and tells the **over-austenitizing** story live: a hotter hold coarsens the grain,
     which lowers yield *and* raises DBTT (both worse). The two panels show *different* quantities:
@@ -856,7 +856,7 @@ def grain_interactive_figure(
 def ideal_diameter_figure(d):
     """The Phase-6c artifact: the critical-diameter (D_c) / measured-Jominy cross-check.
 
-    ``d`` is a :class:`~projects.steel.demo_ideal_diameter.IdealDiameterDemo` (already-validated
+    ``d`` is a :class:`~steel.demo_ideal_diameter.IdealDiameterDemo` (already-validated
     arrays — this layer only draws them, ADR 0002). ``D_c`` is the water-quench centre-equivalent
     critical diameter (a lower bound on the ideal ``D_I``). Two panels:
 
@@ -943,7 +943,7 @@ def ideal_diameter_figure(d):
 def bainite_figure(d):
     """The Phase-6b artifact: the bainite bay's **mechanism** (the teeth) and the cited C-curve.
 
-    ``d`` is a :class:`~projects.steel.demo_bainite.BainiteDemo` (already-validated arrays — this
+    ``d`` is a :class:`~steel.demo_bainite.BainiteDemo` (already-validated arrays — this
     layer only draws them, ADR 0002). Two panels:
 
     * **left — the coefficient bay (scale-free, cited):** as Cr is added, the reconstructive ferrite
@@ -1012,7 +1012,7 @@ def bainite_figure(d):
 def austemper_figure(d):
     """The Phase-6d artifact: the atlas-anchored austempering hold, in three panels.
 
-    ``d`` is a :class:`~projects.steel.demo_austemper.AustemperDemo` (already-validated arrays —
+    ``d`` is a :class:`~steel.demo_austemper.AustemperDemo` (already-validated arrays —
     this layer only draws them, ADR 0002).
 
     * **left — the anchored isothermal diagram, atlas measurements on it:** the model 50 %-line

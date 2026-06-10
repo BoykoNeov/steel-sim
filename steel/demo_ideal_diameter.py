@@ -21,7 +21,7 @@ The figure (``plots.ideal_diameter_figure``) banks the story in two panels:
 
 Run headless (saves the figure, prints the summary):
 
-    python -m projects.steel.demo_ideal_diameter
+    python -m steel.demo_ideal_diameter
 """
 from __future__ import annotations
 

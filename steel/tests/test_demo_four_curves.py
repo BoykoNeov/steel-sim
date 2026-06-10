@@ -14,7 +14,7 @@ import math
 
 import pytest
 
-from projects.steel.demo_four_curves import compute, compute_hardness
+from steel.demo_four_curves import compute, compute_hardness
 
 
 def test_demo_pipeline_spans_pearlite_to_martensite():
@@ -77,7 +77,7 @@ def test_anchor_figure_builds():
     # Viz smoke test only (never a correctness check): skip cleanly without the extra.
     plt = pytest.importorskip("matplotlib")
     plt.use("Agg")
-    from projects.steel.plots import four_curves_figure
+    from steel.plots import four_curves_figure
 
     ccurve, paths, results = compute()
     fig = four_curves_figure(ccurve, paths, results)

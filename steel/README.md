@@ -1,4 +1,4 @@
-# `projects/steel` — the steel production simulator
+# `steel` — the steel production simulator
 
 *Cooling curve in, microstructure out.* The program's flagship and the project
 that **builds & freezes the diffusion/heat spine** (`engines/diffusion`) the other
@@ -64,8 +64,8 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   `plots.py`'s `four_curves_figure`/`sweep_comparison_figure`), and **`main()`** (the *only* place
   `import streamlit` lives; not unit-tested — ADR 0002). Two non-obvious points: (1) the module
   bootstraps the repo root onto `sys.path` and imports **absolutely**, because `streamlit run
-  app.py` runs the file as a top-level script (no package parent, `projects/steel/` — not repo root
-  — on the path) where relative imports fail; verify with `python projects/steel/app.py` (it must
+  app.py` runs the file as a top-level script (no package parent, `steel/` — not repo root
+  — on the path) where relative imports fail; verify with `python steel/app.py` (it must
   reach `import streamlit` inside `main()` and die only there). (2) `main()` is kept paper-thin so
   only `st.*` calls can raise — every value is computed/formatted in a tested helper. Needs
   `pip install -e .[viz,app]`. The temper view uses streamlit-native `st.line_chart`, one chart per
@@ -146,7 +146,7 @@ and in what mass proportion — the equilibrium the Phase-1c kinetics drive towa
   ferrite/cementite once pearlite is resolved into its lamellae.
 
 ```python
-from projects.steel.fe_c import phase_fractions, equilibrium_constituents
+from steel.fe_c import phase_fractions, equilibrium_constituents
 
 phase_fractions(0.45, 727)        # 1045 just above A₁ → ~42% ferrite, ~58% austenite
 equilibrium_constituents(0.45)    # → 42% pro-eutectoid ferrite + 58% pearlite (the showcase)
@@ -194,8 +194,8 @@ A₁ is the driving force the kinetics consume.
   the honest hand-off to the Phase-2 spatial solve).
 
 ```python
-from projects.steel.kinetics import CCurve, andrews_Ms
-from projects.steel import cooling, pathint
+from steel.kinetics import CCurve, andrews_Ms
+from steel import cooling, pathint
 cc = CCurve(Ms=andrews_Ms(0.8))                 # 1080: A₁=727, Ms≈201, nose≈550 °C/1 s
 p = cooling.cooling_path("water", T0=850)        # a 0-D cooling history (t, T)
 r = pathint.transform_along_path(p.t, p.T, cc)   # → mostly martensite + retained γ
@@ -205,7 +205,7 @@ r = pathint.transform_along_path(p.t, p.T, cc)   # → mostly martensite + retai
 
 ```powershell
 pip install -e .[viz]                  # one-time: matplotlib for the figure
-python -m projects.steel.demo_four_curves
+python -m steel.demo_four_curves
 ```
 
 One 1080 specimen, four quench rates → the figure
@@ -237,7 +237,7 @@ unconditionally stable) on either side of one frozen implicit conduction step �
 engine is never modified (the ADR-0001 array seam working as intended).
 
 ```python
-from projects.steel.jominy import JominyBar, solve_thermal_field, jominy_distances
+from steel.jominy import JominyBar, solve_thermal_field, jominy_distances
 f = solve_thermal_field(JominyBar(), T0=850.0)          # T(x,t) over the bar
 cr = f.cooling_rate_at(jominy_distances(16), T_ref=700) # K/s vs distance (the Jominy metric)
 t, T = f.history(0)                                      # the (t,T) path at a depth → pathint (2b)
@@ -267,7 +267,7 @@ time-shift `M` (`τ → M·τ`, shape- and nose-temperature-preserving); `ccurve
 Mn, …)` bundles it with the A₁ ceiling and Andrews Mₛ into a ready `CCurve` for a named steel.
 
 ```python
-from projects.steel.kinetics import ccurve_for_steel
+from steel.kinetics import ccurve_for_steel
 cc_1045 = ccurve_for_steel(0.45, Mn=0.75, Si=0.22)                   # shallow-hardening, M ≈ 1
 cc_4140 = ccurve_for_steel(0.40, Mn=0.90, Cr=1.0, Mo=0.20, Si=0.25)  # deep-hardening,   M ≈ 8
 ```
@@ -300,9 +300,9 @@ the reporting boundary via an **ASTM E140** table, valid ~20–65 HRC (below 20 
 is undefined → `nan`, the honest output for a soft pearlitic tail).
 
 ```python
-from projects.steel.jominy import solve_thermal_field, JominyBar, jominy_distances
-from projects.steel.kinetics import ccurve_for_steel
-from projects.steel import properties as prop
+from steel.jominy import solve_thermal_field, JominyBar, jominy_distances
+from steel.kinetics import ccurve_for_steel
+from steel import properties as prop
 f  = solve_thermal_field(JominyBar(), T0=850.0)                       # one shared thermal field
 cc = ccurve_for_steel(0.40, Mn=0.90, Cr=1.0, Mo=0.20, Si=0.25)       # 4140's C-curve (its M-shift)
 h  = prop.jominy_hardness(f, cc, 0.40, jominy_distances(16))         # → HV, HRC, fM vs distance
@@ -335,7 +335,7 @@ Jominy curve is a genuine cross-check. v1 drops Maynier's cooling-rate and minor
 
 ```powershell
 pip install -e .[viz]
-python -m projects.steel.demo_jominy
+python -m steel.demo_jominy
 ```
 
 One ASTM A255 bar, two ~0.4 %C steels → the figure
@@ -365,7 +365,7 @@ new `comp`/`Vr` args are **optional and default to the 2c carbon-only value byte
 the frozen 2c benchmark is unchanged — the new terms fire only where a caller passes them.
 
 ```python
-from projects.steel import properties as prop
+from steel import properties as prop
 prop.vickers_martensite(0.40)                              # 2c value (carbon-only)
 prop.vickers_martensite(0.40, comp={"Mn": 0.9, "Cr": 1.0, "Si": 0.25})   # + Maynier alloy delta
 prop.vickers_ferrite_pearlite(0.80, Vr=80000.0)           # + cooling-rate term (°C/h at 700 °C)
@@ -393,7 +393,7 @@ hardness is a decreasing master curve `HV(P)` running between two **independentl
 endpoints — the Phase-3a as-quenched martensite and the ferrite-pearlite/spheroidite floor.
 
 ```python
-from projects.steel import properties as prop
+from steel import properties as prop
 prop.tempered_martensite_HV(0.40, 400.0, 1.0)                       # plain 0.4%C, 1 h @ 400 °C → ~425 HV (~43 HRC)
 prop.tempered_martensite_HV(0.40, 400.0, 1.0, comp={"Cr":1.0,"Mn":0.9,"Mo":0.2,"Si":0.25})  # 4140 → ~466 HV (resists)
 prop.tensile_strength_MPa(425.0)                                    # ISO 18265: ~1370 MPa
@@ -442,7 +442,7 @@ textbook **erfc** carbon profile; the position-dependent `%C` then feeds the *sa
 martensite case over a tougher, softer (~48 HRC) core.
 
 ```python
-from projects.steel import carburize as cb
+from steel import carburize as cb
 p  = cb.solve_carburize(C_surface=0.8, C_core=0.2, T_carburize=925.0, t_hours=8.0)  # erfc C(x)
 p.case_depth(0.4)                       # effective case depth to 0.4 %C  (~0.66 mm)
 tr = cb.carburized_traverse(p)          # 8620, oil quench → fractions + hardness vs depth
@@ -481,7 +481,7 @@ transformation timescale) — the complement to the *cooling-rate*-driven gradie
 
 ```powershell
 pip install -e .[viz]
-python -m projects.steel.demo_carburize
+python -m steel.demo_carburize
 ```
 
 One carburized 8620 section → the figure
@@ -503,12 +503,12 @@ low-alloy steels** `fe_c` cannot represent at all.
 ```powershell
 pip install symengine==0.14.1; pip install "pycalphad>=0.11" --no-deps   # Py3.14: override the symengine pin
 pip install xarray pint tinydb runtype pandas
-python -c "from projects.steel.calphad_backend import download_mc_fe; download_mc_fe()"  # ODbL steel DB → data/tdb/
-python -m projects.steel.demo_calphad
+python -c "from steel.calphad_backend import download_mc_fe; download_mc_fe()"  # ODbL steel DB → data/tdb/
+python -m steel.demo_calphad
 ```
 
 ```python
-from projects.steel.calphad_backend import CalphadBackend, default_steel_database_path
+from steel.calphad_backend import CalphadBackend, default_steel_database_path
 be = CalphadBackend()                       # bundled Fe-C database
 be.phase_fractions(0.40, 760.0)             # → {ferrite, austenite, cementite} — a drop-in for fe_c
 be.eutectoid()                              # → (~726.6 °C, ~0.757 %C) — emerges, not pinned
@@ -552,7 +552,7 @@ turning the §1 "cooling curve in, microstructure out" into a sweepable what-if 
 **cooling rate** and **composition**.
 
 ```python
-from projects.steel import sweep
+from steel import sweep
 sweep.evaluate(sweep.STEELS["4140"], medium="oil")          # one what-if → an Outcome
 sweep.cooling_rate_sweep(sweep.STEELS["1080"])              # one steel × four media (the cooling-rate axis)
 sweep.composition_sweep(["1045", "4140"], medium="oil")    # steels at one medium (the composition axis)
@@ -587,7 +587,7 @@ temper-resistance); **conservation passthrough** (the four fractions sum to 1 at
 
 ```powershell
 pip install -e .[viz]
-python -m projects.steel.demo_sweep
+python -m steel.demo_sweep
 ```
 
 Three steels × four media → the figure
@@ -611,7 +611,7 @@ relative toughness alongside hardness.
 
 ```powershell
 pip install -e .[viz,notebook]        # matplotlib (viz) + jupyterlab + ipywidgets + the nbclient/ipykernel run stack
-jupyter lab projects/steel/steel.ipynb    # (classic UI: `pip install notebook`, then `jupyter notebook`)
+jupyter lab steel/steel.ipynb    # (classic UI: `pip install notebook`, then `jupyter notebook`)
 ```
 
 It is a **thin skin** (ADR 0002): every *compute* cell calls the validated harness **directly**
@@ -634,7 +634,7 @@ not correctness** (ADR 0002) — pure `sweep` re-composition, no new physics.
 
 ```powershell
 pip install -e .[viz,app]                 # matplotlib (viz) + streamlit (app)
-streamlit run projects/steel/app.py
+streamlit run steel/app.py
 ```
 
 It is laid out in **three layers** so the deliverable is both testable and runnable:
@@ -657,11 +657,11 @@ It is laid out in **three layers** so the deliverable is both testable and runna
 **Two non-obvious points** (both verified, not assumed):
 
 - **Run-as-script imports.** `streamlit run app.py` executes the file as a top-level script
-  (`__main__`, no package parent) with `projects/steel/` — *not* the repo root — on `sys.path`, so a
-  relative `from . import sweep` raises "no known parent package" and a bare `from projects.steel
+  (`__main__`, no package parent) with `steel/` — *not* the repo root — on `sys.path`, so a
+  relative `from . import sweep` raises "no known parent package" and a bare `from steel
   import sweep` raises `ModuleNotFoundError`. The module therefore puts the repo root on `sys.path`
   first (the `parents[2]` idiom the demos use) and imports **absolutely**. Verify cheaply, no
-  streamlit needed: `python projects/steel/app.py` must reach `import streamlit` inside `main()` and
+  streamlit needed: `python steel/app.py` must reach `import streamlit` inside `main()` and
   die only there (if it dies on a `from …` line, the bootstrap is wrong).
 - **The grade dropdown for the main what-ifs; a *guarded* free slider for build-your-own.**
   Cooling/hardness/temper use the `STEELS` registry (real compositions) to dodge the documented
@@ -694,7 +694,7 @@ from its austenitizing hold, and the ASTM E112 bookkeeping. It is **orthogonal**
 neither the frozen engine nor any frozen benchmark.
 
 ```python
-from projects.steel import grain
+from steel import grain
 grain.austenite_grain_size(1100.0, t_hours=2.0)   # PAGS after 2 h at 1100 °C → ~45 µm
 grain.astm_grain_size_number(22.5)                # → ASTM G ≈ 8  (G↔d round-trips exactly)
 ```
@@ -724,7 +724,7 @@ added the **cited bainite reaction** and *proved* it cannot enter the continuous
 closed the chain's last un-checked leg — the **D_I / measured-Jominy cross-check** (below).
 
 ```python
-from projects.steel import austemper as au
+from steel import austemper as au
 au.austemper("1080", 343.3, 600.0)          # quench → hold (650 °F salt bath) → fully bainitic, ~49 HRC
 au.minimum_full_hold("1080", 343.3)         # ≈ 305 s — the exercise the §6 surfaces drive
 au.hold_time_to_fraction("4340", 371.1, 0.5)  # = 391 s, the cited anchor (by construction)
@@ -752,7 +752,7 @@ centre-equivalent diameter directly tabulated in EMJ p.29; the *ideal* `D_I` is 
 bound — see the conversion note below.)
 
 ```python
-from projects.steel import ideal_diameter as idd
+from steel import ideal_diameter as idd
 res = idd.crosscheck_all()                 # {grade: CrossCheck} — model fM=0.5 D_c vs measured band
 res["4340"].model.Dc_mm                     # ≈ 119 mm  (water-quench centre-equivalent)
 res["4340"].verdict                         # "under-predicts (below measured band)"  ← the teeth
@@ -788,7 +788,7 @@ physics/geometry — pure re-composition of the validated Jominy chain + two cit
 ## Run the tests
 
 ```powershell
-./run_tests.ps1 projects/steel        # from repo root  (or just ./run_tests.ps1 for the whole suite)
+./run_tests.ps1 steel        # from repo root  (or just ./run_tests.ps1 for the whole suite)
 ```
 
 The `fe_c` suite is the Phase-1b validation triad: invariant points + exact

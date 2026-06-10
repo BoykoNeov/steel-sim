@@ -20,7 +20,7 @@ guards.
 import numpy as np
 import pytest
 
-from projects.steel.fe_c import (
+from steel.fe_c import (
     A1, A3, Acm,
     austenite_C_with_ferrite, austenite_C_with_cementite, ferrite_C,
     phase_fractions, equilibrium_constituents, Constituents,

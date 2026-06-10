@@ -27,7 +27,7 @@ by the 1045/4140 Jominy benchmark, ``test_properties``).
 
 Run headless (saves the figure, prints the table):
 
-    python -m projects.steel.demo_four_curves
+    python -m steel.demo_four_curves
 """
 from __future__ import annotations
 

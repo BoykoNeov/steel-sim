@@ -26,13 +26,13 @@ published data rather than co-fitting one curve (the discipline plan §3 calls f
 import numpy as np
 import pytest
 
-from projects.steel import fe_c, pathint
-from projects.steel.kinetics import (
+from steel import fe_c, pathint
+from steel.kinetics import (
     CCurve, andrews_Ms,
     hardenability_factor, ccurve_for_steel,
     REFERENCE_COMPOSITION, HARDENABILITY_SCALE,
 )
-from projects.steel.jominy import solve_thermal_field, JominyBar, jominy_distances
+from steel.jominy import solve_thermal_field, JominyBar, jominy_distances
 
 EXACT = dict(rel=0.0, abs=1e-12)
 

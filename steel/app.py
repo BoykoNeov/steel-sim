@@ -14,9 +14,9 @@ Three layers, by ADR-0002 discipline
    import **neither** Streamlit **nor** matplotlib, so the module imports on a bare core
    install and the helpers are unit-tested *always-green* (``tests/test_app.py``), the same
    way ``test_sweep`` is — there is nothing optional about them.
-2. **Figure builders** — thin wrappers over the existing :mod:`projects.steel.plots` figures
-   (:func:`~projects.steel.plots.four_curves_figure`,
-   :func:`~projects.steel.plots.sweep_comparison_figure`), importing matplotlib **lazily**
+2. **Figure builders** — thin wrappers over the existing :mod:`steel.plots` figures
+   (:func:`~steel.plots.four_curves_figure`,
+   :func:`~steel.plots.sweep_comparison_figure`), importing matplotlib **lazily**
    inside the function so the module stays import-light. The tempering view uses Streamlit's
    native ``st.line_chart`` (there is no matplotlib temper figure to reuse, and inventing one
    here would be scope creep into a render layer a prior phase owns).
@@ -28,10 +28,10 @@ Three layers, by ADR-0002 discipline
 
 The run-as-script import bootstrap (why the lines below ``__file__`` exist)
 --------------------------------------------------------------------------
-``streamlit run projects/steel/app.py`` executes this file as a **top-level script**
-(``__name__ == "__main__"``, no package parent) with ``projects/steel/`` — *not* the repo
+``streamlit run steel/app.py`` executes this file as a **top-level script**
+(``__name__ == "__main__"``, no package parent) with ``steel/`` — *not* the repo
 root — on ``sys.path``. In that context a relative ``from . import sweep`` raises "no known
-parent package" and a bare ``from projects.steel import sweep`` raises ``ModuleNotFoundError``
+parent package" and a bare ``from steel import sweep`` raises ``ModuleNotFoundError``
 (``projects`` is not on the path). The demos dodge this by running under ``python -m`` (which
 supplies both); ``streamlit run`` supplies neither. So this module puts the repo root on
 ``sys.path`` first (the ``parents[2]`` idiom the demos already use for figure paths) and then
@@ -43,7 +43,7 @@ Run it
 .. code-block:: powershell
 
     pip install -e .[viz,app]          # matplotlib (viz) + streamlit (app)
-    streamlit run projects/steel/app.py
+    streamlit run steel/app.py
 
 The ``[app]`` extra carries only Streamlit; matplotlib stays in ``[viz]`` (the figures), so
 the runnable combo is ``.[viz,app]`` — mirroring the notebook's ``.[viz,notebook]``.
@@ -56,17 +56,17 @@ from pathlib import Path
 
 # --- run-as-script bootstrap: put the repo root on sys.path BEFORE the absolute
 #     imports below, so `streamlit run app.py` (a top-level script, no package parent)
-#     resolves `projects.steel.*`. A no-op under pytest, where the root is already there.
+#     resolves `steel.*`. A no-op under pytest, where the root is already there.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 
-from projects.steel import austemper as aus
-from projects.steel import sweep
-from projects.steel import grain
-from projects.steel import properties as prop
+from steel import austemper as aus
+from steel import sweep
+from steel import grain
+from steel import properties as prop
 
 
 # The dropdown vocabularies — the real-composition grades and the slow→fast media. The preset
@@ -116,7 +116,7 @@ GRAIN_C_MAX = 0.80
 def single_steel_outcomes(grade: str, diameter: float = sweep.STANDARD_DIAMETER) -> list:
     """One grade down the cooling-rate axis (furnace→water) — the mechanism view's data.
 
-    A :func:`sweep.cooling_rate_sweep` for the named grade: four :class:`~projects.steel.sweep.Outcome`
+    A :func:`sweep.cooling_rate_sweep` for the named grade: four :class:`~steel.sweep.Outcome`
     objects sharing one austenite, differing only in quench severity. Their common
     ``ccurve`` (composition-determined, so identical across media) and their paths/results/
     hardness feed :func:`mechanism_figure`.
@@ -165,7 +165,7 @@ def format_uts(uts: float) -> str:
     """UTS display string — honest ``off-scale`` where ISO-18265 leaves HV (as-quenched HV > ~550).
 
     The ISO-18265 HV→UTS correlation is defined on a finite hardness band; outside it
-    :func:`~projects.steel.properties.tensile_strength_MPa` returns ``nan`` (a glass-hard
+    :func:`~steel.properties.tensile_strength_MPa` returns ``nan`` (a glass-hard
     as-quenched martensite has no meaningful tensile number — it fractures first). Say so,
     rather than print a ``nan`` MPa.
     """
@@ -173,7 +173,7 @@ def format_uts(uts: float) -> str:
 
 
 def hardness_readout(outcome) -> dict:
-    """Flatten one :class:`~projects.steel.sweep.Outcome` to display-ready strings for the readout.
+    """Flatten one :class:`~steel.sweep.Outcome` to display-ready strings for the readout.
 
     All the nan/HRC and formatting logic lives here (a tested helper), so :func:`main` only
     forwards strings to ``st.metric`` — never formats a possibly-``nan`` number itself. ``UTS``
@@ -202,7 +202,7 @@ def custom_steel_outcome(
     """The build-your-own what-if: a *free* composition → the full validated chain.
 
     The notebook's §3 "build your own steel" as a headless helper — one
-    :func:`sweep.evaluate` of a :class:`~projects.steel.sweep.Steel` assembled from free
+    :func:`sweep.evaluate` of a :class:`~steel.sweep.Steel` assembled from free
     C/Mn/Cr/Mo/Ni, at the **discriminating** oil quench (the composition axis is silent at the
     saturated water/furnace ends — see :data:`sweep.DISCRIMINATING_MEDIUM`). The *same* harness
     the preset dropdown uses, driven by sliders instead of a registry key — so it adds no
@@ -352,12 +352,12 @@ def austemper_readout(r: aus.AustemperResult) -> dict:
 def mechanism_figure(outcomes: list, grade: str):
     """The Phase-1 anchor figure for one grade: cooling paths on the TTT + microstructure bars.
 
-    Reuses :func:`projects.steel.plots.four_curves_figure` (the plan names it explicitly for
+    Reuses :func:`steel.plots.four_curves_figure` (the plan names it explicitly for
     slice 2). The four outcomes share one ``ccurve`` (composition-determined), so the C-curve
     is taken from the first; each contributes its path, microstructure, and ``(HV, HRC)``.
     Raises ``ImportError`` if matplotlib (the ``[viz]`` extra) is absent — caught in :func:`main`.
     """
-    from projects.steel.plots import four_curves_figure
+    from steel.plots import four_curves_figure
 
     cc = outcomes[0].ccurve
     paths = [o.path for o in outcomes]
@@ -368,12 +368,12 @@ def mechanism_figure(outcomes: list, grade: str):
 
 
 def comparison_figure(grid: list):
-    """The composition × cooling-rate side-by-side (:func:`projects.steel.plots.sweep_comparison_figure`).
+    """The composition × cooling-rate side-by-side (:func:`steel.plots.sweep_comparison_figure`).
 
     Hardenability curves (martensite vs cooling rate, one line per grade) beside the hardness
     grid. Raises ``ImportError`` without matplotlib — caught in :func:`main`.
     """
-    from projects.steel.plots import sweep_comparison_figure
+    from steel.plots import sweep_comparison_figure
 
     return sweep_comparison_figure(grid)
 
@@ -382,13 +382,13 @@ def custom_figure(outcome):
     """The build-your-own two-panel view: the cooling path across the (alloy-shifted) TTT +
     a schematic microstructure swatch.
 
-    A thin wrapper over :func:`projects.steel.plots.single_steel_figure` — the render layer owns
+    A thin wrapper over :func:`steel.plots.single_steel_figure` — the render layer owns
     the composition, exactly as :func:`mechanism_figure` wraps ``four_curves_figure`` (the app
     invents no figure of its own). The title carries the two hardenability knobs the composition
     moved (Mₛ and the ``tau_factor`` shift). Raises ``ImportError`` without matplotlib — caught
     in :func:`main`.
     """
-    from projects.steel.plots import single_steel_figure
+    from steel.plots import single_steel_figure
 
     cc = outcome.ccurve
     ttt_title = (f"your steel — the TTT slides right with alloy  "
@@ -400,14 +400,14 @@ def custom_figure(outcome):
 def grain_overview_figure(gp, C: float, comp: dict, *, name: str = "", t_hours: float = 1.0):
     """The grain section's two-panel interactive figure — grain growth + the property payoff.
 
-    A thin wrapper over :func:`projects.steel.plots.grain_interactive_figure` (the render layer
+    A thin wrapper over :func:`steel.plots.grain_interactive_figure` (the render layer
     owns the figure; the app invents none of its own — the same discipline as :func:`custom_figure`
     and :func:`mechanism_figure`). Left panel: the grain coarsening with austenitizing T (the new
     length scale + ASTM G); right panel: yield ↑ / DBTT ↓ with the room-temperature service line,
     the current hold marked on both. Raises ``ImportError`` without matplotlib — caught in
     :func:`main`.
     """
-    from projects.steel.plots import grain_interactive_figure
+    from steel.plots import grain_interactive_figure
 
     return grain_interactive_figure(gp, C, comp, name=name, t_hours=t_hours)
 
@@ -415,16 +415,16 @@ def grain_overview_figure(gp, C: float, comp: dict, *, name: str = "", t_hours: 
 def austemper_overview_figure(steel: str, T_hold: float, t_hold: float):
     """The austempering three-panel view — the Phase-6d demo's own figure, re-aimed at the knobs.
 
-    A thin wrapper over :func:`projects.steel.demo_austemper.compute` +
-    :func:`projects.steel.plots.austemper_figure` (the demo's compute pipeline *is* the validated
+    A thin wrapper over :func:`steel.demo_austemper.compute` +
+    :func:`steel.plots.austemper_figure` (the demo's compute pipeline *is* the validated
     arrays; the render layer owns the drawing — the app invents no figure of its own): the
     anchored isothermal diagram with the atlas measurements on it, the hold's completion U(t),
     and hardness vs hold time with the minimum full-transform hold marked. The pearlite-race
     warning is suppressed exactly as in :func:`austemper_outcome` (the flag carries the fact).
     Raises ``ImportError`` without matplotlib — caught in :func:`main`.
     """
-    from projects.steel.demo_austemper import compute
-    from projects.steel.plots import austemper_figure
+    from steel.demo_austemper import compute
+    from steel.plots import austemper_figure
 
     import warnings as _warnings
     with _warnings.catch_warnings():

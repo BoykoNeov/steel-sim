@@ -96,8 +96,8 @@ class Steel:
 
     Carbon plus the minor-alloy elements the downstream models read. The crucial
     property is that **one** composition object feeds *both* faces of the model: its
-    :meth:`minor` dict goes into :func:`~projects.steel.kinetics.ccurve_for_steel`
-    (the hardenability ``τ``-shift) *and* into :func:`~projects.steel.properties.hardness_HV`
+    :meth:`minor` dict goes into :func:`~steel.kinetics.ccurve_for_steel`
+    (the hardenability ``τ``-shift) *and* into :func:`~steel.properties.hardness_HV`
     (the Maynier minor-alloy hardness delta) — the same self-consistent wiring the
     carburizing 8620 dict documents. Defaults are zero so a bare ``Steel(0.80)`` is a
     plain-carbon steel (but see :data:`STEELS` for *real* compositions — a plain-carbon
@@ -201,11 +201,11 @@ def evaluate(
 ) -> Outcome:
     """Run the full chain for one steel cooled one way — the single what-if.
 
-    Builds the steel's TTT curve (:func:`~projects.steel.kinetics.ccurve_for_steel`: A₁
+    Builds the steel's TTT curve (:func:`~steel.kinetics.ccurve_for_steel`: A₁
     ceiling + Andrews Mₛ + the alloy hardenability shift, all from ``steel``'s composition),
     cools a specimen of ``diameter`` in ``medium`` (a preset name or a raw ``h``) with the
     0-D lumped cooler, integrates that history to a microstructure
-    (:func:`~projects.steel.pathint.transform_along_path`), and maps the fractions to
+    (:func:`~steel.pathint.transform_along_path`), and maps the fractions to
     hardness with the rule of mixtures — threading the **same** composition into the Maynier
     minor-alloy term and this path's cooling rate ``Vr`` into the cooling-rate term. The one
     place ``steel.minor()`` reaches both the kinetics and the hardness, self-consistently.
@@ -276,7 +276,7 @@ def sweep_grid(
     Rows are steels, columns are media: ``grid[i][j]`` is steel ``i`` cooled in medium ``j``.
     This is the one genuinely-new view over the four-curves demo — it adds the **composition
     axis** the single-steel demo cannot show — and the data behind
-    :func:`~projects.steel.plots.sweep_comparison_figure`. ``steels`` may be :class:`Steel`
+    :func:`~steel.plots.sweep_comparison_figure`. ``steels`` may be :class:`Steel`
     objects or :data:`STEELS` keys.
     """
     resolved = [STEELS[s] if isinstance(s, str) else s for s in steels]
@@ -317,7 +317,7 @@ def temper_sweep(
 
     Tempers a **fully martensitic** as-quenched structure (the practically relevant
     quench-and-temper case, and the validated scope of
-    :func:`~projects.steel.properties.tempered_martensite_HV` — pearlite barely tempers, so a
+    :func:`~steel.properties.tempered_martensite_HV` — pearlite barely tempers, so a
     *mixed* structure would have to be tempered per-constituent, a documented deferral). This
     is why tempering is its own sweep and not folded into the as-quenched cooling/composition
     sweeps. The steel's minor-alloy ``comp`` threads through both master-curve endpoints, so an

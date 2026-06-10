@@ -28,13 +28,13 @@ import warnings
 import numpy as np
 import pytest
 
-from projects.steel import austemper as au
-from projects.steel.kinetics import (
+from steel import austemper as au
+from steel.kinetics import (
     BAINITE_KINETIC_SCALE, BS_DEFAULT, ABS_ZERO, KV_Q, R_CAL,
     bainite_reaction_for_steel, bainite_BC, steven_haynes_Bs, andrews_Ms,
     koistinen_marburger, ccurve_for_steel, _kv_shape_integral,
 )
-from projects.steel.properties import vickers_bainite
+from steel.properties import vickers_bainite
 
 
 # --------------------------------------------------------------------------- #

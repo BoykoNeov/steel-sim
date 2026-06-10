@@ -32,7 +32,7 @@ and it is *simultaneously* the integration test for every Phase-1 module.
 | Engine | Status here | Contract pointer |
 |---|---|---|
 | **Diffusion/heat (Fick / erfc)** — the program spine | **`[FROZEN ✓ — Phase 1a, 2026-06-08]`** | `engines/diffusion/CONTRACT.md` (now the real frozen contract; §4 below is the original draft). This is *the* deliverable other projects inherit: Chip's dopant profiles = the carbon-diffusion code; Planet's EBM heat transport = the heat-conduction instantiation. |
-| **ODE / path-integrator (minimal)** | `[build minimal here — steel-local]` | `projects/steel/pathint.py`. The lightweight piece Steel needs: marching the Scheil additivity integral and Avrami fraction along a cooling path, plus an optional lumped-capacitance 0-D cooler. Kept in `projects/steel/`, **not** `engines/` — only steel uses it, so per invariant 5 / rule-of-three it is *not* promoted to the shared toolkit until a stabilized interface has ≥3 uses. The heavy symplectic/RK4 family (jet, star, galaxy) is not built here. |
+| **ODE / path-integrator (minimal)** | `[build minimal here — steel-local]` | `steel/pathint.py`. The lightweight piece Steel needs: marching the Scheil additivity integral and Avrami fraction along a cooling path, plus an optional lumped-capacitance 0-D cooler. Kept in `steel/`, **not** `engines/` — only steel uses it, so per invariant 5 / rule-of-three it is *not* promoted to the shared toolkit until a stabilized interface has ≥3 uses. The heavy symplectic/RK4 family (jet, star, galaxy) is not built here. |
 
 No other shared engine is touched. CALPHAD (Phase 4) is consumed as a
 **validation reference and optional backend** (pycalphad), *not* reimplemented —
@@ -185,7 +185,7 @@ BigSim/
       CONTRACT.md                   # the FROZEN one-page API (below)
       tests/                        # erfc, conservation, stability — the seal
   viz/                              # shared viz toolkit (peer to engines/); seeded by rule-of-three
-  projects/steel/
+  steel/
     fe_c.py                         # phase diagram + lever rule           (1b)
     kinetics.py                     # Avrami/TTT, additivity/CCT, KM, Andrews Ms (1c)
     pathint.py                      # steel-local path-integrator: additivity ∫dt/τ + Avrami-along-path + 0-D cooler
@@ -252,7 +252,7 @@ Draft of `engines/diffusion/CONTRACT.md`:
   `u, D`, and BC parameters — that symmetry is *why* one engine serves both.
 
 > Once this file's tests pass, the solver is **sealed**. Chip and Planet load
-> *this page*, never `projects/steel/`.
+> *this page*, never `steel/`.
 
 ---
 
@@ -304,7 +304,7 @@ verify cheaply (ARCHITECTURE.md §6 hygiene):
 ```
 
 `run_tests.ps1` (and a `run_tests.sh` twin) invoke `pytest -q` over
-`engines/**/tests` and `projects/steel/tests`. The erfc + conservation +
+`engines/**/tests` and `steel/tests`. The erfc + conservation +
 stability tests under `engines/diffusion/tests/` are the **seal** that freezes
 the spine; they must stay green for any change anywhere downstream.
 
@@ -397,13 +397,13 @@ slices, in order:
    inventing a matplotlib temper figure in a prior phase's render layer); (c) **`main()`** is the *only*
    place `import streamlit` lives and is kept paper-thin (every value computed/formatted in a tested
    helper, so only `st.*` calls can raise). **The non-obvious blocker (advisor, the crux):** `streamlit
-   run app.py` executes the file as a **top-level script** (no package parent, `projects/steel/` — not
+   run app.py` executes the file as a **top-level script** (no package parent, `steel/` — not
    the repo root — on `sys.path`), where a relative `from . import sweep` raises "no known parent
-   package" and a bare `from projects.steel import sweep` raises `ModuleNotFoundError` — yet the
-   always-green test (which imports it *as* `projects.steel.app`, proper package context) would stay
+   package" and a bare `from steel import sweep` raises `ModuleNotFoundError` — yet the
+   always-green test (which imports it *as* `steel.app`, proper package context) would stay
    green: **tests green, deliverable broken.** Fixed by bootstrapping the repo root onto `sys.path` at
    the top of the module (the `parents[2]` idiom the demos use) + **absolute** imports; verified cheaply
-   with `python projects/steel/app.py` (no streamlit needed — it must reach `import streamlit` inside
+   with `python steel/app.py` (no streamlit needed — it must reach `import streamlit` inside
    `main()` and die *only* there). The grade dropdown (not a raw %C/`Mn=0` slider) dodges the documented
    "leaner-hypothetical" trap, as in the notebook. The **test** asserts importing `app` does not pull
    Streamlit (the layering guard), exercises every compute helper, and build-smoke-tests the figures
@@ -431,7 +431,7 @@ slices, in order:
 conservation, per-method stability, source-augmented conservation, heat-mode
 Robin + flux bookkeeping). The diffusion spine the entire trio inherits is sealed.
 
-**Phase 1b is built ✓** (2026-06-08) — `projects/steel/fe_c.py`. Metastable
+**Phase 1b is built ✓** (2026-06-08) — `steel/fe_c.py`. Metastable
 Fe–Fe₃C boundaries linear between the pinned invariant points (A₁=727 °C; A₃
 912→727 °C; A_cm 727→1147 °C / 2.11 % C; eutectoid 0.76 % C) + the **lever rule**.
 Two readings: `phase_fractions(C0, T)` → the phase dict (ferrite/austenite/
@@ -460,7 +460,7 @@ both give pearlite, separated only by formation temperature (coarseness); the §
 "four microstructures" phrasing was an idealization, and coarse/fine pearlite +
 real hardness numbers are Phase 3.
 
-**Phase 2a is built ✓** (2026-06-08) — `projects/steel/jominy.py`, the first
+**Phase 2a is built ✓** (2026-06-08) — `steel/jominy.py`, the first
 *spatial* reuse of the frozen heat solver. The end-quench bar is the **transient
 fin equation** (axial conduction + lateral air convection), *not* pure axial
 conduction: a timescale check (`√(αt) ≈ 8 mm at 10 s`) shows adiabatic sides leave
@@ -504,7 +504,7 @@ pearlite+bainite together (no separate bainite bay), and `T_eq` is held at the e
 for hypoeutectoid steels. 8-test triad (identity + shape-preservation, the 4140-band
 calibration + 1045 prediction, the divergence integration); full suite **147 green**.
 
-**Phase 2c is built ✓** (2026-06-08) — `projects/steel/properties.py` + `demo_jominy.py`,
+**Phase 2c is built ✓** (2026-06-08) — `steel/properties.py` + `demo_jominy.py`,
 the microstructure→hardness map and the banked Phase-2 artifact, completing the **third
 (benchmark) leg** of the Phase-2 triad (the analytical + conservation legs were banked
 thermally in 2a). Hardness is a **rule of mixtures over the constituents** (`HV = Σ fᵢ·HVᵢ(C)`
@@ -607,7 +607,7 @@ Maynier-anchored (3a) comp deltas threaded through both endpoints, nothing fit t
 inverse of 2b's "calibrate 4140, 1045 falls out". No new figure (3b is a `properties.py` extension;
 the test triad carries it). 10 new tests; full suite **186 green**.
 
-**Phase 3c is built ✓** (2026-06-08) — `projects/steel/carburize.py` + `demo_carburize.py`, the
+**Phase 3c is built ✓** (2026-06-08) — `steel/carburize.py` + `demo_carburize.py`, the
 **mass-diffusion face of the spine**. The *same* frozen `engines/diffusion` that cooled the Jominy
 bar in heat mode now runs in **mass mode**: carbon diffuses into a low-carbon part (≈ 8620, 0.2 %C
 core) held at 925 °C in a 0.8 %C-potential atmosphere — a **Dirichlet** surface at the carbon
@@ -636,7 +636,7 @@ critical one, vs published `D_I`) — still available. **Still deferred from Pha
 experimentation surface (`sweep.py`, `app.py`, `steel.ipynb`). Nothing downstream touched the frozen
 solver's internals — only its `CONTRACT.md`.
 
-**Phase 4 is built ✓** (2026-06-08) — `projects/steel/calphad_backend.py` + `calphad_reference.py` +
+**Phase 4 is built ✓** (2026-06-08) — `steel/calphad_backend.py` + `calphad_reference.py` +
 `demo_calphad.py`, the **CALPHAD-backed equilibrium** (the bounded deep end). Phase 1b's `fe_c` drew
 the Fe-C diagram as **linear chords** between pinned invariant points; Phase 4 lets the boundaries
 *emerge* from a real **Gibbs-energy minimisation** (**pycalphad**, *consumed not reimplemented* — plan
@@ -674,7 +674,7 @@ overlay + 4140's phase-fractions-vs-T with the **M7C3 chromium carbide** `fe_c` 
 database is cached by path+mtime so the live tests don't re-parse the 460 KB MatCalc file. 13 new tests
 (6 committed always-green + 4 live + 3 demo); full suite **217 green** (210 without the optional stack).
 
-**Experimentation surface — `sweep.py` built ✓** (2026-06-08) — `projects/steel/sweep.py` +
+**Experimentation surface — `sweep.py` built ✓** (2026-06-08) — `steel/sweep.py` +
 `demo_sweep.py` + a `plots.sweep_comparison_figure`. The first of the §9 experimentation
 deliverables: the headless **sweep/what-if harness** ARCHITECTURE.md §1 ties to "the cheapest
 verification". It is **pure re-composition** of the validated chain (`ccurve_for_steel` →
@@ -695,7 +695,7 @@ hence the alloy-hardenability trend is read at an *intermediate* medium (oil), n
 ends; (3) trends asserted **in HV** (defined everywhere; HRC is `nan` on soft tails) and Biot
 carried per-`Outcome` with `warn_biot=False` (no per-node warning spew). 17 new tests.
 
-**§9 slice 1 — `steel.ipynb` (teaching notebook) built ✓** (2026-06-08) — `projects/steel/steel.ipynb`
+**§9 slice 1 — `steel.ipynb` (teaching notebook) built ✓** (2026-06-08) — `steel/steel.ipynb`
 + `tests/test_steel_notebook.py` + the `[notebook]` extra. The *education* artifact (target #1): a
 guided narrative — Fe-C endpoint → TTT C-curve → four-curves anchor → composition × cooling-rate
 hardenability → tempering — with **ipywidgets** sliders (%C, grade, quench medium, section size,
@@ -715,7 +715,7 @@ errors). The `%C` slider drives only the Fe-C *equilibrium* cell; cooling/hardne
 (execution smoke-test, not a physics check); full suite **235 green** (226 without the optional
 pycalphad/viz/notebook stack).
 
-**§9 slice 2 — `app.py` (Streamlit what-if app) built ✓** (2026-06-09) — `projects/steel/app.py` +
+**§9 slice 2 — `app.py` (Streamlit what-if app) built ✓** (2026-06-09) — `steel/app.py` +
 `tests/test_app.py` + the `[app]` extra. The shareable interactive twin of the notebook: the same
 `sweep` harness re-skinned as a `streamlit run` slider UI (grade / quench medium / section size /
 compare-grades / temper time → the mechanism four-curves figure, the hardness readout with HV/HRC +
@@ -724,10 +724,10 @@ Biot honesty, the composition × cooling-rate comparison grid, and the martensit
 `sweep` re-composition, not gated like the notebook), **lazy-import figure builders** over `plots.py`
 (temper view on Streamlit-native `st.line_chart`, one chart per quantity), and a paper-thin **`main()`**
 (the only place `import streamlit` lives; not unit-tested — ADR 0002). **The crux (advisor):** `streamlit
-run app.py` runs the file as a top-level script (no package parent, `projects/steel/` not the repo root on
-`sys.path`) where relative imports fail — while the always-green test, importing it *as* `projects.steel.app`,
+run app.py` runs the file as a top-level script (no package parent, `steel/` not the repo root on
+`sys.path`) where relative imports fail — while the always-green test, importing it *as* `steel.app`,
 would stay green (**tests green, deliverable broken**). Fixed by a repo-root `sys.path` bootstrap + absolute
-imports, verified by `python projects/steel/app.py` reaching `import streamlit` inside `main()` and dying
+imports, verified by `python steel/app.py` reaching `import streamlit` inside `main()` and dying
 only there (and end-to-end by Streamlit's own `AppTest` → 0 exceptions). 13 new tests; full suite
 **248 green** (234 without the optional stack).
 
@@ -841,7 +841,7 @@ construction*. `%pearlite` for both `f`/`g` is read from **Phase 1b**
 `fe_c.equilibrium_constituents` (carbon → pearlite fraction) — a clean reuse, and the
 reason carbon embrittles in this model.
 
-**New module:** `projects/steel/grain.py` (+ `tests/test_grain.py`, `demo_grain.py`, a
+**New module:** `steel/grain.py` (+ `tests/test_grain.py`, `demo_grain.py`, a
 `plots.grain_figure`). Steel-local, a peer of `properties.py`.
 
 ### 5a — Austenite grain growth (austenitizing T, t → PAGS)
@@ -973,7 +973,7 @@ cited Pickering pair) → 5c (coupling at fixed cooling rate + the banked **co-b
 the sign-opposition teeth + the `yield ≤ UTS` and DBTT-sanity guards). Each banks a testable
 artifact; 5a alone is demonstrable (PAGS vs austenitizing T).
 
-**Phase 5a is built ✓** (2026-06-09) — `projects/steel/grain.py` + `tests/test_grain.py`
+**Phase 5a is built ✓** (2026-06-09) — `steel/grain.py` + `tests/test_grain.py`
 (13 tests; steel gate **249 → 262**, all `not slow`). Austenite grain growth
 `Dᵐ − D₀ᵐ = K₀·exp(−Q/RT)·t` (closed-form isothermal) + the ASTM E112 `G ↔ d` bookkeeping;
 orthogonal/additive (no engine touch, no frozen benchmark moved). **Source pinned** →
@@ -1127,7 +1127,7 @@ every eutectoid/four-curves benchmark stay byte-identical; a *parallel* ferrite 
 
 ### Phase 6a — the proeutectoid-ferrite bay (BUILT ✓ 2026-06-09)
 
-`projects/steel/kinetics.py` §5 (`ferrite_FC`, `FerriteReaction`, `ferrite_reaction_for_steel`, the
+`steel/kinetics.py` §5 (`ferrite_FC`, `FerriteReaction`, `ferrite_reaction_for_steel`, the
 `CCurve.ferrite` field) + `pathint.transform_along_path` (sequential coupling) + a one-line
 `properties.CONSTITUENT_HV` entry + `plots` (a soft `ferrite` phase) + `tests/test_ferrite.py`
 (16 tests). **Full steel gate 300 → 315.** Source pinned → [[ferrite-bay-source]].
@@ -1179,7 +1179,7 @@ the more-physical result the module docstring anticipated).
 
 ### Phase 6b — the bainite reaction & the bay's mechanism (BUILT ✓ 2026-06-09, **descoped**)
 
-`projects/steel/kinetics.py` §6 (`BainiteReaction`, `bainite_BC`, `steven_haynes_Bs`, the shared
+`steel/kinetics.py` §6 (`BainiteReaction`, `bainite_BC`, `steven_haynes_Bs`, the shared
 `_kv_shape_g`/`_kv_site_saturation_step`/`_kv_shape_integral` helpers) + `demo_bainite.py` +
 `plots.bainite_figure` + `tests/test_bainite.py` (10) + `tests/test_demo_bainite.py` (2). **Full steel
 fast gate 307 → 319.** Source pinned → [[ferrite-bay-source]] (the bainite row recorded for 6b).
@@ -1235,7 +1235,7 @@ rest on — a large, risky rebuild); or (b) **proceed to 6c**.
 
 ### Phase 6c — the D_I / measured-Jominy cross-check (BUILT ✓ 2026-06-10)
 
-`projects/steel/ideal_diameter.py` (the two cited lookup tables + the model/measured critical-diameter
+`steel/ideal_diameter.py` (the two cited lookup tables + the model/measured critical-diameter
 `D_c` machinery) + `demo_ideal_diameter.py` + `plots.ideal_diameter_figure` (two panels) →
 `docs/figures/steel-ideal-diameter.png` + `tests/test_ideal_diameter.py` (13) +
 `tests/test_demo_ideal_diameter.py` (2). **Steel not-slow gate 339 → 354** (+15). Nothing else
@@ -1315,7 +1315,7 @@ rebuild, (b) proceed — are now both spent; the remaining named deepening is (a
 
 ### Phase 6d — Austempering: the bainite reaction's valid home (BUILT ✓ 2026-06-10)
 
-**BUILT as planned** — `projects/steel/austemper.py` (the cited `AtlasSteel` anchor table + the
+**BUILT as planned** — `steel/austemper.py` (the cited `AtlasSteel` anchor table + the
 read-off contract, per-steel scales **derived at import** from one `(T, t₅₀)` anchor each,
 `austemper()` / `hold_time_to_fraction()` / `minimum_full_hold()`), `demo_austemper.py` +
 `plots.austemper_figure` (three panels: anchored diagram **with the atlas measurements on it**,

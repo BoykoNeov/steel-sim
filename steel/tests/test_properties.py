@@ -32,9 +32,9 @@ import math
 import numpy as np
 import pytest
 
-from projects.steel import properties as prop
-from projects.steel.kinetics import ccurve_for_steel, ABS_ZERO
-from projects.steel.jominy import solve_thermal_field, JominyBar, jominy_distances
+from steel import properties as prop
+from steel.kinetics import ccurve_for_steel, ABS_ZERO
+from steel.jominy import solve_thermal_field, JominyBar, jominy_distances
 
 # The two benchmark steels (as in the Phase-2b hardenability test): a medium-carbon
 # plain steel and a deep-hardening low-alloy one, both ≈ 0.4 %C.
