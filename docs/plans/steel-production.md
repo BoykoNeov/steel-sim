@@ -1244,7 +1244,38 @@ rest on — a large, risky rebuild); or (b) **proceed to 6c**.
   originally calibrated against (if the same curves, that leg would be circular and D_I tables
   stay the benchmark).
 
-### Phase 6d — Austempering: the bainite reaction's valid home (PLANNED 2026-06-10, probe done)
+### Phase 6d — Austempering: the bainite reaction's valid home (BUILT ✓ 2026-06-10)
+
+**BUILT as planned** — `projects/steel/austemper.py` (the cited `AtlasSteel` anchor table + the
+read-off contract, per-steel scales **derived at import** from one `(T, t₅₀)` anchor each,
+`austemper()` / `hold_time_to_fraction()` / `minimum_full_hold()`), `demo_austemper.py` +
+`plots.austemper_figure` (three panels: anchored diagram **with the atlas measurements on it**,
+the hold's `U(t)`, hardness vs hold time) → `docs/figures/steel-austemper.png`, notebook §6 +
+app §6 (anchored-steels-only dropdown, hold sliders clamped inside the Mₛ/Bs window, the
+minimum-full-transform-hold exercise), `tests/test_austemper.py` (14) + `test_demo_austemper.py`
+(2) + 4 app-helper tests — **steel not-slow gate 319 → 339**, `pathint`/`kinetics` byte-identical
+(the 6b demonstration scale and the 540-split untouched). The probe numbers reproduced exactly
+at build time: derived scales 6.82e3 / 165 (gap ×41), 1080 t₅₀ holdouts ×1.06 / ×0.96.
+
+As-built deltas worth recording (refinements, not departures):
+* **Per-steel atlas grain sizes enter the anchors** (1080 G=6, 4340 G=7.5, as printed) — the
+  2^(0.41G) factor is absorbed by each steel's derived scale, so this is bookkeeping fidelity,
+  not a new knob.
+* **The 4340 begin-shape holdout anchors at the mid-window 398.9 °C begin point** (anchoring at
+  371.1 °C puts 426.7 °C at ×1.40, just outside the claimed ×1.35; from the mid-window anchor
+  the 427→371 window holds at ×0.92–1.28). The flanks are *documented*, not claimed: ~×0.70
+  toward Bs (482/454 °C), ×2.3 at 343.3 °C (the near-Mₛ edge) — both pinned as loose-band tests.
+* **The pearlite-race police integrates the single-curve fictitious time over the *live race
+  window*** — the hold capped at bainite completion (`HOLD_COMPLETE_X = 0.99`), because once the
+  austenite is consumed there is no competitor left to race; threshold
+  `PEARLITE_SHADOW_WARN = 0.15`. Behavior: silent in the anchored band (1080 full hold at
+  343 °C → ~6 % shadow), loud near Bs (480 °C → ~78 %, flagged). Recorded on the result either
+  way; never subtracted (policed, not modeled).
+* The recipe **refuses** (ValueError) outside `Mₛ < T_hold < Bs` (the plan's "refuse/warn"
+  resolved to refuse); the notebook/app sliders are clamped so the guards are unreachable by
+  drag, and martempering remains the named, unbuilt seam.
+
+#### The plan as written (2026-06-10, pre-build — kept verbatim; the probe table below is the read-off contract)
 
 Promoted from the 6b merge-review discussion ("integrate partially/optionally?"): wiring bainite
 into the CCT race stays falsified at any flag granularity (the §13 6b negative result — at the

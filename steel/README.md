@@ -77,6 +77,18 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   cross-temperature **holdout**. Units **µm/hours/K** (the registered trap — 5b's Pickering laws use
   `d` in mm). The Hall–Petch yield + Cottrell–Petch DBTT (5b) and the coupling/figure (5c) build on
   it; plan §12.
+- **To work on the competing-reaction kinetics (Phase 6a/6b):** `kinetics.py` §§5–6
+  (`FerriteReaction` — wired into `pathint` sequentially; `BainiteReaction` — deliberately
+  standalone, the §6 negative result) + `tests/test_ferrite.py` / `test_bainite.py` and
+  `demo_bainite.py`. The kinetics module docstring sections are the contract; plan §13 holds
+  the full diagnosis-and-descope story.
+- **To work on austempering (Phase 6d):** `austemper.py` + `tests/test_austemper.py` (the
+  atlas anchor table + the `austemper()` hold recipe) and `demo_austemper.py` +
+  `tests/test_demo_austemper.py` (the three-panel artifact). It consumes the 6b
+  `BainiteReaction` unchanged (per-steel `scale` via `dataclasses.replace`, derived at import
+  from one cited US-Steel-1951-atlas point each), `kinetics`' Mₛ/KM, and `properties`'
+  hardness blend. The module docstring is its contract — including the named edges (claims
+  stop at the 50 % line; bainite hardness = the carbon-only placeholder, now load-bearing).
 - The Fe-C boundaries in `fe_c.py` are **parametrized approximations** (linear between
   pinned invariant points). Phase 4 (`calphad_backend.py`) computes them from real
   thermodynamics instead — `CalphadBackend().phase_fractions(C0, T)` is a drop-in for
@@ -108,6 +120,9 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 5b | `grain.py` (extend) | the **Pickering pair** — Hall–Petch **yield** + Cottrell–Petch **DBTT**, same form / opposite grain-size signs (refine → stronger *and* tougher) | **built ✓** (2026-06-09) |
 | 5c | `grain.py` (extend), `plots.grain_figure`, `demo_grain.py` | **coupling** (austenitize → PAGS → ferrite grain → yield + DBTT) + the banked co-benefit figure; `yield ≤ UTS` consistency check | **built ✓** (2026-06-09) |
 | 5 | `steel.ipynb` §5, `app.py` §5, `plots.grain_interactive_figure` | Phase 5 **surfaced in the §9 interactive twins** — slider-driven austenitize → grain → yield + DBTT, the over-austenitizing penalty (DBTT crossing room temperature); replaces the schematic-cartoon stand-in | **built ✓** (2026-06-09) |
+| 6a | `kinetics.py` §5 (extend), `pathint.py` | the **proeutectoid-ferrite bay** — Li/Kirkaldy–Venugopalan ferrite reaction (ceiling A₃) run *before* the pearlite curve; the corrected "A₁-not-A₃" diagnosis; 1045 knee shallows, 4140 stays deep by cited Cr/Mo (plan §13) | **built ✓** (2026-06-09) |
+| 6b | `kinetics.py` §6 (extend), `demo_bainite.py` | the **cited bainite reaction** (Steven–Haynes `Bs`, ΔT¹, `BC`) + the bay's *mechanism* (BC Cr/Mo ≪ FC Cr/Mo) — **descoped as a proven negative**: wiring it into `pathint` would regress the 8620 band, so it stays standalone (plan §13) | **built ✓** (2026-06-09, descoped) |
+| 6d | `austemper.py`, `demo_austemper.py`, `steel.ipynb` §6, `app.py` §6 | **austempering** — the isothermal bainite hold, the 6b reaction's valid home: per-steel anchors to the US Steel 1951 atlas (scales derived at import), holdout-proven 50 %-line, KM on the remainder, the minimum-full-transform-hold exercise | **built ✓** (2026-06-10) |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
 
@@ -685,6 +700,34 @@ mass-conservation analogue); and **the teeth are a holdout** — fit on the 900 
 **predict the held-out 1000 & 1100 °C rows within ~16 %**. Units are **µm / hours / K** (the
 registered trap: 5b's Pickering laws cite `d` in mm). The Hall–Petch yield + DBTT (5b) and the
 co-benefit figure (5c) are next.
+
+## Phase 6 — competing-reaction CCT kinetics & austempering (6a/6b/6d)
+
+The post-v1 "close the known simplifications" arc (plan §13 is the full story; the module
+docstrings are the contracts). **6a** added the missing **proeutectoid-ferrite reaction**
+(Li/Kirkaldy–Venugopalan, ceiling A₃) ahead of the byte-identical pearlite curve — the corrected
+diagnosis of the 1045 knee ("A₁-not-A₃" was a *mis*diagnosis; A₁ is right for pearlite). **6b**
+added the **cited bainite reaction** and *proved* it cannot enter the continuous-cooling race
+(the 8620 carbon-spread ceiling) — descoped as a documented negative, the reaction standalone.
+**6d** gave that reaction its valid home: **austempering**, the isothermal hold route.
+
+```python
+from projects.steel import austemper as au
+au.austemper("1080", 343.3, 600.0)          # quench → hold (650 °F salt bath) → fully bainitic, ~49 HRC
+au.minimum_full_hold("1080", 343.3)         # ≈ 305 s — the exercise the §6 surfaces drive
+au.hold_time_to_fraction("4340", 371.1, 0.5)  # = 391 s, the cited anchor (by construction)
+```
+
+The discipline (a named step down from 6a's one global knob): **one scale per steel**, each
+derived **at import** from a single cited `(T, t₅₀)` point of the US Steel *Atlas of Isothermal
+Transformation Diagrams* (1951) — because the anchoring probe showed per-steel anchoring
+**predicts** (1080 t₅₀ holdouts ×1.06/×0.96 — the teeth, `test_austemper.py`) while the cited
+cross-composition arithmetic is **wrong-signed** (atlas: 4340 ~5× slower than 1080; `BC` says
+~7× faster — so the two derived scales differ ×41 and `BC` is never used cross-steel, a pinned
+negative). Claims stop at the atlas **50 % line**; the quench in is idealized instantaneous; the
+un-modeled pearlite race is **policed** (a warning near Bs), not modeled; `pathint` stays
+byte-identical. Artifact: [`docs/figures/steel-austemper.png`](../../docs/figures/steel-austemper.png);
+surfaces: notebook §6 + app §6 (anchored steels only — deliberately no build-your-own here).
 
 ## Run the tests
 

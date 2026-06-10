@@ -63,6 +63,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 import numpy as np
 
+from projects.steel import austemper as aus
 from projects.steel import sweep
 from projects.steel import grain
 from projects.steel import properties as prop
@@ -87,6 +88,18 @@ DEFAULT_COMPARE = ["1045", "1080", "4140"]
 # reach it); the alloy-envelope branch is the live, UI-reachable warning.
 MN_FLOOR = 0.30
 ALLOY_ENVELOPE = {"Cr": 1.5, "Mo": 0.40, "Ni": 1.5}
+
+# The austempering (Phase 6d) section's vocabulary — only the atlas-anchored steels are offered
+# (per-steel anchoring is the validated content; BC is probe-falsified for cross-steel times, so
+# a free-composition austemper slider would be dressing an invalid extrapolation as a knob). The
+# hold-temperature slider is clamped inside the Mₛ/Bs window with this margin, so the recipe's
+# refuse-guards are programmatically unreachable from the UI (the composition_warnings pattern).
+AUSTEMPER_STEELS = list(aus.ATLAS_STEELS)
+AUSTEMPER_T_MARGIN = 10.0     # °C inside the (Ms, Bs) window
+# Log-ish hold options for the select_slider: the "find the minimum full-transform hold"
+# exercise needs fine steps where the action is (minutes), coarse ones in the long tail.
+AUSTEMPER_HOLD_OPTIONS = [1, 2, 5, 10, 20, 30, 60, 90, 120, 180, 240, 300, 360, 450, 600,
+                          900, 1200, 1800, 2700, 3600]
 
 # The grain / Phase-5 section's carbon cap. Phase 5's Pickering laws describe a ferrite-pearlite
 # structure; above the eutectoid (~0.8 %C) a pro-eutectoid cementite network appears and that
@@ -282,6 +295,57 @@ def grain_readout(gp) -> dict:
     }
 
 
+def austemper_window(steel: str) -> tuple[float, float]:
+    """The austempering window ``(Mₛ, Bs)`` (°C) for an anchored steel — the slider bounds.
+
+    ``main()`` clamps the hold-temperature slider :data:`AUSTEMPER_T_MARGIN` inside this window,
+    so the recipe's refuse-guards (at/above ``Bs`` the reaction is inert; at/below ``Mₛ`` it is
+    martempering) are programmatically unreachable from a drag — the MN_FLOOR pattern.
+    """
+    r = aus.anchored_reaction(steel)
+    s = aus.ATLAS_STEELS[steel]
+    return aus.andrews_Ms(**s.comp), r.Bs
+
+
+def austemper_outcome(steel: str, T_hold: float, t_hold: float) -> aus.AustemperResult:
+    """The austempering what-if: an anchored steel + a hold → the Phase-6d recipe result.
+
+    One :func:`austemper.austemper` — instant quench (named), the atlas-anchored bainite hold,
+    KM on the remainder, the rule-of-mixtures hardness. Adds no physics — a pure re-composition
+    of the validated 6d chain, exactly like the other helpers. The pearlite-race ``UserWarning``
+    is suppressed here because the same fact arrives structurally as ``pearlite_race_flagged``
+    (surfaced as an ``st.warning`` in :func:`main`) — a console warning per slider drag would be
+    noise on top of the structured flag, not information.
+    """
+    import warnings as _warnings
+    with _warnings.catch_warnings():
+        _warnings.filterwarnings("ignore", message="high hold", category=UserWarning)
+        return aus.austemper(steel, float(T_hold), float(t_hold))
+
+
+def austemper_readout(r: aus.AustemperResult) -> dict:
+    """Display strings for the austempering panel — the hold's products, hardness, and pacing.
+
+    Surfaces the two times the exercise turns on — the model's 50 % time at this hold and the
+    **minimum full-transform hold** (shorter holds leave austenite that shears to brittle
+    untempered martensite on the cool) — plus the race flag :func:`main` turns into a warning.
+    All nan/format logic lives here, so :func:`main` only forwards strings.
+    """
+    return {
+        "bainite": f"{r.bainite:.0%}",
+        "martensite": f"{r.martensite:.0%}",
+        "retained": f"{r.retained_austenite:.0%}",
+        "HV": f"{r.HV:.0f} HV",
+        "HRC": format_hrc(r.HRC),
+        "dominant": r.dominant().replace("_", " "),
+        "t50": f"{aus.hold_time_to_fraction(r.steel, r.T_hold, aus.ATLAS_T50_X):,.0f} s",
+        "min_full_hold": f"{aus.minimum_full_hold(r.steel, r.T_hold):,.0f} s",
+        "window": f"Mₛ {r.Ms:.0f} °C < hold < Bₛ {r.Bs:.0f} °C",
+        "race_flagged": bool(r.pearlite_race_flagged),
+        "race_shadow": f"{r.pearlite_shadow:.0%}",
+    }
+
+
 # --------------------------------------------------------------------------- #
 # 2. Figure builders — thin wrappers over plots.py (matplotlib imported lazily)
 # --------------------------------------------------------------------------- #
@@ -346,6 +410,26 @@ def grain_overview_figure(gp, C: float, comp: dict, *, name: str = "", t_hours: 
     from projects.steel.plots import grain_interactive_figure
 
     return grain_interactive_figure(gp, C, comp, name=name, t_hours=t_hours)
+
+
+def austemper_overview_figure(steel: str, T_hold: float, t_hold: float):
+    """The austempering three-panel view — the Phase-6d demo's own figure, re-aimed at the knobs.
+
+    A thin wrapper over :func:`projects.steel.demo_austemper.compute` +
+    :func:`projects.steel.plots.austemper_figure` (the demo's compute pipeline *is* the validated
+    arrays; the render layer owns the drawing — the app invents no figure of its own): the
+    anchored isothermal diagram with the atlas measurements on it, the hold's completion U(t),
+    and hardness vs hold time with the minimum full-transform hold marked. The pearlite-race
+    warning is suppressed exactly as in :func:`austemper_outcome` (the flag carries the fact).
+    Raises ``ImportError`` without matplotlib — caught in :func:`main`.
+    """
+    from projects.steel.demo_austemper import compute
+    from projects.steel.plots import austemper_figure
+
+    import warnings as _warnings
+    with _warnings.catch_warnings():
+        _warnings.filterwarnings("ignore", message="high hold", category=UserWarning)
+        return austemper_figure(compute(steel, float(T_hold), float(t_hold)))
 
 
 # --------------------------------------------------------------------------- #
@@ -615,6 +699,55 @@ def main() -> None:
             "is the design idea behind modern HSLA (high-strength low-alloy) steels — and the "
             "S960MC grade whose grain-growth data calibrates this section's kinetics."
         )
+
+    # ---- section 6: austempering — the isothermal hold route (Phase 6d) ---- #
+    st.subheader("Austempering — quench past the nose, hold, and grow bainite (Phase 6d)")
+    st.caption(
+        "Every recipe above cools *through* the diagram; this one **stops inside it**: quench "
+        "into a salt bath between Mₛ and Bₛ, hold until the austenite transforms to **bainite**, "
+        "then cool — no brittle as-quenched martensite, no separate temper (springs and clips "
+        "are made this way; 1080 is *the* classic austempering steel). The kinetics are the 6b "
+        "bainite reaction **anchored per steel to one cited point** of the US Steel 1951 atlas — "
+        "the model then predicts that steel's whole 50 %-line (the holdout teeth). Only the two "
+        "anchored steels are offered: the probe proved the cited cross-composition arithmetic "
+        "wrong-signed, so there is deliberately no build-your-own here. **The exercise:** find "
+        "the shortest hold that still fully transforms — every second past it buys nothing, and "
+        "every second short of it leaves austenite that shears to brittle martensite on the cool."
+    )
+    ac = st.columns(3)
+    a_steel = ac[0].selectbox("Anchored steel", AUSTEMPER_STEELS, index=0)
+    a_Ms, a_Bs = austemper_window(a_steel)
+    a_T = ac[1].slider("Hold temperature (°C)",
+                       int(math.ceil(a_Ms + AUSTEMPER_T_MARGIN)),
+                       int(math.floor(a_Bs - AUSTEMPER_T_MARGIN)),
+                       min(343, int(math.floor(a_Bs - AUSTEMPER_T_MARGIN))), 1,
+                       key="austemper_T")
+    a_t = ac[2].select_slider("Hold time (s)", options=AUSTEMPER_HOLD_OPTIONS, value=600,
+                              key="austemper_t")
+    a_out = austemper_outcome(a_steel, a_T, a_t)
+    ar = austemper_readout(a_out)
+    a1, a2, a3, a4 = st.columns(4)
+    a1.metric("Bainite", ar["bainite"])
+    a1.caption(f"martensite {ar['martensite']} · retained γ {ar['retained']}")
+    a2.metric("Hardness", ar["HV"])
+    a2.caption(ar["HRC"])
+    a3.metric("50 % transformed at", ar["t50"])
+    a4.metric("Minimum full-transform hold", ar["min_full_hold"])
+    if ar["race_flagged"]:
+        st.warning(
+            f"High hold: this close to Bₛ the un-modeled ferrite/pearlite reactions would reach "
+            f"~{ar['race_shadow']} during the hold (the single-curve fictitious-time police) — "
+            "the bainite-only claim is unreliable here. Hold lower, in the anchored band."
+        )
+    st.caption(
+        f"{ar['window']} · the quench to the hold is idealized instantaneous (named) · claims "
+        "stop at the atlas 50 % line; bainite hardness is the carbon-only placeholder, now "
+        "load-bearing (under-ranks alloyed bainite — named)."
+    )
+    try:
+        st.pyplot(austemper_overview_figure(a_steel, a_T, a_t))
+    except ImportError:
+        st.info(viz_hint)
 
 
 if __name__ == "__main__":

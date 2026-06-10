@@ -253,3 +253,47 @@ def test_grain_overview_figure_builds_when_viz_present():
     fig = app.grain_overview_figure(gp, 0.20, {"Mn": 0.75, "Si": 0.20}, name="your steel")
     assert len(fig.axes) == 3                             # grain-growth panel + yield/DBTT twin axis
     plt.pyplot.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# 9. Austempering (Phase 6d): the anchored hold what-if + its readout + the UI guards
+# --------------------------------------------------------------------------- #
+def test_austemper_vocabulary_is_the_anchored_table_only():
+    # The dropdown offers ONLY atlas-anchored steels — cross-composition BC is probe-falsified,
+    # so a free-composition austemper would dress an invalid extrapolation as a knob.
+    assert app.AUSTEMPER_STEELS == ["1080", "4340"]
+    # The slider clamp keeps every reachable hold strictly inside (Ms, Bs) — the refuse-guards
+    # are programmatically unreachable from a drag (the MN_FLOOR pattern).
+    for steel in app.AUSTEMPER_STEELS:
+        Ms, Bs = app.austemper_window(steel)
+        assert Ms + app.AUSTEMPER_T_MARGIN < Bs - app.AUSTEMPER_T_MARGIN   # a real window survives
+        r = app.austemper_outcome(steel, Ms + app.AUSTEMPER_T_MARGIN, 60.0)
+        assert 0.0 <= r.bainite <= 1.0
+
+
+def test_austemper_outcome_suppresses_the_warning_but_carries_the_flag():
+    # A high hold near Bs: the helper must not leak the console UserWarning (st.warning surfaces
+    # the structured flag instead), but the flag and shadow must arrive on the result.
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")                    # any escaped warning fails the test
+        r = app.austemper_outcome("1080", 480.0, 100.0)
+    assert r.pearlite_race_flagged
+
+
+def test_austemper_readout_is_display_ready():
+    ar = app.austemper_readout(app.austemper_outcome("1080", 343.0, 600.0))
+    assert set(ar) == {"bainite", "martensite", "retained", "HV", "HRC", "dominant",
+                       "t50", "min_full_hold", "window", "race_flagged", "race_shadow"}
+    assert ar["bainite"].endswith("%") and ar["HV"].endswith("HV")
+    assert ar["t50"].endswith("s") and ar["min_full_hold"].endswith("s")
+    assert ar["race_flagged"] is False                    # the anchored band is quiet
+    assert ar["dominant"] == "bainite"                    # the classic hold goes fully bainitic
+
+
+def test_austemper_overview_figure_builds_when_viz_present():
+    plt = pytest.importorskip("matplotlib")
+    plt.use("Agg")
+    fig = app.austemper_overview_figure("4340", 380.0, 600.0)
+    assert len(fig.axes) == 3                             # diagram + U(t) + hardness-vs-hold
+    plt.pyplot.close(fig)
