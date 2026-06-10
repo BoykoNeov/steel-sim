@@ -37,11 +37,11 @@ jupyter lab steel/steel.ipynb           # the teaching notebook (needs .[viz,not
 **Run the tests** (the tiered gate — [ADR 0003](docs/decisions/0003-test-execution-policy.md)):
 
 ```powershell
-./run_tests.ps1 -m "not slow"     # routine fast lane — 352 tests
-./run_tests.ps1                   # full suite — 358 tests (adds slow live-CALPHAD + notebook)
+./run_tests.ps1 -m "not slow"     # routine fast lane — 386 tests
+./run_tests.ps1                   # full suite — 395 tests (adds slow live-CALPHAD, notebook + kinetics checks)
 ```
 
-The suite is **358 tests**, all green. The six **live-CALPHAD** cross-checks need the
+The suite is **395 tests**, all green. The **live-CALPHAD** cross-checks need the
 `[calphad]` extra (pycalphad) and otherwise skip — they run in CI on Python 3.12, where
 `pip install -e .[calphad]` resolves cleanly (on 3.14 see the `[calphad]` note in
 `pyproject.toml`). The frozen-table Phase-4 validation runs pycalphad-free. Optional stacks

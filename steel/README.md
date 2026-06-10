@@ -671,7 +671,7 @@ It is laid out in **three layers** so the deliverable is both testable and runna
   (`__main__`, no package parent) with `steel/` — *not* the repo root — on `sys.path`, so a
   relative `from . import sweep` raises "no known parent package" and a bare `from steel
   import sweep` raises `ModuleNotFoundError`. The module therefore puts the repo root on `sys.path`
-  first (the `parents[2]` idiom the demos use) and imports **absolutely**. Verify cheaply, no
+  first (the `parents[1]` idiom the demos use) and imports **absolutely**. Verify cheaply, no
   streamlit needed: `python steel/app.py` must reach `import streamlit` inside `main()` and
   die only there (if it dies on a `from …` line, the bootstrap is wrong).
 - **The grade dropdown for the main what-ifs; a *guarded* free slider for build-your-own.**
