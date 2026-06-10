@@ -754,9 +754,9 @@ bound — see the conversion note below.)
 ```python
 from projects.steel import ideal_diameter as idd
 res = idd.crosscheck_all()                 # {grade: CrossCheck} — model fM=0.5 D_c vs measured band
-res["4340"].model.DI_mm                     # ≈ 119 mm  (water-quench centre-equivalent)
+res["4340"].model.Dc_mm                     # ≈ 119 mm  (water-quench centre-equivalent)
 res["4340"].verdict                         # "under-predicts (below measured band)"  ← the teeth
-sorted(res, key=lambda n: res[n].model.DI_mm)   # ['1045', '8620', '4140', '4340'] — ranking correct
+sorted(res, key=lambda n: res[n].model.Dc_mm)   # ['1045', '8620', '4140', '4340'] — ranking correct
 ```
 
 The **non-circularity** is the whole point: the model's hardenability rides Grossmann *relative
@@ -767,9 +767,12 @@ hardness the measured side is read at). The conversion is applied **identically*
 its accuracy cancels — the discrimination lives in where `J50` falls (model from `fM=0.5`, isolating
 hardenability; measured from the cited 50 %M hardness, so the model never grades its own benchmark).
 **The conversion fix (advisor catch):** a first attempt used an AI-extracted "SAE J406 Table A7
-ideal-`D_I`" table; it was **dropped** when its values coincided with the EMJ *oil* column (below
-water — impossible for an ideal `D_I`, since `D_I ≥ D_water ≥ D_oil`). The directly-read EMJ p.29
-water column is the cited conversion; `D_c` is a defensible lower bound on the ideal `D_I`.
+ideal-`D_I`" table; it was **dropped because *the extraction* was unreliable** (self-contradictory
+across attempts, and falling on the EMJ *oil* column below water — impossible for an ideal `D_I`,
+since `D_I ≥ D_water ≥ D_oil`) — **not** a claim that J406's real table is wrong (it was never
+actually seen). The physics check `D_I ≥ D_water` caught the bad extraction; the durable lesson is to
+verify AI-extracted tables against an independent direct read. The directly-read EMJ p.29 water column
+is the cited conversion; `D_c` is a defensible lower bound on the ideal `D_I`.
 
 **Validated** (`test_ideal_diameter.py`) — read the *shape*, not "within X %": (1) the **ranking is
 correct** (1045 35 < 8620 51 < 4140 104 < 4340 119 mm — alloy beats carbon, the headline); (2) **4340

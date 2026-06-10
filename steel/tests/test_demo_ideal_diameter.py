@@ -16,7 +16,7 @@ from projects.steel.demo_ideal_diameter import compute
 
 def test_demo_pipeline_ranking_anchor_and_teeth():
     d = compute()
-    di = {n: d.checks[n].model.DI_mm for n in d.order}
+    di = {n: d.checks[n].model.Dc_mm for n in d.order}
 
     # The headline: hardenability ranking correct (alloy beats carbon).
     assert di["1045"] < di["8620"] < di["4140"] < di["4340"]
@@ -29,7 +29,7 @@ def test_demo_pipeline_ranking_anchor_and_teeth():
 
     # Every grade carries a finite, positive measured lower-edge D_I (the band is well-formed).
     for cc in d.checks.values():
-        assert np.isfinite(cc.measured.DI_min_mm) and cc.measured.DI_min_mm > 0.0
+        assert np.isfinite(cc.measured.Dc_min_mm) and cc.measured.Dc_min_mm > 0.0
 
 
 def test_ideal_diameter_figure_builds():

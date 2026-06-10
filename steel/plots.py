@@ -886,17 +886,17 @@ def ideal_diameter_figure(d):
     for i, name in enumerate(order):
         cc = d.checks[name]
         me, m = cc.measured, cc.model
-        lo = me.DI_min_mm
-        hi = x_right if me.upper_off_scale else me.DI_max_mm
+        lo = me.Dc_min_mm
+        hi = x_right if me.upper_off_scale else me.Dc_max_mm
         color = ROLE_COLOR[cc.role]
         ax_di.barh(i, hi - lo, left=lo, height=0.46, color=color, alpha=0.30,
                    edgecolor=color, linewidth=1.3)
         if me.upper_off_scale:                        # arrow: deepest heats run off the standard bar
             ax_di.annotate("", (x_right, i), (hi - 6, i),
                            arrowprops=dict(arrowstyle="-|>", color=color, lw=1.6))
-        mdi = x_right if not np.isfinite(m.DI_mm) else m.DI_mm
+        mdi = x_right if not np.isfinite(m.Dc_mm) else m.Dc_mm
         ax_di.plot(mdi, i, "D", ms=11, color=color, mec="0.15", mew=1.0, zorder=5)
-        ax_di.annotate(f"  model {m.DI_mm:.0f} mm — {cc.verdict}" if np.isfinite(m.DI_mm)
+        ax_di.annotate(f"  model {m.Dc_mm:.0f} mm — {cc.verdict}" if np.isfinite(m.Dc_mm)
                        else "  model off-scale", (mdi, i), textcoords="offset points",
                        xytext=(6, 9), fontsize=8.0, color="0.2")
     ax_di.axvline(DC_MAX_MM, color="0.5", ls=":", lw=1.2)

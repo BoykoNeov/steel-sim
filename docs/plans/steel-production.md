@@ -1265,11 +1265,14 @@ cited 50 %-martensite-hardness-vs-C the measured side is read at).
 **The conversion fix (advisor catch — a durable finding).** `D` is obtained the textbook way: find
 the Jominy distance `J50` at 50 % martensite, read the round-bar diameter off the empirical
 end-quench↔diameter equivalence. **First attempt used an AI-extracted "SAE J406 Table A7 ideal-`D_I`"
-table — DROPPED**: its values coincided with the EMJ **oil** column (J16 → 2.9 in), i.e. *below*
-water, which is **impossible for an ideal `D_I`** (`D_I ≥ D_water ≥ D_oil` — a more severe quench
-through-hardens a *larger* bar). The physics check `D_I ≥ D_water` caught the bad extraction. So the
-conversion is the **directly-read EMJ p.29 water-quench centre-equivalent** table; the reported scalar
-is `D_c` (a defensible lower bound on the ideal `D_I`). **The teeth are conversion-invariant** —
+table — DROPPED because *the extraction* was unreliable**, not because J406's real table is wrong (it
+was never actually seen — the fetch failed and the text-extraction self-contradicted across attempts:
+J8 → 2.97 then J8 → 1.75). The tell: the extracted values fell on the EMJ **oil** column (J16 → 2.9
+in), i.e. *below* water — **impossible for an ideal `D_I`** (`D_I ≥ D_water ≥ D_oil`, a severer quench
+through-hardens a *larger* bar). The physics check `D_I ≥ D_water` flagged the bad extraction (the
+durable lesson: verify an AI-extracted table against an independent direct read before trusting it).
+So the conversion is the **directly-read EMJ p.29 water-quench centre-equivalent** table; the reported
+scalar is `D_c` (a defensible lower bound on the ideal `D_I`). **The teeth are conversion-invariant** —
 applied *identically* to model and measured curves, the conversion's absolute accuracy **cancels**;
 the discrimination lives in `J50` (advisor). The two sides locate `J50` by the two valid readings of
 "50 % martensite": **model** directly from `fM = 0.5` (isolates hardenability from the 2c hardness

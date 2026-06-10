@@ -68,10 +68,11 @@ Three findings, in order of strength:
 Named scope edges
 -----------------
 * **We report ``D_c`` (water-quench centre-equivalent), not the *ideal* ``D_I``** — the latter is the
-  ``H → ∞`` upper bound, and the AI-extracted "ideal" table proved unreliable (it coincided with the
-  oil column, *below* water — see §1). ``D_c`` is directly tabulated (EMJ p.29) and used only as the
-  cancelling conversion (applied identically both sides — the comparison lives in ``J50``). It tops
-  out at J32 (D_c ≈ 5.6 in / 142 mm); a ``J50`` beyond that is reported **off-scale**, not extrapolated.
+  ``H → ∞`` upper bound. A first AI-extracted ideal-``D_I`` table was dropped because *the extraction*
+  was unreliable (self-contradictory, and falling on the oil column below water — see §1), not because
+  the cited source is wrong. ``D_c`` is directly read (EMJ p.29) and used only as the cancelling
+  conversion (applied identically both sides — the comparison lives in ``J50``). It tops out at J32
+  (D_c ≈ 5.6 in / 142 mm); a ``J50`` beyond that is reported **off-scale**, not extrapolated.
 * **The measured bands are cited anchor points**, partly read off published band *charts* (EMJ
   Reference Book) and partly exact tabulated values (SAE J1268 1045H); they carry the H-band's own
   ±2 HRC tolerance. Claims are **loose, directional bands**, ~2 sig figs — never a precise mm match.
@@ -105,13 +106,17 @@ from . import properties as prop
 # WHAT THIS REPORTS, AND WHY IT IS NOT THE *IDEAL* D_I (the advisor catch — a durable finding):
 # the true ideal critical diameter D_I is the H -> infinity (infinitely severe quench) limit, which
 # is an UPPER BOUND on the finite-quench centre-equivalent diameter (D_I >= D_water >= D_oil at a
-# given J — a more severe quench through-hardens a *larger* bar to the same centre cooling rate). An
-# AI-extracted "SAE J406 Table A7 ideal-D_I" was tried first and DROPPED: its values coincided with
-# this OIL column (J16 -> 2.9 in), i.e. *below* water — impossible for an ideal D_I, the physics
-# check (D_I >= D_water) that caught the bad extraction. So this module reports the directly-tabulated
-# **water-quench centre-equivalent critical diameter D_c** (a defensible lower bound on the ideal
-# D_I), used only as the scalar conversion applied IDENTICALLY to the model curve and the measured
-# band — so its absolute accuracy cancels in the comparison; the discrimination lives in J50 (advisor).
+# given J — a more severe quench through-hardens a *larger* bar to the same centre cooling rate). A
+# first conversion was an AI-extracted "SAE J406 Table A7 ideal-D_I" and was DROPPED — NOT because
+# J406's real table is wrong (it was never actually seen: the fetch failed and the text-extraction was
+# unreliable, self-contradicting across attempts — J8 -> 2.97 then J8 -> 1.75), but because the
+# extraction was untrustworthy and its values fell on the EMJ OIL column (below water), impossible for
+# an ideal D_I. The physics check D_I >= D_water flagged the bad *extraction* (the durable lesson:
+# verify an AI-extracted table against an independent direct read before trusting it). So this module
+# reports the directly-read **water-quench centre-equivalent critical diameter D_c** (a defensible
+# lower bound on the ideal D_I), used only as the scalar conversion applied IDENTICALLY to the model
+# curve and the measured band — so its absolute accuracy cancels in the comparison; the discrimination
+# lives in J50 (advisor).
 DC_SOURCE = ("EMJ Reference Book (Earle M. Jorgensen) p.29, end-quench↔round-bar correlation, "
              "centre-of-round, mild water quench (the ideal D_I is the H→∞ upper bound)")
 EMJ_J_SIXTEENTHS = np.array(
@@ -269,8 +274,8 @@ class MeasuredDI:
     h50_HRC: float
     j50_min: float            # 1/16 in (lower-hardenability band edge -> shallower)
     j50_max: float            # 1/16 in (upper-hardenability band edge -> deeper)
-    DI_min_mm: float
-    DI_max_mm: float
+    Dc_min_mm: float
+    Dc_max_mm: float
     upper_off_scale: bool     # max-band 50 %-martensite point runs past the EMJ J32 limit (off the bar)
 
 
@@ -289,8 +294,8 @@ def measured_ideal_diameter(steel: BenchmarkSteel) -> MeasuredDI:
         h50_HRC=h50,
         j50_min=j50_lo_c,
         j50_max=j50_hi_c,
-        DI_min_mm=jominy_to_critical_diameter(j50_lo_c),
-        DI_max_mm=jominy_to_critical_diameter(j50_hi_c),
+        Dc_min_mm=jominy_to_critical_diameter(j50_lo_c),
+        Dc_max_mm=jominy_to_critical_diameter(j50_hi_c),
         upper_off_scale=(not np.isfinite(j50_hi)) or (j50_hi > DC_MAX_J),
     )
 
@@ -308,7 +313,7 @@ class ModelDI:
 
     grade: str
     j50_sixteenths: float
-    DI_mm: float
+    Dc_mm: float
     off_scale: bool           # fM never reached 0.5 within the bar, or J50 past the EMJ J32 limit
     jominy: prop.JominyHardness
 
@@ -366,18 +371,18 @@ class CrossCheck:
     @property
     def in_band(self) -> bool:
         """Does the model D_I fall within the measured band (treating an off-scale upper edge as +inf)?"""
-        lo = self.measured.DI_min_mm
-        hi = float("inf") if self.measured.upper_off_scale else self.measured.DI_max_mm
-        m = self.model.DI_mm
+        lo = self.measured.Dc_min_mm
+        hi = float("inf") if self.measured.upper_off_scale else self.measured.Dc_max_mm
+        m = self.model.Dc_mm
         return bool(lo <= m <= hi) if np.isfinite(m) else (hi == float("inf"))
 
     @property
     def verdict(self) -> str:
         """A short directional read: 'in band' / 'rides high (shallow bias)' / 'under-predicts (deep)'."""
-        m = self.model.DI_mm
+        m = self.model.Dc_mm
         if self.in_band:
             return "in band"
-        if np.isfinite(m) and m < self.measured.DI_min_mm:
+        if np.isfinite(m) and m < self.measured.Dc_min_mm:
             return "under-predicts (below measured band)"
         return "rides high (above measured band)"
 

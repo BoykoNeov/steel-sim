@@ -61,18 +61,18 @@ def print_summary(d: IdealDiameterDemo) -> None:
     for name in d.order:
         cc = d.checks[name]
         m, me = cc.model, cc.measured
-        mdi = "off-scale" if not np.isfinite(m.DI_mm) else f"{m.DI_mm:5.0f} mm"
-        hi = ">bar" if me.upper_off_scale else f"{me.DI_max_mm:.0f}"
-        band = f"{me.DI_min_mm:5.0f} – {hi:>5} mm"
+        mdi = "off-scale" if not np.isfinite(m.Dc_mm) else f"{m.Dc_mm:5.0f} mm"
+        hi = ">bar" if me.upper_off_scale else f"{me.Dc_max_mm:.0f}"
+        band = f"{me.Dc_min_mm:5.0f} – {hi:>5} mm"
         print(f"{name:>6} {cc.role:>7} {cc.model.jominy.carbon:5.2f} {me.h50_HRC:4.0f}  | "
               f"{mdi:>10} | {band:>20} | {cc.verdict}")
-    di = {n: d.checks[n].model.DI_mm for n in d.order}
+    di = {n: d.checks[n].model.Dc_mm for n in d.order}
     ranked = " < ".join(sorted(di, key=lambda n: di[n]))
     print("-" * 86)
     print(f"HEADLINE — hardenability ranking (model D_c): {ranked}")
     print("  4140 = the calibration anchor (a match is by construction, NOT teeth).")
     print("  4340 + 8620 = the clean teeth: 4340 UNDER-predicted (Ni potency under-captured; the")
-    print("    Cr-Mo-calibrated scale), 8620 lands in band. 1045 = the documented knee edge (rides high).")
+    print("    Cr-Mo-calibrated scale), 8620 at the upper band edge. 1045 = the documented knee edge (rides high).")
     print("NAMED EDGES: D_c = water-quench centre-equivalent (EMJ p.29, directly read; the ideal D_I is")
     print("  its H→∞ upper bound — an AI-extracted ideal-D_I table was dropped, it coincided with oil).")
     print("  The conversion is applied identically both sides so its error cancels; measured bands are")
