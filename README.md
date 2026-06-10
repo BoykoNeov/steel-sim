@@ -1,5 +1,7 @@
 # steel-sim — a steel heat-treatment simulator
 
+[![full-gate](https://github.com/BoykoNeov/steel-sim/actions/workflows/full-gate.yml/badge.svg)](https://github.com/BoykoNeov/steel-sim/actions/workflows/full-gate.yml)
+
 *Composition + cooling in, microstructure and properties out.* An educational simulator for
 the heat treatment of steels: Jominy hardenability, CCT/TTT transformation kinetics, the
 martensite/bainite/ferrite-pearlite reactions, carburizing, tempering, austenite grain growth,
