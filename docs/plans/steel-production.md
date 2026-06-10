@@ -1238,3 +1238,87 @@ rest on — a large, risky rebuild); or (b) **proceed to 6c**.
 * **6c — the D_I ideal-critical-diameter cross-check** (now against the *post-6a* model). **Teeth
   caveat (advisor):** must use an **independent measured D_I**, not a Grossmann-derived one (kinetics
   already uses Grossmann relative potencies → a Grossmann D_I would be a tautology).
+  **New candidate source (from the 6d probe, below):** the pinned US Steel 1951 atlas carries
+  measured **E-Q hardenability panels** per steel (4140 p.102, 4340 p.105, 8620 p.113 …) — fully
+  independent measured Jominy traverses. Before using them, check what 2c's Jominy anchors were
+  originally calibrated against (if the same curves, that leg would be circular and D_I tables
+  stay the benchmark).
+
+### Phase 6d — Austempering: the bainite reaction's valid home (PLANNED 2026-06-10, probe done)
+
+Promoted from the 6b merge-review discussion ("integrate partially/optionally?"): wiring bainite
+into the CCT race stays falsified at any flag granularity (the §13 6b negative result — at the
+8620-safe scale the option is inert, at any visible scale it is wrong), but the **isothermal hold
+(austempering)** never enters that race, is the industrially real use of bainite (springs, clips,
+high-carbon strip — 1080 is *the* classic austempering steel), and is the one configuration where
+the descoped 6b reaction becomes **validly load-bearing**. It completes the simulator's process
+vocabulary: every existing recipe is a continuous-cooling route; this is the missing hold-route.
+
+**The anchoring probe (run 2026-06-10 — the phase's risk is already burned down).** Throwaway
+scripts (gitignored `outputs/probe_6b/`, this checkout) anchored the implemented
+`BainiteReaction` against measured isothermal diagrams and tested prediction:
+
+* **Cited source (pinned, public domain):** US Steel **"Atlas of Isothermal Transformation
+  Diagrams" (1951)**, archive.org identifier `atlas_of_isothermal_transformation_diagrams`
+  (scan; per-page crops via the IIIF API). Steels: **1080** p.42 (C 0.79, Mn 0.76, grain size 6,
+  austenitized 1650 °F) and **4340** p.105 (C 0.42, Mn 0.78, Ni 1.79, Cr 0.80, Mo 0.33, grain
+  7–8, 1550 °F). Atlas conventions (its own front matter): beginning line ≈ **0.1 %** transformed;
+  dotted line = **50 %**; dash segments = the sub-2-second / uncertain regions.
+* **Machine read-offs** (not eyeballed: printed 1-2-5 log-gridline pattern fit, rms ≈ 1 px at
+  ~173 px/decade; curves chained from row-scans — label letters drop out as short traces).
+  Seconds, °C:
+  | curve | 482.2 | 454.4 | 435.3 | 426.7 | 398.9 | 396.7 | 371.1 | 343.3 | 315.6 | 287.8 | 260.0 |
+  |---|---|---|---|---|---|---|---|---|---|---|---|
+  | 1080 begin | | | 1.66 | | 3.74 | | 7.44 | 18.7 | ~48 | 96 | 140 |
+  | 1080 50 % | | | | | | 38 | 70.6 | 151 | | | |
+  | 4340 begin | 18.7 | 13.0 | | 12.7 | 18.9 | | 28.0 | 33.5 | | | |
+  | 4340 50 % | | | | | 315 | | 391 | | | | |
+* **Verdict:** (1) **per-steel anchoring PASSES** — one scale fit at one (T, t) point predicts
+  that steel's window within ~×1.3 (1080 50 %-line **×1.06**; begin-line ×1.0–1.3 over
+  435→288 °C; 4340 ×0.7–1.3 over 427→371 °C, ×2.3 at 343 °C) — the ΔT¹·Arrhenius shape is
+  genuinely predictive in the austempering band. (2) **Cross-composition FAILS ×14–35,
+  wrong-signed** — cited BC says 4340 ~7× *faster* than 1080 (carbon 10.18 dominates); the atlas
+  measures 4340 ~4–5× *slower*. Anchored t50 scales: 1080 ≈ 6.8e3 vs 4340 ≈ 165 (literature
+  base = 1 → the absolute KV-as-implemented base is ~10³–10⁴ slow, quantifying 6b's "named, not
+  validated"). (3) **The 6b mechanism teeth survive, strengthened**: the atlas shows 4340's
+  bainite retarded only ~4× while its pearlite is pushed ~10³× — the bay mechanism measured; what
+  fails is BC's carbon-vs-alloy *arithmetic* for absolute cross-steel times.
+
+**Scope (small phase; recipe + table + tests, no new solver physics):**
+1. **Per-steel cited anchor table** — `{steel: (T_anchor °C, t50_anchor s)}` from the atlas
+   rows above (1080: 371.1 → 70.6 s; 4340: 371.1 → 391 s); scales derived at import, not stored
+   magic numbers. `BainiteReaction` itself unchanged.
+2. **The recipe** — `austemper(steel, T_hold, t_hold)` (suggest a small `austemper.py`):
+   idealized instantaneous quench to the hold (named), advance `U` via the existing
+   `completion_step` with the anchored scale, final cool = Koistinen–Marburger martensite +
+   retained austenite on the `(1−f_bainite)` remainder, hardness via the existing `properties`
+   blend. **Guards:** refuse/warn `T_hold ≥ Bs` or `≤ Ms`; police the un-modeled pearlite race by
+   integrating the existing `CCurve` fictitious time through the hold and warning when
+   non-negligible (high holds). `pathint` stays **byte-identical** — the 6b negative result is
+   load-bearing and untouched.
+3. **Surface** — hold-path figure (step T(t) over the isothermal C-curve + U(t) + hardness vs
+   hold time), `demo_austemper.py` + banked figure, notebook/app section (steel, T_hold, t_hold
+   sliders; the "find the minimum full-transform hold" exercise).
+4. **Tests (the triad):** (a) **HOLDOUT teeth** — anchored at 371.1 °C, predict 1080 t50 at
+   343.3 °C within ±25 % of 151 s and at 396.7 °C within ±25 % of 38 s; 4340 begin-shape within
+   ×1.35 over 427→371 °C. (b) **Documented negative** (the 6b 540-split-test pattern) — the two
+   per-steel scales differ ×>10, pinning "no global scale / BC never cross-steel". (c)
+   **Invariants** — ≥Bs inert; short hold reduces to KM on the remainder; long hold → cap;
+   everything existing byte-identical.
+
+**Cited vs calibrated:** *cited* = the atlas read-off table, the ΔT¹/Q=27 500 shape (Li), the
+Steven–Haynes Bs, KM. *Calibrated* = **one scale per steel**, each pinned by a single cited
+(T, t50) anchor — a named discipline step down from 6a's one-global-knob, framed honestly: the
+model contributes the (holdout-proven) temperature *shape*; absolute time bases come from the
+anchors, the same epistemic shape as Jominy's Grossmann calibration. **BC is never used for
+absolute cross-steel times** (probe-falsified, wrong-signed).
+
+**Named scope edges:** claims stop at the **50 % line** (model begin→50 % spacing ×39.5 vs
+measured ×9.5–14 — g(U) late-stage vs atlas begin-sensitivity ambiguity; 4340's hours-long
+completion stasis tail makes full-completion times indefensible); near-Ms acceleration unmodeled
+(1080 @ 260 °C ×2.9); model nose ~28 °C high (4340: 458 vs ~430 °C measured); bainite hardness =
+the carbon-only placeholder now load-bearing (fine for plain-carbon 1080/1045 headline recipes,
+under-ranks alloyed — named); upper/lower bainite morphology and the toughness benefit narrated,
+not computed; S-H Bs extrapolated beyond 0.55 %C for 1080 (worked). **Not in scope:** any
+pathint/CCT wiring, martempering (the same hold machinery is the seam — noted, not built),
+Maynier bainite hardness terms.
