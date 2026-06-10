@@ -1134,10 +1134,19 @@ markdown + a direct-render cell (the fine/coarse pair) were inserted via a **sur
 ONLY `[setup cell + the new cell]` in a fresh kernel, embed just that cell's figure, leaving the other 37
 cells' committed outputs **byte-identical** (a no-op `nbformat` round-trip proved formatting is preserved;
 diff = **80 insertions, 0 deletions**). Verified clean three ways (isolated `pytest`, the executor child in
-7.9 s returncode 0, the insertion's own kernel run). NB: the `slow` notebook smoke-test stays a **documented
-infra flake** — it wedges past its per-cell timeout under full-suite/CI load (CI-skipped, commit a00f66a;
-"REMOVE once root-caused"), so it can fail the *full local gate* while the **fast lane (`-m "not slow"`,
-the commit gate) is green** and the notebook executes clean in isolation. This phase did not touch that.
+7.9 s returncode 0, the insertion's own kernel run). NB: the `slow` notebook smoke-test *was* a documented
+infra flake; **ROOT-CAUSED + mitigated 2026-06-10** (separate session) — the wedge is an upstream
+**pyzmq/asyncio-on-Windows lost-`execute_reply`**: the kernel finishes a cell and goes idle (0 % CPU) but
+the client never sees the reply (a missed FD-readiness notification). It is **load-INDEPENDENT** (~24 % in
+bare repetition with zero other load — the old "under full-suite load" story was wrong), **content-innocent**
+(the wedged cell index wanders), and **version-INDEPENDENT** (reproduced identically on Python 3.13 & 3.14, so
+not a 3.14 regression). The default **Proactor** loop's tornado selector-thread shim drops the reply; forcing
+the **Selector** loop is *worse* (adds a timeout-length stall to every run, scalable to the outer guard).
+**No clean in-code fix** → mitigation = **retry-on-wedge** in `test_steel_notebook.py` (the child exits 2 on
+the retryable `CellTimeoutError` wedge vs 1 on a fatal `CellExecutionError` content bug; `MAX_ATTEMPTS=5`
+drives ~24 %→`0.24⁵`≈0.08 %; verified 25/25 with retries observed firing and recovering). The **`_SKIP_IN_CI`
+gate stays** — the CI (Ubuntu/Linux) hang from a00f66a is a *separate*, unreproduced beast (Linux uses the
+selector loop, can't hit the Proactor shim), so "REMOVE once root-caused" now scopes to that Ubuntu hang.
 
 ---
 
