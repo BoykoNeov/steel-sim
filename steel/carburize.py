@@ -134,8 +134,10 @@ Deliberate scope (named, not hidden)
   * **High-carbon extrapolation** of Andrews ``Ms`` / KM / the martensite curve past
     their ~0.8 %C anchor — the root of the surface-RA overprediction, handled by the
     benchmark fork above.
-  * The **D_I cross-check** (ideal critical diameter from the finished model) remains
-    *available, not built* — scope discipline (it is not triad-required).
+  * The **D_I cross-check** (critical diameter from the finished model) is now **built**
+    (Phase 6c — :mod:`ideal_diameter`): the critical diameter ``D_c`` read from the model's
+    ``fM=0.5`` Jominy distance vs **measured** H-bands (the benchmark is measured, not
+    Grossmann-computed — non-circular).
 
 Units & conventions
 -------------------

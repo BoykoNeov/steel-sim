@@ -1233,16 +1233,82 @@ flags as the optional deepening — replace the Grossmann-shifted single curve w
 but it discards the calibrated pearlite curve the four-curves demo and the 1045/4140 Jominy benchmark
 rest on — a large, risky rebuild); or (b) **proceed to 6c**.
 
-### Phase 6c — PENDING
+### Phase 6c — the D_I / measured-Jominy cross-check (BUILT ✓ 2026-06-10)
 
-* **6c — the D_I ideal-critical-diameter cross-check** (now against the *post-6a* model). **Teeth
-  caveat (advisor):** must use an **independent measured D_I**, not a Grossmann-derived one (kinetics
-  already uses Grossmann relative potencies → a Grossmann D_I would be a tautology).
-  **New candidate source (from the 6d probe, below):** the pinned US Steel 1951 atlas carries
-  measured **E-Q hardenability panels** per steel (4140 p.102, 4340 p.105, 8620 p.113 …) — fully
-  independent measured Jominy traverses. Before using them, check what 2c's Jominy anchors were
-  originally calibrated against (if the same curves, that leg would be circular and D_I tables
-  stay the benchmark).
+`projects/steel/ideal_diameter.py` (the two cited lookup tables + the model/measured critical-diameter
+`D_c` machinery) + `demo_ideal_diameter.py` + `plots.ideal_diameter_figure` (two panels) →
+`docs/figures/steel-ideal-diameter.png` + `tests/test_ideal_diameter.py` (13) +
+`tests/test_demo_ideal_diameter.py` (2). **Steel not-slow gate 339 → 354** (+15). Nothing else
+touched — pure re-composition of the
+validated Jominy chain + two cited tables, **no engine change, `pathint`/`kinetics` byte-identical**.
+Source → [[di-crosscheck-source]].
+
+**What it closes.** Every 2a–2c/6a calibration was anchored to its *own* data (thermal curve, TTT
+nose `HARDENABILITY_SCALE`, constituent hardnesses); the **absolute depth of hardening** the
+combination predicts was never directly checked. The **critical diameter** — the round-bar diameter
+that is 50 % martensite at its centre — measures exactly that. (We report `D_c`, the directly-
+tabulated **water-quench centre-equivalent** diameter; the *ideal* `D_I` is its `H → ∞` upper bound —
+see "the conversion fix" below.) This is the "available, not required" leg the 2c/3c docstrings
+flagged, now built.
+
+**The teeth caveat, honoured (the source decision).** The benchmark must be **measured**, not
+Grossmann-computed (the model's hardenability rides Grossmann *relative potencies*, so a Grossmann
+`D_I` = base × multiplying factors would be a tautology). **The 6d-probe's atlas-E-Q-panel candidate
+was checked and dropped** — the US Steel 1951 atlas is an *isothermal-transformation* atlas (the
+6c-note's "4340 E-Q panel p.105" collided with `austemper.py`'s already-cited 4340 *IT diagram*
+p.105 — the panels were speculative). The benchmark instead is the standard **measured H-bands**:
+**SAE J1268** (1045H exact-tabulated; 4140H/8620H confirmed callouts J8 = 42–54 / J4 = 27–41) +
+**EMJ Reference Book** band charts (4340, 4142≈4140 shape) + **EMJ Reference Book p.29** (the cited
+J→diameter equal-hardness conversion, centre-of-round) + **SAE J406 Table A5 / Hodge–Orehoski** (the
+cited 50 %-martensite-hardness-vs-C the measured side is read at).
+
+**The conversion fix (advisor catch — a durable finding).** `D` is obtained the textbook way: find
+the Jominy distance `J50` at 50 % martensite, read the round-bar diameter off the empirical
+end-quench↔diameter equivalence. **First attempt used an AI-extracted "SAE J406 Table A7 ideal-`D_I`"
+table — DROPPED**: its values coincided with the EMJ **oil** column (J16 → 2.9 in), i.e. *below*
+water, which is **impossible for an ideal `D_I`** (`D_I ≥ D_water ≥ D_oil` — a more severe quench
+through-hardens a *larger* bar). The physics check `D_I ≥ D_water` caught the bad extraction. So the
+conversion is the **directly-read EMJ p.29 water-quench centre-equivalent** table; the reported scalar
+is `D_c` (a defensible lower bound on the ideal `D_I`). **The teeth are conversion-invariant** —
+applied *identically* to model and measured curves, the conversion's absolute accuracy **cancels**;
+the discrimination lives in `J50` (advisor). The two sides locate `J50` by the two valid readings of
+"50 % martensite": **model** directly from `fM = 0.5` (isolates hardenability from the 2c hardness
+map — the clean headline); **measured** from the **cited** 50 %M hardness (not the model's own blend
+— the model must not grade its own benchmark; this choice is load-bearing: cited-30 HRC at 0.2 %C
+puts 8620 *in* band where the model's 35 would push it above).
+
+**The circularity audit (the four grades' roles).** 4140 = the **calibration anchor**
+(`HARDENABILITY_SCALE` set to its nose → a match is *by construction, not teeth*); 4340 + 8620 = the
+**clean teeth** (never touched the calibration; deep Ni-Cr-Mo / shallow 0.2 %C carburizing bracket);
+1045 = the **documented edge** (its model knee runs ~2–3 mm deep — 2b/6a — so it rides high; reported,
+not tuned). 4340 is added **benchmark-local** (not surfaced in `sweep.STEELS`/the app).
+
+**The result — read the shape, not "within X %" (advisor).** Three findings, in order of strength
+(`D_c` = water-quench centre-equivalent, mm):
+1. **The hardenability ranking is correct** — model `D_c`: **1045 (35) < 8620 (51) < 4140 (104) <
+   4340 (119) mm**. A 0.2 %C carburising steel out-hardens a 0.45 %C plain one (alloy beats carbon),
+   from the cited potencies — the headline (an H-band is a *wide* composition-spread envelope, so
+   merely landing "in band" is weak teeth).
+2. **4340 is under-predicted** — model 119 mm sits *at/below* the measured 4340H band's lower edge
+   (~132 mm), whose upper edge runs **off the standard bar** (EMJ p.29 tops at J32 ≈ 142 mm). The
+   scale was calibrated on Cr-Mo (4140); 4340's **nickel** potency is under-captured — the strongest
+   non-circular result.
+3. **A directional bias** — shallow grades (1045 above its 13–29 mm band; 8620 at the top of its
+   30–53 mm band) ride high through the knee (**knee + low-carbon hardness-map**, not pure
+   hardenability); the deep grade under-predicts. 4140 lands in its 54→off-scale band *by construction*.
+
+**Named scope edges.** `D_c` is the water-quench centre-equivalent (a lower bound on the ideal `D_I`;
+the AI-extracted ideal table was dropped — see "the conversion fix"); it is used only as the
+cancelling conversion. The measured bands are cited anchor points (~2 sig figs, the H-band's own
+±2 HRC, partly read off published charts); the corroborating direct-HRC(J) layer folds in the 2c
+hardness map (the alloy steels run a touch hard near the quenched end — named, +3 HRC tolerance in
+the test); the frozen Cartesian engine cannot simulate a round bar's radial centreline and **none is
+needed** — the end-quench↔diameter equivalence *is* how section-size hardenability is read from a
+Jominy curve industrially.
+
+**This completes Phase 6** (6a ferrite bay ✓ / 6b bainite mechanism ✓-descoped / 6d austempering ✓ /
+6c D_I cross-check ✓). The two human forward-options from 6b — (a) the full unified KV-pearlite
+rebuild, (b) proceed — are now both spent; the remaining named deepening is (a), unattempted.
 
 ### Phase 6d — Austempering: the bainite reaction's valid home (BUILT ✓ 2026-06-10)
 

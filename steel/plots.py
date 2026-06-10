@@ -853,6 +853,93 @@ def grain_interactive_figure(
     return fig
 
 
+def ideal_diameter_figure(d):
+    """The Phase-6c artifact: the critical-diameter (D_c) / measured-Jominy cross-check.
+
+    ``d`` is a :class:`~projects.steel.demo_ideal_diameter.IdealDiameterDemo` (already-validated
+    arrays — this layer only draws them, ADR 0002). ``D_c`` is the water-quench centre-equivalent
+    critical diameter (a lower bound on the ideal ``D_I``). Two panels:
+
+    * **left — D_c, model vs measured, per grade:** each grade's measured ``D_c`` band is a bar
+      (open arrow where the deepest heats run off the standard bar); the model's ``D_c`` (from
+      ``fM = 0.5``) is a diamond. The read, in order: the **ranking is correct** (grades sorted by
+      hardenability); **4340 under-predicted** (diamond at/below the band's low edge, band off-scale
+      above); shallow grades **ride high**. 4140 (the calibration anchor) sits in its wide band *by
+      construction* — coloured apart, not teeth.
+    * **right — the Jominy curves behind it:** model HRC(J) over the measured band envelopes, with
+      the cited 50 %-martensite hardness (where ``D_c`` is read) dashed per grade — the threshold/
+      conversion-free corroboration; the near-end hardness-map fold shows on the alloy steels.
+    """
+    import matplotlib.pyplot as plt
+    from .ideal_diameter import BENCHMARK_STEELS, JOMINY_STEP_MM, DC_MAX_MM
+
+    # Role palette: the anchor (calibration) set apart from the teeth and the documented edge.
+    ROLE_COLOR = {"anchor": "#9aa0a6", "teeth": PHASE_COLORS["bainite"], "edge": PHASE_COLORS["pearlite"]}
+    GRADE_COLOR = {"1045": PHASE_COLORS["pearlite"], "8620": "#2e8b57",
+                   "4140": PHASE_COLORS["martensite"], "4340": "#6c3fb5"}
+
+    fig, (ax_di, ax_j) = plt.subplots(1, 2, figsize=(13.5, 5.6))
+    order = d.order
+
+    # --- left: D_I bars (measured band) + model markers, by hardenability ---------- #
+    x_right = DC_MAX_MM * 1.12                        # plot edge a touch past the standard-bar limit
+    for i, name in enumerate(order):
+        cc = d.checks[name]
+        me, m = cc.measured, cc.model
+        lo = me.DI_min_mm
+        hi = x_right if me.upper_off_scale else me.DI_max_mm
+        color = ROLE_COLOR[cc.role]
+        ax_di.barh(i, hi - lo, left=lo, height=0.46, color=color, alpha=0.30,
+                   edgecolor=color, linewidth=1.3)
+        if me.upper_off_scale:                        # arrow: deepest heats run off the standard bar
+            ax_di.annotate("", (x_right, i), (hi - 6, i),
+                           arrowprops=dict(arrowstyle="-|>", color=color, lw=1.6))
+        mdi = x_right if not np.isfinite(m.DI_mm) else m.DI_mm
+        ax_di.plot(mdi, i, "D", ms=11, color=color, mec="0.15", mew=1.0, zorder=5)
+        ax_di.annotate(f"  model {m.DI_mm:.0f} mm — {cc.verdict}" if np.isfinite(m.DI_mm)
+                       else "  model off-scale", (mdi, i), textcoords="offset points",
+                       xytext=(6, 9), fontsize=8.0, color="0.2")
+    ax_di.axvline(DC_MAX_MM, color="0.5", ls=":", lw=1.2)
+    ax_di.annotate("standard bar limit\n(EMJ p.29 J32 ≈ 142 mm)", (DC_MAX_MM, len(order) - 0.5),
+                   textcoords="offset points", xytext=(-6, -2), ha="right", va="top",
+                   fontsize=7.6, color="0.4")
+    ax_di.set_yticks(range(len(order)))
+    ax_di.set_yticklabels([f"{n}\n({d.checks[n].role})" for n in order])
+    ax_di.set_ylim(-0.6, len(order) - 0.4)
+    ax_di.set_xlim(0, x_right)
+    ax_di.set_xlabel("critical diameter  D_c  (mm, water-quench centre-equivalent; ≤ ideal D_I)")
+    ax_di.set_title("D_c: model (fM=0.5) vs measured band — ranking correct, 4340 under-predicted",
+                    fontsize=10.0)
+
+    # --- right: the model Jominy HRC(J) curves over the measured band envelopes ----- #
+    for name in order:
+        cc = d.checks[name]
+        steel = BENCHMARK_STEELS[name]
+        col = GRADE_COLOR[name]
+        jb, hmin, hmax = steel._band_arrays()
+        ax_j.fill_between(jb, hmin, hmax, color=col, alpha=0.14, lw=0)         # measured band
+        jh = cc.model.jominy
+        j16 = jh.distance / (JOMINY_STEP_MM * 1e-3)
+        good = np.isfinite(jh.HRC)
+        ax_j.plot(j16[good], jh.HRC[good], color=col, lw=2.0, label=f"{name} model")
+        ax_j.axhline(cc.measured.h50_HRC, color=col, ls=":", lw=1.0, alpha=0.6)
+    ax_j.set_xlim(0, 32)
+    ax_j.set_ylim(18, 62)
+    ax_j.set_xlabel("Jominy distance from quenched end  (1/16 in)")
+    ax_j.set_ylabel("hardness  (HRC)")
+    ax_j.set_title("model HRC(J) over measured bands; dotted = cited 50 %-martensite hardness",
+                   fontsize=10.0)
+    ax_j.legend(loc="upper right", fontsize=8.0, framealpha=0.9)
+
+    fig.suptitle(
+        "Phase 6c — the critical-diameter (D_c) / measured-Jominy cross-check: absolute hardenability "
+        "depth, vs data the model never saw (benchmark MEASURED, not Grossmann-computed)",
+        fontsize=12.0, fontweight="bold",
+    )
+    fig.subplots_adjust(left=0.075, right=0.985, top=0.88, bottom=0.11, wspace=0.20)
+    return fig
+
+
 def bainite_figure(d):
     """The Phase-6b artifact: the bainite bay's **mechanism** (the teeth) and the cited C-curve.
 

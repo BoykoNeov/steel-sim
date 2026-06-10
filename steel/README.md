@@ -89,6 +89,13 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   from one cited US-Steel-1951-atlas point each), `kinetics`' Mₛ/KM, and `properties`'
   hardness blend. The module docstring is its contract — including the named edges (claims
   stop at the 50 % line; bainite hardness = the carbon-only placeholder, now load-bearing).
+- **To work on the D_I cross-check (Phase 6c):** `ideal_diameter.py` + `tests/test_ideal_diameter.py`
+  (the validation leg) and `demo_ideal_diameter.py` + `tests/test_demo_ideal_diameter.py` (the
+  two-panel artifact). **Pure re-composition** of the validated Jominy chain (`solve_thermal_field` →
+  `ccurve_for_steel` → `jominy_hardness`) + two cited lookup tables (EMJ p.29 J→`D_c` water-quench
+  conversion; SAE J406/Hodge–Orehoski 50 %M hardness) + cited measured H-bands (SAE J1268 / EMJ) — no new physics, no
+  engine touch, `pathint`/`kinetics` byte-identical. The module docstring is its contract (the teeth
+  caveat: benchmark MEASURED, not Grossmann; the circularity roles anchor/teeth/edge).
 - The Fe-C boundaries in `fe_c.py` are **parametrized approximations** (linear between
   pinned invariant points). Phase 4 (`calphad_backend.py`) computes them from real
   thermodynamics instead — `CalphadBackend().phase_fractions(C0, T)` is a drop-in for
@@ -123,6 +130,7 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 6a | `kinetics.py` §5 (extend), `pathint.py` | the **proeutectoid-ferrite bay** — Li/Kirkaldy–Venugopalan ferrite reaction (ceiling A₃) run *before* the pearlite curve; the corrected "A₁-not-A₃" diagnosis; 1045 knee shallows, 4140 stays deep by cited Cr/Mo (plan §13) | **built ✓** (2026-06-09) |
 | 6b | `kinetics.py` §6 (extend), `demo_bainite.py` | the **cited bainite reaction** (Steven–Haynes `Bs`, ΔT¹, `BC`) + the bay's *mechanism* (BC Cr/Mo ≪ FC Cr/Mo) — **descoped as a proven negative**: wiring it into `pathint` would regress the 8620 band, so it stays standalone (plan §13) | **built ✓** (2026-06-09, descoped) |
 | 6d | `austemper.py`, `demo_austemper.py`, `steel.ipynb` §6, `app.py` §6 | **austempering** — the isothermal bainite hold, the 6b reaction's valid home: per-steel anchors to the US Steel 1951 atlas (scales derived at import), holdout-proven 50 %-line, KM on the remainder, the minimum-full-transform-hold exercise | **built ✓** (2026-06-10) |
+| 6c | `ideal_diameter.py`, `demo_ideal_diameter.py` | the **critical-diameter (D_c) / measured-Jominy cross-check** — compute the critical diameter *from* the model (`fM=0.5` → EMJ p.29 water-quench conversion) vs **measured** H-bands (SAE J1268 / EMJ; *not* Grossmann-computed): the hardenability **ranking is correct**, 4340 **under-predicted** (Ni potency), 4140 in-band by construction (plan §13) | **built ✓** (2026-06-10) |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
 
@@ -338,9 +346,12 @@ vs 1045's soft, off-HRC-scale tail).
 
 **Follow-ups:** (1) ~~`plots.py`'s `INDICATIVE_HARDNESS` placeholders drive the four-curves
 figure~~ — **done (Phase 3a):** the placeholders are retired and the four-curves demo now shows
-the real `properties.py` hardness. (2) **D_I cross-check** (compute the ideal critical diameter
-*from* the finished model — ideal-quench a series of diameters, find the critical one — vs
-published `D_I`) is still *available*, not required, for the triad.
+the real `properties.py` hardness. (2) **D_I cross-check** (compute the critical diameter *from* the
+finished model vs measured data) — **done (Phase 6c):** `ideal_diameter.py` reads the critical
+diameter `D_c` from the model's `fM=0.5` Jominy distance (EMJ p.29 water-quench conversion) and
+compares it to **measured** H-bands (not Grossmann-computed — that would be circular); the
+hardenability ranking comes out correct, 4340 is under-predicted (Ni potency), 4140 lands in-band by
+construction. See "Phase 6c" below + plan §13.
 
 ## Phase 3a — the full property model (Maynier minor-alloy + cooling-rate terms)
 
@@ -480,7 +491,7 @@ marker), the microstructure gradient (martensite case, retained-γ rising into t
 the hardness traverse (martensite potential over the as-quenched curve, with the published surface
 band sitting honestly between them). **Scope named:** constant `D` (vs Tibbetts `D(C)`), Dirichlet
 constant potential (vs a Robin finite-surface-reaction / boost-diffuse ramp), and the high-carbon
-extrapolation. The **D_I cross-check** remains *available, not built* (not triad-required).
+extrapolation. The **D_I cross-check** is now **built (Phase 6c)** — `ideal_diameter.py`, below.
 
 ## Phase 4 — CALPHAD-backed equilibrium (`calphad_backend.py`, `calphad_reference.py`, `demo_calphad.py`)
 
@@ -701,7 +712,7 @@ mass-conservation analogue); and **the teeth are a holdout** — fit on the 900 
 registered trap: 5b's Pickering laws cite `d` in mm). The Hall–Petch yield + DBTT (5b) and the
 co-benefit figure (5c) are next.
 
-## Phase 6 — competing-reaction CCT kinetics & austempering (6a/6b/6d)
+## Phase 6 — competing-reaction CCT kinetics, austempering & the D_I cross-check (6a/6b/6d/6c)
 
 The post-v1 "close the known simplifications" arc (plan §13 is the full story; the module
 docstrings are the contracts). **6a** added the missing **proeutectoid-ferrite reaction**
@@ -709,7 +720,8 @@ docstrings are the contracts). **6a** added the missing **proeutectoid-ferrite r
 diagnosis of the 1045 knee ("A₁-not-A₃" was a *mis*diagnosis; A₁ is right for pearlite). **6b**
 added the **cited bainite reaction** and *proved* it cannot enter the continuous-cooling race
 (the 8620 carbon-spread ceiling) — descoped as a documented negative, the reaction standalone.
-**6d** gave that reaction its valid home: **austempering**, the isothermal hold route.
+**6d** gave that reaction its valid home: **austempering**, the isothermal hold route. **6c**
+closed the chain's last un-checked leg — the **D_I / measured-Jominy cross-check** (below).
 
 ```python
 from projects.steel import austemper as au
@@ -728,6 +740,47 @@ negative). Claims stop at the atlas **50 % line**; the quench in is idealized in
 un-modeled pearlite race is **policed** (a warning near Bs), not modeled; `pathint` stays
 byte-identical. Artifact: [`docs/figures/steel-austemper.png`](../../docs/figures/steel-austemper.png);
 surfaces: notebook §6 + app §6 (anchored steels only — deliberately no build-your-own here).
+
+### Phase 6c — the D_I / measured-Jominy cross-check (`ideal_diameter.py`)
+
+The Jominy chain's one un-checked leg: every 2a–2c/6a calibration was anchored to its *own* data
+(thermal curve, TTT nose, constituent hardnesses), but the **absolute depth of hardening** the
+combination predicts was never directly validated. The **critical diameter** — the round-bar
+diameter that is 50 % martensite at its centre — measures exactly that. 6c computes it *from the
+finished model* and lays it beside **measured** end-quench data. (We report `D_c`, the water-quench
+centre-equivalent diameter directly tabulated in EMJ p.29; the *ideal* `D_I` is its `H→∞` upper
+bound — see the conversion note below.)
+
+```python
+from projects.steel import ideal_diameter as idd
+res = idd.crosscheck_all()                 # {grade: CrossCheck} — model fM=0.5 D_c vs measured band
+res["4340"].model.DI_mm                     # ≈ 119 mm  (water-quench centre-equivalent)
+res["4340"].verdict                         # "under-predicts (below measured band)"  ← the teeth
+sorted(res, key=lambda n: res[n].model.DI_mm)   # ['1045', '8620', '4140', '4340'] — ranking correct
+```
+
+The **non-circularity** is the whole point: the model's hardenability rides Grossmann *relative
+potencies*, so a Grossmann-computed `D_I` would be a tautology — the benchmark is therefore
+**measured** H-bands (SAE J1268 1045H exact + 4140H/8620H callouts; EMJ band charts for 4340; EMJ
+p.29 for the cited J→diameter conversion; SAE J406 / Hodge–Orehoski for the cited 50 %-martensite
+hardness the measured side is read at). The conversion is applied **identically** to both sides so
+its accuracy cancels — the discrimination lives in where `J50` falls (model from `fM=0.5`, isolating
+hardenability; measured from the cited 50 %M hardness, so the model never grades its own benchmark).
+**The conversion fix (advisor catch):** a first attempt used an AI-extracted "SAE J406 Table A7
+ideal-`D_I`" table; it was **dropped** when its values coincided with the EMJ *oil* column (below
+water — impossible for an ideal `D_I`, since `D_I ≥ D_water ≥ D_oil`). The directly-read EMJ p.29
+water column is the cited conversion; `D_c` is a defensible lower bound on the ideal `D_I`.
+
+**Validated** (`test_ideal_diameter.py`) — read the *shape*, not "within X %": (1) the **ranking is
+correct** (1045 35 < 8620 51 < 4140 104 < 4340 119 mm — alloy beats carbon, the headline); (2) **4340
+is under-predicted** (model at/below the measured band's lower edge, whose upper edge runs off the
+standard bar — the Cr-Mo-calibrated scale under-captures 4340's **Ni** potency, the strongest
+non-circular result); (3) the **directional bias** — shallow grades (1045, 8620) ride high through
+the knee (knee + low-carbon hardness-map), the deep grade under-predicts. **4140 is the calibration
+anchor** — it lands in its (wide) band *by construction*, not teeth. 4340 is **benchmark-local** (not
+in `sweep.STEELS`/the app). Artifact:
+[`docs/figures/steel-ideal-diameter.png`](../../docs/figures/steel-ideal-diameter.png). No new
+physics/geometry — pure re-composition of the validated Jominy chain + two cited tables.
 
 ## Run the tests
 
