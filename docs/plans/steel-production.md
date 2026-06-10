@@ -402,7 +402,8 @@ slices, in order:
    package" and a bare `from steel import sweep` raises `ModuleNotFoundError` — yet the
    always-green test (which imports it *as* `steel.app`, proper package context) would stay
    green: **tests green, deliverable broken.** Fixed by bootstrapping the repo root onto `sys.path` at
-   the top of the module (the `parents[2]` idiom the demos use) + **absolute** imports; verified cheaply
+   the top of the module (the `parents[2]` idiom the demos used pre-flatten — now `parents[1]`, see the
+   incidental fix below) + **absolute** imports; verified cheaply
    with `python steel/app.py` (no streamlit needed — it must reach `import streamlit` inside
    `main()` and die *only* there). The grade dropdown (not a raw %C/`Mn=0` slider) dodges the documented
    "leaner-hypothetical" trap, as in the notebook. The **test** asserts importing `app` does not pull
