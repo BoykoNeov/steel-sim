@@ -255,6 +255,21 @@ def test_grain_overview_figure_builds_when_viz_present():
     plt.pyplot.close(fig)
 
 
+def test_grain_morphology_overview_figure_builds_when_viz_present():
+    plt = pytest.importorskip("matplotlib")
+    plt.use("Agg")
+    gp = app.grain_outcome(1000.0, 1.0, 0.20, 0.75, 0.20)
+    fig = app.grain_morphology_overview_figure(gp, name="your steel")
+    assert len(fig.axes) == 1                             # a single size-accurate Voronoi swatch
+    # the fixed field of view coarsens the picture across the sliders: a hot soak shows fewer
+    # grains than a cool one, in the SAME window (the size-accurate point).
+    hot = app.grain_morphology_overview_figure(app.grain_outcome(1250.0, 8.0, 0.20, 0.75, 0.20))
+    cool = app.grain_morphology_overview_figure(app.grain_outcome(850.0, 0.25, 0.20, 0.75, 0.20))
+    assert len(hot.axes[0].collections[0].get_paths()) < len(cool.axes[0].collections[0].get_paths())
+    for f in (fig, hot, cool):
+        plt.pyplot.close(f)
+
+
 # --------------------------------------------------------------------------- #
 # 9. Austempering (Phase 6d): the anchored hold what-if + its readout + the UI guards
 # --------------------------------------------------------------------------- #

@@ -456,6 +456,33 @@ def grain_overview_figure(gp, C: float, comp: dict, *, name: str = "", t_hours: 
     return grain_interactive_figure(gp, C, comp, name=name, t_hours=t_hours)
 
 
+# The grain swatch uses a FIXED field of view, sized to the coarsest grain the §5 austenitize
+# sliders can reach (1250 °C / 8 h — the slider maxima), so dragging the sliders coarsens the
+# *picture* (fewer, larger grains), not just a relabelled scale bar — the size-accurate point.
+GRAIN_SWATCH_AUST_T_MAX = 1250.0
+GRAIN_SWATCH_HOLD_MAX = 8.0
+
+
+def grain_morphology_overview_figure(gp, *, name: str = "", window_um: float | None = None):
+    """The grain section's size-accurate Voronoi swatch — the current ferrite grain, drawn to scale.
+
+    A thin wrapper over :func:`steel.plots.grain_swatch_figure` (the render layer owns the figure;
+    the app invents none). The field of view is **fixed** across the austenitize sliders (sized
+    from the coarsest grain they can reach, :data:`GRAIN_SWATCH_AUST_T_MAX` / :data:`GRAIN_SWATCH_HOLD_MAX`)
+    so refining the grain shows as *more, smaller* grains in the same area — the size-accurate
+    point — rather than an identical picture with a different scale bar. Reach, not evidence
+    (ADR 0002); complements the §4 phase-fraction schematic, replaces nothing. Raises
+    ``ImportError`` without matplotlib — caught in :func:`main`.
+    """
+    from steel.plots import grain_swatch_figure, grain_swatch_window_um
+
+    if window_um is None:
+        coarsest = grain.ferrite_grain_size(
+            grain.austenite_grain_size(GRAIN_SWATCH_AUST_T_MAX, GRAIN_SWATCH_HOLD_MAX))
+        window_um = grain_swatch_window_um(coarsest, target_coarse_cells=7.0)
+    return grain_swatch_figure(gp.ferrite_um, window_um=window_um, name=name)
+
+
 def austemper_overview_figure(steel: str, T_hold: float, t_hold: float):
     """The austempering three-panel view — the Phase-6d demo's own figure, re-aimed at the knobs.
 
@@ -732,6 +759,19 @@ def main() -> None:
     try:
         st.pyplot(grain_overview_figure(gp, gC, {"Mn": gMn, "Si": gSi},
                                         name="your steel", t_hours=aust_t))
+    except ImportError:
+        st.info(viz_hint)
+    st.caption(
+        "And the current ferrite grain **drawn to scale** — a size-accurate Voronoi swatch. The "
+        "field of view is fixed, so a hotter or longer soak shows as *fewer, larger* grains (the "
+        "over-austenitizing penalty), not just a relabelled scale bar. Grains-per-area tracks the "
+        "ASTM Nₐ(d); the cell shapes are illustrative — it complements the phase-fraction swatch in "
+        "§4 above and is not a micrograph."
+    )
+    swatch_col, _swatch_spacer = st.columns([3, 2])
+    try:
+        with swatch_col:
+            st.pyplot(grain_morphology_overview_figure(gp, name="your steel"))
     except ImportError:
         st.info(viz_hint)
 

@@ -970,6 +970,207 @@ def grain_interactive_figure(
     return fig
 
 
+# --------------------------------------------------------------------------- #
+# 4b. Grain morphology — the size-accurate Voronoi swatch (the deferred grain viz)
+# --------------------------------------------------------------------------- #
+# A spatial *illustration* of grain.py's scalar grain size d (µm). It is reach, not physics
+# (ADR 0002): the ONE faithful quantity is the grain NUMBER DENSITY. grain.py defines
+# N_A = 1/d² grains per area (astm_grain_size_number), so a square field of side W holds
+# N = (W/d)² grains, and a Voronoi tessellation of N random seeds has mean cell area W²/N = d².
+# Finer grain (smaller d) ⇒ more cells in the SAME field of view — the size-accurate story.
+# Everything else (the individual cell shapes, the absence of a size distribution / annealing
+# twins / crystallographic texture) is decorative. This sits exactly where the
+# microstructure_schematic cartoon sits (areas faithful, shapes illustrative) — it does NOT
+# replace that swatch (which shows phase fractions); it adds the grain-size length scale the
+# schematic explicitly disclaims.
+GRAIN_SWATCH_FILL = FERRITE_COLOR        # ferrite grains — the structure the 5b laws act on
+_GRAIN_SWATCH_MAX_CELLS = 1500           # safety cap (never hit across grain.py's size range)
+
+
+def _nice_round(x: float) -> float:
+    """Round ``x`` to a 1/2/5 × 10ⁿ "nice" number — for a legible scale-bar length."""
+    if x <= 0.0:
+        return 1.0
+    exp = math.floor(math.log10(x))
+    base = x / 10.0 ** exp
+    nice = 1.0 if base < 1.5 else 2.0 if base < 3.5 else 5.0 if base < 7.5 else 10.0
+    return nice * 10.0 ** exp
+
+
+def grain_swatch_window_um(d_coarsest_um: float, *, target_coarse_cells: float = 9.0) -> float:
+    """Side (µm) of a square field showing ``target_coarse_cells`` grains at ``d_coarsest_um``.
+
+    From the number-density identity ``N = (W/d)²`` (grain.py's ``N_A = 1/d²``): to show ``N``
+    grains at the *coarsest* grain a caller will draw, the window side is ``W = √N · d_coarsest``.
+    Sizing the window from the **coarsest** grain (then reusing it for finer ones, which simply
+    pack in more cells) is what makes a fine/coarse pair — or a slider — read as the *same field
+    of view*, so refinement shows up as more grains rather than a relabelled scale bar. ~6–9
+    coarse cells keeps the coarse swatch legible.
+    """
+    if d_coarsest_um <= 0.0:
+        raise ValueError(f"grain size must be > 0 µm, got {d_coarsest_um}")
+    if target_coarse_cells <= 0.0:
+        raise ValueError(f"target cell count must be > 0, got {target_coarse_cells}")
+    return math.sqrt(target_coarse_cells) * d_coarsest_um
+
+
+def grain_cell_count(d_um: float, window_um: float) -> int:
+    """Number of grains in a ``window_um``-side field at mean grain size ``d_um`` — ``(W/d)²``.
+
+    The size-accurate count (grain.py's ``N_A = 1/d²`` × field area ``W²``), clamped to
+    ``[1, _GRAIN_SWATCH_MAX_CELLS]`` so a pathologically fine grain cannot ask for an unbounded
+    tessellation. Pure arithmetic (no draw), so the size-accuracy claim is testable headlessly.
+    """
+    if d_um <= 0.0:
+        raise ValueError(f"grain size must be > 0 µm, got {d_um}")
+    if window_um <= 0.0:
+        raise ValueError(f"window must be > 0 µm, got {window_um}")
+    return int(min(_GRAIN_SWATCH_MAX_CELLS, max(1, round((window_um / d_um) ** 2))))
+
+
+def _bounded_voronoi_cells(points: np.ndarray, window_um: float) -> list:
+    """Voronoi polygons for ``points`` in ``[0, W]²``, each clipped finite by mirror padding.
+
+    The standard trick: reflect the seed set across all four edges and four corners (8 images),
+    so every *original* seed is fully surrounded and its Voronoi cell is finite and lies inside
+    the window. Returns one ``(k, 2)`` vertex array per original seed whose cell is bounded (any
+    degenerate cell is skipped). scipy.spatial is a core dependency — the engine's
+    ``solve_banded`` lives in scipy too.
+    """
+    from scipy.spatial import Voronoi
+
+    pts = np.asarray(points, dtype=float)
+    n = len(pts)
+    images = [pts]
+    for mx in (0.0, window_um, None):                 # reflect across x=0, x=W, or not at all
+        for my in (0.0, window_um, None):             # …and y=0, y=W, or not at all
+            if mx is None and my is None:
+                continue                              # the identity copy is already in `images`
+            rx = pts[:, 0] if mx is None else 2.0 * mx - pts[:, 0]
+            ry = pts[:, 1] if my is None else 2.0 * my - pts[:, 1]
+            images.append(np.column_stack([rx, ry]))
+    vor = Voronoi(np.vstack(images))
+    cells = []
+    for i in range(n):
+        region = vor.regions[vor.point_region[i]]
+        if region and -1 not in region:
+            cells.append(vor.vertices[region])
+    return cells
+
+
+def grain_voronoi_swatch(
+    ax: "plt.Axes", d_um: float, *, window_um: float | None = None, seed: int = 0,
+    fill: str = GRAIN_SWATCH_FILL, title: str | None = None,
+    scale_bar: bool = True, caption: bool = True,
+) -> "plt.Axes":
+    """A size-accurate **Voronoi grain swatch** for the scalar grain size ``d_um`` (µm).
+
+    Draws ``(window/d)²`` equiaxed Voronoi cells in a ``window_um``-side field — so a finer grain
+    packs visibly more grains into the same field of view. The one faithful quantity is the
+    **number density** (grain.py's ``N_A = 1/d²`` — :func:`grain_cell_count`); the cell shapes and
+    the absence of a size distribution / annealing twins / crystallographic texture are decorative.
+    When ``window_um`` is ``None`` the field auto-sizes to ~36 grains (a stand-alone snapshot whose
+    absolute size is carried by the scale bar); pass an explicit ``window_um`` (e.g. from
+    :func:`grain_swatch_window_um`) to compare several grain sizes in **one** common field — the
+    size-accurate use. Deterministic for a given ``seed``. This is the deferred grain-*morphology*
+    view; it complements, and does not replace, :func:`microstructure_schematic` (which shows phase
+    *fractions*, not grain size). ADR 0002: reach, never evidence.
+    """
+    from matplotlib.collections import PolyCollection
+    from matplotlib.colors import to_rgb
+    from matplotlib.patches import Rectangle
+
+    if d_um <= 0.0:
+        raise ValueError(f"grain size must be > 0 µm, got {d_um}")
+    if window_um is None:
+        window_um = grain_swatch_window_um(d_um, target_coarse_cells=36.0)
+    n = grain_cell_count(d_um, window_um)
+    rng = np.random.default_rng(seed)
+    pts = rng.uniform(0.0, window_um, size=(n, 2))
+    cells = _bounded_voronoi_cells(pts, window_um)
+
+    # Pale, lightly-varied fills + thin dark boundaries — the etched-micrograph look.
+    pale = 0.45 * np.array(to_rgb(fill)) + 0.55
+    shades = rng.uniform(0.86, 1.0, size=(len(cells), 1))
+    facecolors = np.clip(pale[None, :] * shades, 0.0, 1.0)
+    ax.add_collection(PolyCollection(cells, facecolors=facecolors,
+                                     edgecolors="#2b2b2b", linewidths=0.6))
+
+    ax.set_xlim(0, window_um); ax.set_ylim(0, window_um); ax.set_aspect("equal")
+    ax.set_xticks([]); ax.set_yticks([])
+
+    if scale_bar:
+        L = _nice_round(window_um / 4.0)
+        x0, y0 = window_um * 0.06, window_um * 0.05
+        pad = window_um * 0.02
+        ax.add_patch(Rectangle((x0 - pad, y0 - pad), L + 2 * pad, window_um * 0.115,
+                               facecolor="white", alpha=0.78, edgecolor="none", zorder=5))
+        ax.plot([x0, x0 + L], [y0 + window_um * 0.012, y0 + window_um * 0.012],
+                color="black", lw=3.0, solid_capstyle="butt", zorder=6)
+        ax.text(x0 + L / 2.0, y0 + window_um * 0.038, f"{L:g} µm",
+                ha="center", va="bottom", fontsize=8, zorder=6)
+
+    G = grain.astm_grain_size_number(d_um)
+    readout = f"d = {d_um:.0f} µm   ·   ASTM G {G:.1f}   ·   {n} grains"
+    ax.set_title(f"{title}\n{readout}" if title else readout, fontsize=10.5)
+    if caption:
+        ax.text(0.5, -0.06,
+                "idealized equiaxed Voronoi — grains/area ∝ ASTM Nₐ(d); shapes & size-spread "
+                "decorative (not a micrograph)",
+                transform=ax.transAxes, ha="center", va="top", fontsize=6.8, color="0.45")
+    return ax
+
+
+def grain_swatch_figure(
+    d_um: float, *, window_um: float | None = None, name: str = "", seed: int = 0,
+    title: str | None = None,
+) -> "plt.Figure":
+    """A single-axes Voronoi grain swatch *figure* — the app's grain-section view.
+
+    Wraps :func:`grain_voronoi_swatch` with its own figure so the app (and any single-state caller)
+    gets a ready figure — the render layer owns the figure (ADR 0002). Pass a fixed ``window_um``
+    so a sequence of grain sizes (e.g. an austenitize slider) shares one field of view and
+    refinement reads as *more grains*, not a relabelled scale bar.
+    """
+    fig, ax = plt.subplots(figsize=(5.8, 6.2))
+    head = title if title is not None else (
+        f"{name} — ferrite grain at this hold" if name else "ferrite grain at this hold")
+    grain_voronoi_swatch(ax, d_um, window_um=window_um, seed=seed, title=head)
+    fig.tight_layout()
+    return fig
+
+
+def grain_morphology_figure(
+    fine: GrainProperties, coarse: GrainProperties, *, name: str = "", seed: int = 0,
+    window_um: float | None = None,
+) -> "plt.Figure":
+    """The banked grain-**morphology** artifact: two grain sizes in ONE common field of view.
+
+    The size-accurate companion to :func:`grain_figure` (which plots the yield/DBTT payoff): a fine
+    vs a coarse ferrite grain (a cool vs a hot austenitize — the demo's two operating points) drawn
+    as Voronoi swatches at a **shared** window, so the over-austenitized grain reads as a handful of
+    large grains while the normalized one is a fine mosaic in the *same* area. The window is sized
+    from the coarse grain (:func:`grain_swatch_window_um`, ~9 coarse cells); the fine swatch then
+    shows ``(d_coarse/d_fine)²`` times as many. Reach, not evidence (ADR 0002) — the faithful
+    quantity is the grain count per area; see :func:`grain_voronoi_swatch`.
+    """
+    if window_um is None:
+        window_um = grain_swatch_window_um(coarse.ferrite_um, target_coarse_cells=9.0)
+    fig, (ax_f, ax_c) = plt.subplots(1, 2, figsize=(12.4, 6.4))
+    grain_voronoi_swatch(ax_f, fine.ferrite_um, window_um=window_um, seed=seed,
+                         title=f"fine grain — {fine.austenitizing_T:.0f} °C austenitize")
+    grain_voronoi_swatch(ax_c, coarse.ferrite_um, window_um=window_um, seed=seed + 1,
+                         title=f"coarse grain — {coarse.austenitizing_T:.0f} °C (over-austenitized)")
+    label = f"{name}  " if name else ""
+    fig.suptitle(
+        f"{label}grain morphology — same {window_um:.0f} µm field: over-austenitizing "
+        f"coarsens the grain (fewer, larger grains)",
+        fontsize=13, fontweight="bold",
+    )
+    fig.tight_layout(rect=(0, 0.02, 1, 0.95))
+    return fig
+
+
 def ideal_diameter_figure(d):
     """The Phase-6c artifact: the critical-diameter (D_c) / measured-Jominy cross-check.
 

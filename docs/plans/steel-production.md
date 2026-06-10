@@ -940,10 +940,12 @@ PAGS ↑ → yield ↓, DBTT ↑ — *both* worse). The strength-only framing of
   ~375–575 °C) — those stay 3b's **named ceiling**, untouched. `properties.toughness_index(HV)`
   is **not** modified; the DBTT is a new, complementary descriptor for diffusional structures,
   so there is no overlap and no contradiction.
-- **Grain *size*, not *morphology*.** Phase 5 produces a scalar `d` (+ yield + DBTT). Upgrading
-  the `steel.ipynb`/`app.py` schematic cartoon to a size-accurate **Voronoi** tessellation is
-  **viz (reach), not physics** — it stays on the ADR-0002 line where the cartoon already sits
-  ([[steel-grain-physics-deferred]]).
+- **Grain *size*, not *morphology*.** Phase 5 produces a scalar `d` (+ yield + DBTT). The
+  size-accurate **Voronoi** swatch that *illustrates* that `d` is **viz (reach), not physics** — it
+  sits on the ADR-0002 line where the cartoon already sits ([[steel-grain-physics-deferred]]).
+  **Built ✓ 2026-06-10** as `plots.grain_voronoi_swatch` (+ the banked `grain_morphology_figure` /
+  `demo_grain_morphology` / app §5), *alongside* (not replacing) `microstructure_schematic`; the one
+  faithful quantity is the grain number density (`N_A = 1/d²`). See the §12 as-built note below.
 - **Martensite packet/block Hall–Petch (strength) and martensite toughness deferred**
   (carbon-dominated / tempering-axis — the bainite-deferral analogue + 3b's ceiling).
 - **Abnormal / secondary (discontinuous) grain growth and explicit Zener pinning-particle
@@ -1106,6 +1108,31 @@ which the laws `nan` — the §3 isolation idiom). Steel gate fast `not slow` **
 the schematic swatch itself **stays** (areas ∝ validated fractions are honest), its caption reworded
 to point at §5 instead of calling the physics unbuilt. Grain *morphology* (Voronoi) still deferred
 ([[steel-grain-physics-deferred]]).
+
+**Grain-morphology Voronoi swatch built ✓** (2026-06-10) — the last grain-viz deferral
+([[steel-grain-physics-deferred]]) closed, as **viz-reach, not physics** (ADR 0002). A size-accurate
+Voronoi swatch *illustrates* the scalar grain size `d` (µm) `grain.py` already computes:
+`plots.grain_voronoi_swatch` / `grain_swatch_figure` (single) / `grain_morphology_figure` (the banked
+fine-vs-coarse pair, `docs/figures/steel-grain-morphology.png`) + `demo_grain_morphology.py` + the app's
+§5 `grain_morphology_overview_figure`. **It does NOT replace `microstructure_schematic`** (the
+phase-*fraction* swatch stays — the user's explicit call); it **adds** the grain-size length scale that
+swatch disclaims. **The one faithful quantity (advisor) is the grain NUMBER DENSITY:** `grain.py` defines
+`N_A = 1/d²` (`astm_grain_size_number`), so a field of side `W` holds `N = (W/d)²` grains and a Voronoi
+tessellation of `N` random seeds has mean cell area `W²/N = d²` — finer grain ⇒ *more* cells in the **same**
+field (a fixed window across the fine/coarse pair and the app slider, so refinement shows as more grains,
+not a relabelled scale bar — the advisor's catch); the cell shapes / size-spread / twins / texture are
+decorative, captioned as such, with a scale bar carrying the absolute size. Framed as the "square grain,
+area = d²" convention (matching `grain.py`'s own `N_A`, **not** mean-lineal-intercept — claim no more).
+Bounded cells via the standard mirror-padding trick (reflect seeds across 4 edges + 4 corners →
+`scipy.spatial.Voronoi`; scipy is the core dep the engine's `solve_banded` already uses). Tests are
+**plumbing/consistency, not teeth** (ADR 0002): size-accuracy (`(W/d)²`, monotone in `d`, determinism,
+bounded geometry) in `test_plots_grain_swatch.py` (5) + the demo build in `test_demo_grain_morphology.py`
+(2) + the app builder in `test_app.py` (1, fixed-field coarsening). Full gate **385 → 393 passed / 2
+skipped**; no physics, no engine touch, every frozen benchmark byte-identical. **Notebook §5 cell deferred
+(advisor):** the swatch already renders in the banked demo figure + the app, so a notebook cell is pure
+duplication, and the committed-notebook discipline needs a full "Run All" re-execution (a noisy
+all-figures diff) that the CI smoke-test won't even verify (it is `[infra]`-skipped, commit a00f66a) — an
+available opt-in, not done here.
 
 ---
 
