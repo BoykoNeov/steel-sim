@@ -237,6 +237,9 @@ def test_scale_is_the_documented_calibration_constant():
 # The CALPHAD coupling, live — the Ae3 ceiling fed from a Gibbs-energy minimisation
 # --------------------------------------------------------------------------- #
 @pytest.mark.slow
+@pytest.mark.xdist_group("heavy")  # live pycalphad solve — joins the shared slow-tail worker
+# (test_calphad.py / test_demo_calphad.py / notebook) so it never runs a CALPHAD solve
+# concurrently with another under `--dist loadgroup` (pyproject addopts).
 def test_calphad_ae3_flows_into_the_ferrite_reaction_live():
     # "Couple CALPHAD into live kinetics", made concrete: the ferrite ceiling defaults to the
     # cited Andrews Ae3 (always-green), but a CALPHAD-computed A₃ can be passed straight in. Here

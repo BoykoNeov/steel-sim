@@ -295,34 +295,48 @@ early and by choice — this amendment records that honestly rather than back-fi
 
 **What changed (`pytest-xdist` added to the `[test]` extra):**
 
-- `addopts` now carries `-n auto --dist loadgroup`. `-n auto` = one worker per logical CPU;
-  `--dist loadgroup` makes xdist honour `@pytest.mark.xdist_group(...)` (tests sharing a group
-  name run on the **same** worker).
-- The live-CALPHAD tests — the 4 live cases in `test_calphad.py` and the whole of
-  `test_demo_calphad.py` — share `xdist_group("calphad")`, so they all land on **one** worker.
-  This is the load-bearing reason, not raw speed: their module-scoped pycalphad backends are
-  built **once**, and **no two heavyweight live solves run concurrently** — which both avoids
-  CPU oversubscription on the heavy tail and keeps the Open Issue's known multicomponent flake
-  from being aggravated by parallelism. `test_ideal_diameter.py` gets its own group for the
-  same module-scoped-fixture-reuse reason (a shared Jominy solve), in the fast lane.
-- The notebook kernel test is left **ungrouped**: it has no shared fixture, its wedge is
-  documented load-independent and retry-mitigated, and it is CI-skipped — folding it into a
-  group would be scope creep.
+- `addopts` now carries `-n auto --dist loadgroup`. `--dist loadgroup` makes xdist honour
+  `@pytest.mark.xdist_group(...)` (tests sharing a group name run on the **same** worker).
+- **Worker count is capped at HALF the logical cores** (a `conftest.py`
+  `pytest_xdist_auto_num_workers` hook returning `cpu_count() // 2`), not `-n auto`'s default of
+  one worker per logical core. The slow tail is internally threaded — each live pycalphad solve
+  spawns symengine threads, and the notebook runs a kernel subprocess — so one-worker-per-core
+  oversubscribes the CPU and can aggravate both the known multicomponent flake and the notebook
+  wedge. Half leaves headroom for those internal threads while still parallelising the fast lane.
+- **All nine slow tests share one `xdist_group("heavy")`**, so the entire slow tail lands on a
+  **single** worker — serialised, never two live solves (or the notebook kernel) running at once
+  — while the other (half-core) workers churn the ~240-test fast lane. The nine: the 4 live
+  cases in `test_calphad.py`, the whole of `test_demo_calphad.py` (3), `test_ferrite.py`'s live
+  Ae3-coupling test (the Phase-6a addition the original ADR's "8" predated), and the notebook
+  kernel test. This is the load-bearing reason, not raw speed: the module-scoped pycalphad
+  backends build **once** and no two heavyweight solves contend.
+  - *The notebook is deliberately folded in* (reversing an earlier "leave it ungrouped" call,
+    at the user's direction — "grouping several slow tests together will have a benefit"):
+    serialising it onto the heavy worker keeps its timing-sensitive kernel handshake from
+    competing for CPU with a live CALPHAD solve. It is CI-skipped, so this only bites the local
+    full gate; the cost (a ~7 s test appended to the serial tail) is negligible against the
+    ~30 s+ CALPHAD tail it shares the worker with.
+- `test_ideal_diameter.py` keeps its **own** group (`"ideal_diameter"`) for module-scoped
+  fixture reuse (a shared Jominy solve) — it is fast-lane, not part of the slow tail.
 
 **The honest cost/benefit:**
 
-- The fast-lane gain is real but **modest** for a sub-15 s lane — ~13 s → ~6 s here (≈2.3×),
-  with xdist worker startup eating part of it. This is *not* the kind of win the ADR's
-  30 s trigger was waiting for; it was enabled because the user asked, with the CALPHAD
-  serialization as the durable benefit.
-- **`pytest-xdist` is now a hard requirement to run the suite** (not an optional feature
-  stack). Because `-n auto` lives in `addopts`, a bare `pytest` in an environment without
-  xdist errors on the unrecognised `-n` rather than degrading to serial — a conditional
-  `conftest.py` hook was tried first and **rejected** because xdist resolves `numprocesses`
-  in `pytest_cmdline_main`, before any `pytest_configure`, so the hook (even `tryfirst`) is
-  too late to engage parallelism. The escape hatch is `-n0` (force serial, e.g. for a clean
-  single-test traceback); the fix for a missing-xdist error is `pip install -e .[test]`.
+- The fast-lane gain is real but **modest** for a sub-15 s lane — ~13 s → ~6 s (≈2.3×), with
+  xdist worker startup eating part of it. This is *not* the win the 30 s trigger was waiting
+  for; it was enabled because the user asked, with the slow-tail serialisation as the durable
+  benefit.
+- **`pytest-xdist` is now a hard requirement to run the suite** (not an optional feature stack).
+  Because `-n auto` lives in `addopts`, a bare `pytest` without xdist errors on the unrecognised
+  `-n` rather than degrading to serial. A conditional approach was tried first and **rejected**:
+  setting `numprocesses` from `pytest_configure` runs *after* xdist resolves the worker count
+  (in `pytest_cmdline_main`), so it never engages parallelism — verified empirically. (The
+  surviving `conftest.py` hook only *caps* the count; it cannot conditionally turn xdist on.)
+  The escape hatch is `-n0` (force serial, e.g. for a clean single-test traceback); the fix for
+  a missing-xdist error is `pip install -e .[test]`.
 - This change **does not touch the `slow` marker, the tiered gate, or the canonical green
   count** — xdist changes *how* tests run, not *which*. Full-gate CI (`full-gate.yml`) inherits
-  `-n auto --dist loadgroup` automatically from `addopts`, so the grouping is exercised in CI
-  exactly where the multicomponent live tests actually run (with the TDB present).
+  `-n auto --dist loadgroup` from `addopts` (with the same half-core cap), so the grouping is
+  exercised in CI exactly where the multicomponent live tests actually run (with the TDB
+  present). On a small CI runner (e.g. 2 logical cores) the cap resolves to a single worker —
+  effectively serial, which is fine: CI is off the developer's critical path, and the grouping
+  is a no-op (correct) when everything is already on one worker.

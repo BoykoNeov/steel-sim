@@ -44,9 +44,11 @@ jupyter lab steel/steel.ipynb           # the teaching notebook (needs .[viz,not
 
 The suite runs **in parallel by default** — `addopts` sets `-n auto --dist loadgroup`
 (pytest-xdist, in the `[test]` extra), so xdist is required to run it (`-n0` forces serial for
-a clean single-test traceback). `--dist loadgroup` keeps the live-CALPHAD tests on one worker
-(`xdist_group("calphad")`) so their solver is built once and no two heavy solves run at once —
-see the [ADR 0003 xdist amendment](docs/decisions/0003-test-execution-policy.md).
+a clean single-test traceback). `conftest.py` caps the worker count at **half the logical
+cores** (the slow tail is internally threaded, so one-worker-per-core oversubscribes).
+`--dist loadgroup` keeps the whole slow tail (every live-CALPHAD test + the notebook kernel)
+on **one** worker (`xdist_group("heavy")`) so solvers build once and no two heavy tests run at
+once — see the [ADR 0003 xdist amendment](docs/decisions/0003-test-execution-policy.md).
 
 The suite is **395 tests**, all green. The **live-CALPHAD** cross-checks need the
 `[calphad]` extra (pycalphad) and otherwise skip — they run in CI on Python 3.12, where

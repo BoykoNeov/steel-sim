@@ -22,10 +22,11 @@ from steel import demo_calphad as demo        # noqa: E402
 # 15-80 s fixture setup into the fast inner loop. Deselected by `pytest -m "not slow"`,
 # always run in the full commit gate.
 #
-# xdist_group("calphad") (shared with test_calphad.py) pins these to ONE worker under
-# `-n auto --dist loadgroup` (pyproject addopts): the module-scoped fixtures build once and
-# no two live solves run concurrently. See test_calphad.py's live-section note.
-pytestmark = [pytest.mark.slow, pytest.mark.xdist_group("calphad")]
+# xdist_group("heavy") (the shared slow-tail group: test_calphad.py live cases + the notebook
+# kernel test) pins these to ONE worker under `-n auto --dist loadgroup` (pyproject addopts):
+# the module-scoped fixtures build once and no two live solves run concurrently. See
+# test_calphad.py's live-section note.
+pytestmark = [pytest.mark.slow, pytest.mark.xdist_group("heavy")]
 
 
 @pytest.fixture(scope="module")

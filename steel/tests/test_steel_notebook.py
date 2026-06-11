@@ -104,6 +104,9 @@ def _execute_with_retry(kernel, max_attempts=MAX_ATTEMPTS):
 
 
 @pytest.mark.slow
+@pytest.mark.xdist_group("heavy")  # run on the shared slow-tail worker so the kernel
+# subprocess never competes for CPU with a live-CALPHAD solve (the wedge is timing-sensitive);
+# joins test_calphad.py / test_demo_calphad.py under `--dist loadgroup` (pyproject addopts).
 @pytest.mark.skipif(
     _SKIP_IN_CI,
     reason="steel.ipynb kernel wedged on the CI (Ubuntu) runner in a00f66a — a separate, "

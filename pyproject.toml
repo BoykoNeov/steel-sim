@@ -63,14 +63,15 @@ calphad = ["pycalphad>=0.11"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["engines", "steel"]
-# `-n auto` runs the suite across one worker per logical CPU (pytest-xdist, in [test]); ADR
-# 0003 deferred this to a ~30 s fast-lane trigger that has not fired (~13 s serial, still well
-# under 30 s) — enabled early at the user's direction (see that ADR's xdist amendment). The
-# honest fast-lane gain is modest (~13 s -> ~6 s here);
-# the load-bearing value is `--dist loadgroup`, which honours `@pytest.mark.xdist_group(...)`:
-# the live-CALPHAD tests share the "calphad" group → one worker → their module-scoped pycalphad
-# backends are built once and no two heavyweight live solves run concurrently. Pass `-n0` for a
-# clean serial traceback while debugging a single test.
+# `-n auto` parallelises the suite (pytest-xdist, in [test]); ADR 0003 deferred this to a
+# ~30 s fast-lane trigger that has not fired (~13 s serial, still well under 30 s) — enabled
+# early at the user's direction (see that ADR's xdist amendment). `conftest.py` caps the worker
+# count at HALF the logical cores (the slow tail is internally threaded — pycalphad/symengine —
+# so one-worker-per-core oversubscribes). The honest fast-lane gain is modest (~13 s -> ~6 s).
+# The load-bearing value is `--dist loadgroup`, which honours `@pytest.mark.xdist_group(...)`:
+# all nine slow tests share the "heavy" group → one worker → their module-scoped pycalphad
+# backends are built once and no two live solves (or the notebook kernel) run concurrently.
+# Pass `-n0` for a clean serial traceback while debugging a single test.
 addopts = "-q -n auto --dist loadgroup"
 markers = [
     "slow: drives a live external solver / kernel / subprocess; deselect in the inner loop with -m 'not slow' (ADR 0003)",
