@@ -8,19 +8,20 @@ martensite/bainite/ferrite-pearlite reactions, carburizing, tempering, austenite
 austempering, and a CALPHAD equilibrium backend — each validated against cited metallurgical
 references.
 
-It owns and **freezes** the program's core numerical engine: a separately-validated 1-D
-diffusion/heat solver (`engines/diffusion`) with its own contract and test suite. The Jominy
-end-quench *is* a heat-conduction solve; carburizing *is* a mass-diffusion solve — the same
-frozen engine, two boundary-condition faces.
+It owns and **seals** the program's core numerical engine: a separately-validated 1-D
+diffusion/heat solver (`engines/diffusion`) with its own contract and test suite (sealed v1.0,
+re-sealed **v1.1** for native nonlinear `D(u)` — [ADR 0004](docs/decisions/0004-unfreeze-nonlinear-diffusivity.md)).
+The Jominy end-quench *is* a heat-conduction solve; carburizing *is* a mass-diffusion solve —
+the same sealed engine, two boundary-condition faces.
 
 ## Layout
 
 ```
-engines/diffusion/   # the frozen 1-D diffusion/heat solver (+ its own tests)
+engines/diffusion/   # the sealed 1-D diffusion/heat solver (v1.1, + opt-in nonlinear D(u)) (+ its own tests)
 steel/               # the simulator: jominy, kinetics, pathint, cooling, properties,
                      #   carburize, grain, ferrite/bainite, austemper, ideal_diameter,
                      #   fe_c + calphad_backend, sweep, plots, app.py, demos, steel.ipynb
-docs/decisions/      # ADRs 0001–0003 (language/perf, visualization/UX, test policy)
+docs/decisions/      # ADRs 0001–0004 (language/perf, visualization/UX, test policy, engine unfreeze)
 docs/plans/          # steel-production.md — the full build plan
 docs/figures/        # banked figures (steel-*.png)
 ```
@@ -37,8 +38,8 @@ jupyter lab steel/steel.ipynb           # the teaching notebook (needs .[viz,not
 **Run the tests** (the tiered gate — [ADR 0003](docs/decisions/0003-test-execution-policy.md)):
 
 ```powershell
-./run_tests.ps1 -m "not slow"     # routine fast lane — 386 tests
-./run_tests.ps1                   # full suite — 395 tests (adds slow live-CALPHAD, notebook + kinetics checks)
+./run_tests.ps1 -m "not slow"     # routine fast lane — 400 tests
+./run_tests.ps1                   # full suite — 409 tests (adds slow live-CALPHAD, notebook + kinetics checks)
 ./run_tests.ps1 -n0               # force serial (the default is `-n auto`, parallel)
 ```
 
@@ -50,7 +51,7 @@ cores** (the slow tail is internally threaded, so one-worker-per-core oversubscr
 on **one** worker (`xdist_group("heavy")`) so solvers build once and no two heavy tests run at
 once — see the [ADR 0003 xdist amendment](docs/decisions/0003-test-execution-policy.md).
 
-The suite is **395 tests**, all green. The **live-CALPHAD** cross-checks need the
+The suite is **409 tests**, all green. The **live-CALPHAD** cross-checks need the
 `[calphad]` extra (pycalphad) and otherwise skip — they run in CI on Python 3.12, where
 `pip install -e .[calphad]` resolves cleanly (on 3.14 see the `[calphad]` note in
 `pyproject.toml`). The frozen-table Phase-4 validation runs pycalphad-free. Optional stacks

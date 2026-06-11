@@ -1,14 +1,17 @@
 # `engines/diffusion` — the diffusion/heat spine
 
 The first and most-reused engine in the program (ARCHITECTURE.md §5): a
-conservative 1-D parabolic (diffusion / heat) solver. **Frozen** at Steel
-Phase 1a behind its validation suite, then inherited unchanged by Microchip
-(dopant profiles) and Planet (EBM heat transport).
+conservative 1-D parabolic (diffusion / heat) solver. **Sealed** at Steel
+Phase 1a behind its validation suite, then inherited by Microchip (dopant
+profiles) and Planet (EBM heat transport). **Re-sealed at v1.1** (2026-06-11)
+to add an opt-in **nonlinear `D(u)`** (a solution-dependent diffusivity, solved
+by an in-step Picard iteration) — the linear surface stays byte-identical, so the
+v1.0 inheritors are unaffected. See `CONTRACT.md` + [ADR 0004](../../docs/decisions/0004-unfreeze-nonlinear-diffusivity.md).
 
 ## Load pointer (per-session working set, §11)
 
 - **To *use* this engine** (from Steel/Chip/Planet): load **`CONTRACT.md`** only
-  — the frozen one-page API. You do not need this folder's internals.
+  — the sealed (v1.1) one-page API. You do not need this folder's internals.
 - **To *modify* this engine:** `CONTRACT.md` + `diffusion1d.py` + `tests/`. The
   tests are the seal — they must stay green, and they *are* the externalized
   memory of every contract downstream relies on (§6).
@@ -17,9 +20,9 @@ Phase 1a behind its validation suite, then inherited unchanged by Microchip
 
 | File | What |
 |---|---|
-| `CONTRACT.md` | **The frozen API.** Start here. PDE, modes, API, sign conventions, the frozen invariants, the validation boundary. |
-| `diffusion1d.py` | The solver: `Diffusion1D`, `Grid`/`uniform_grid`/`grid_from_edges`, `Dirichlet`/`Neumann`/`Robin`. Cell-centered finite volume + θ-method implicit stepping. |
-| `tests/` | The seal (18 tests): `test_erfc` (analytical limit + 2nd-order spatial convergence), `test_conservation` (exact no-flux mass balance), `test_stability` (unconditional stability, per method), `test_source` (source-augmented conservation), `test_variable_d` (callable `D(t)` + array `D(x)`/harmonic mean), `test_time_order` (BE 1st- / CN 2nd-order in time), `test_robin_heat` (heat-mode Robin + flux bookkeeping). |
+| `CONTRACT.md` | **The sealed API (v1.1).** Start here. PDE, modes, API (incl. the opt-in nonlinear `D_of_u`), sign conventions, the six invariants, the validation boundary. |
+| `diffusion1d.py` | The solver: `Diffusion1D`, `Grid`/`uniform_grid`/`grid_from_edges`, `Dirichlet`/`Neumann`/`Robin`. Cell-centered finite volume + θ-method implicit stepping; opt-in nonlinear `D_of_u` (Picard-in-step, backward Euler). |
+| `tests/` | The seal (24 tests): `test_erfc` (analytical limit + 2nd-order spatial convergence), `test_conservation` (exact no-flux mass balance), `test_stability` (unconditional stability, per method), `test_source` (source-augmented conservation), `test_variable_d` (callable `D(t)` + array `D(x)`/harmonic mean), `test_time_order` (BE 1st- / CN 2nd-order in time), `test_robin_heat` (heat-mode Robin + flux bookkeeping), `test_nonlinear_d` (the **v1.1 D(u) re-seal**: const-D(u)≡scalar-D, Boltzmann self-similar match, exact conservation, monotonicity, Picard convergence). |
 
 ## Run the seal
 
