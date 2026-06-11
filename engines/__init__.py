@@ -1,4 +1,4 @@
-"""BigSim shared solver toolkit (ARCHITECTURE.md §5).
+"""BigSim shared solver toolkit.
 
 Each engine is a standalone, separately-tested library, frozen behind a passing
 validation suite before any project reuses it. The first engine is

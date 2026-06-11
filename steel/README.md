@@ -4,7 +4,7 @@
 that **builds & freezes the diffusion/heat spine** (`engines/diffusion`) the other
 sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/steel-production.md).
 
-## Load pointer (per-session working set, ARCHITECTURE.md §11)
+## Load pointer (per-session working set)
 
 - **To work on the equilibrium core (Phase 1b):** `fe_c.py` + its `tests/`. To
   *use* it from another module, the module docstring of `fe_c.py` is the page.
@@ -562,7 +562,7 @@ the linear-chord-vs-curved A₃ (left) and 4140's equilibrium phase fractions vs
 
 ## Experimentation surface (`sweep.py`, `demo_sweep.py`)
 
-ARCHITECTURE.md §1 makes experimentation a core target and ties parameter sweeps to "the
+Experimentation is a core program target — parameter sweeps are "the
 cheapest verification"; `sweep.py` is the headless harness that delivers it — the foundation
 the interactive surfaces (`steel.ipynb` ✓, `app.py` ✓) import. It is **pure
 re-composition** of the already-validated chain — *no new physics, no new calibration* —

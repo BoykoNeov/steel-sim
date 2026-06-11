@@ -8,7 +8,7 @@
 > on `steel/`. The v1.0 **linear surface is byte-identical** under v1.1 (the original
 > five seal files are unchanged and still pass); only the *additive*, opt-in `D_of_u`
 > path is new, with its own seal (`test_nonlinear_d.py`). Changing the sealed surface
-> below means a new ADR + re-running the seal (ARCHITECTURE.md §5–6).
+> below means a new ADR + re-running the seal.
 
 ## What it solves
 
@@ -154,4 +154,4 @@ TTT/Jominy data (Steel plan §3, Phases 1–2). The frozen seal here promises a
 - **Not in scope:** 2-D/3-D; explicit time stepping. (Nonlinear `D(u)` *was* v1.0's
   named omission — it is now **built in v1.1**, ADR 0004.) The array-`state` boundary
   is the seam where a deferred heavy regime (or a compiled core) is later slotted without
-  touching consumers (ARCHITECTURE.md §8, ADR 0001).
+  touching consumers (ADR 0001).

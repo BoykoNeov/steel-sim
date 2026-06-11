@@ -11,7 +11,7 @@ The headline view is the **mechanism** one ADR 0002 §5 calls for: the four cool
 paths drawn *across* the TTT C-curve, so a learner sees *why* a fast quench misses
 the nose and lands in martensite while a slow cool runs into pearlite. These
 helpers start project-local; a primitive earns promotion to a shared ``viz/`` only
-by rule-of-three (ARCHITECTURE.md §6), like :mod:`pathint`.
+by rule-of-three, like :mod:`pathint`.
 
 Requires the optional ``viz`` extra (``pip install -e .[viz]``).
 """

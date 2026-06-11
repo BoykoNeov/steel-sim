@@ -60,8 +60,16 @@ never committed — it is fetched at CI time by `steel.calphad_backend.download_
 
 ## Provenance
 
-steel-sim was developed inside the **BigSim** monorepo — an educational program of three
-simulators (steel, microchip, planet) sharing two separately-validated solver engines — then
-extracted into a standalone repo with its history. steel is where the diffusion/heat engine was
-first frozen; the sibling simulators (microchip, planet) reused it and live in their own repos.
-The archive: [github.com/BoykoNeov/BigSim](https://github.com/BoykoNeov/BigSim).
+This repository is **standalone and self-contained** — everything needed to use, test, and
+develop it is here, and nothing depends on any other repository existing. It was originally
+developed inside the **BigSim** monorepo (an educational program of three simulators — steel,
+microchip, planet — sharing two separately-validated solver engines) and then extracted with its
+history. steel is where the diffusion/heat engine was first frozen and the sibling sims reused it.
+
+That origin is why some docs cite `ARCHITECTURE.md §N` or `PORTFOLIO.md`: those were the
+monorepo's **program-level** doctrine and catalog files. They are **historical context — not part
+of this repo and not required to build, test, or develop it**; the rationale that matters is
+restated locally where it is used (`docs/decisions/` ADRs, `docs/plans/steel-production.md`, and
+each module's docstring). Where the dated plan and ADRs still cite them, that is a record of what
+the build was authored against — like a commit message naming a since-removed file — not a live
+dependency.

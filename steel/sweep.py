@@ -1,8 +1,8 @@
 """The experimentation surface: parameter sweeps over the validated chain (Steel plan §9).
 
-*Cooling curve in, microstructure out* (plan §1) made **sweepable**. ARCHITECTURE.md §1
-names experimentation a core target and ties parameter sweeps to "the cheapest
-verification"; this module is the headless harness that delivers it — the foundation
+*Cooling curve in, microstructure out* (plan §1) made **sweepable**. Experimentation is
+a core program target — parameter sweeps are "the cheapest verification"; this module is
+the headless harness that delivers it — the foundation
 the interactive surfaces (``app.py`` Streamlit, ``steel.ipynb`` notebook) import.
 
 What this is — and what it is *not*
