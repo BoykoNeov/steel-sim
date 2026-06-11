@@ -1596,3 +1596,115 @@ extrapolation).
 **Backward-compatible for the trio:** Microchip / Planet inherit a *richer* contract with the linear
 behaviour byte-identical; ADR 0001's plain-array `state` boundary is unchanged (`D_of_u` is
 construction-time config, evaluated inside assembly, never crossing the state boundary).
+
+---
+
+## 16. Mixed-structure tempering — per-constituent temper of a phase mixture (PLANNED 2026-06-11)
+
+The named **§11 "smaller deferral"** chosen at the user's direction (2026-06-11), and the exact
+piece 3b flagged as out of scope: *tempering a **mixture**, per-constituent*. Phase 3b's
+`tempered_martensite_HV` tempers a **fully** martensitic structure (the quench-and-temper case); its
+docstring (properties.py §5) names the mixed traverse — *"soften the martensite, leave the pearlite"*
+— as deferred. This section promotes it. **No new engine touch, no new calibrated constant** — it is
+a rule of mixtures (the already-validated Maynier form) over per-constituent *tempered* hardnesses,
+exactly as `hardness_HV` is a rule of mixtures over the as-quenched constituent functions. The work
+is split: **steps 1–3 (the validated core, no hazard) are the next session; steps 4+ (the capability
+unlock + close-out, gated on a retained-austenite decision) are a later one.**
+
+**The model.** A new opt-in `tempered_hardness_HV(fractions, C, T_temper, t_hours, comp=None,
+Vr=None, C_hj=…)` summing each constituent's *tempered* hardness weighted by its fraction:
+* **martensite** → `tempered_martensite_HV` (the validated 3b Hollomon–Jaffe master curve);
+* **ferrite / pearlite / bainite / retained austenite** → **temper-inert**, *delegating to*
+  `CONSTITUENT_HV[name](C, comp, Vr)` — **not** returning a constant (advisor must-get: the
+  delegation carries `comp`/`Vr`, e.g. ferrite-pearlite's live `Vr` term, so the no-op seam is
+  byte-exact rather than silently broken).
+Being a new function (not a changed signature), **every as-quenched surface and the frozen
+2c/3a/3b/Jominy/four-curves benchmarks stay byte-identical**, the same opt-in discipline 3a/3b used
+for `comp`/`Vr`.
+
+**The validation reframe (advisor, the crux — this is *not* `sweep`/`design`).** The instinct was
+"re-composition → harness-correctness, no triad." Rejected: `sweep`/`design` invented **no physical
+claim**, but *"diffusional products are temper-inert"* **is** a new claim. The teeth live in a
+**tempered Jominy traverse**: `jominy_hardness` (properties.py §4) already has `result.fractions()`
+in hand at every position, so a `tempered_jominy_hardness` is a one-line swap to the new function —
+and it makes a **falsifiable prediction**: the near end (full martensite) softens hard while the far
+end (pearlite) barely moves. The *differential-softening shape across the bar* is the observable.
+
+**The benchmark posture — bracketing, not extraction (the data-search verdict, 2026-06-11).**
+Standard Jominy atlases (ASTM A255, SAE H-bands) are **as-quenched only**; *tempered*-Jominy exists
+only in **modeling papers** that themselves use Hollomon–Jaffe (e.g. "Prediction of Tempering Effect
+on Jominy Hardenability Curve"; HJ-based Q&T-hardness modeling). Extracting numbers from those is the
+[[di-crosscheck-source]] "verify the AI-extracted table" trap. So the leg is **bracketing**: the
+tempered traverse's **near end** (full martensite) reduces *exactly* to 3b's already-validated 4140
+1 h temper response (~55→45→33 HRC at 200/400/600 °C); its **far end** (pearlite, inert) is 2c's
+already-validated as-quenched soft end; the **new content is the differential shape between them** —
+asserted as a *qualitative* prediction (monotone; near-end drop ≫ far-end drop), corroborated by the
+published tempered-Jominy / HJ-modeling consensus (cited for *existence*, numbers **not** baked).
+
+**Cited vs calibrated (the non-circularity ledger).** *Validated by construction* — the rule-of-
+mixtures **form** (Maynier, already in the suite) and the three exact **seams** below. *Cited* — the
+HJ master curve (3b, unchanged) and **"pearlite barely tempers"** (the inert-FP claim). *Named, not
+validated* — **bainite-inert** (it is already the least-anchored placeholder; tempering magnitude is
+genuinely uncertain, so holding it fixed is conservative — consequence: a bainite-heavy structure
+keeps its placeholder hardness through tempering and can invert vs over-tempered martensite, the same
+family as the existing as-quenched bainite caveat, invisible on the bainite-poor benchmark grades)
+and **retained-austenite-inert** (the load-bearing hazard for step 4 — see there).
+
+### The next session — steps 1–3 (the validated core; no hazard, nothing gated)
+
+1. **`properties.py` — the function.** `tempered_hardness_HV` (+ a `tempered_hardness_HRC` boundary
+   wrapper) as above: opt-in, per-constituent tempered registry, inert constituents **delegating**
+   (carry `comp`/`Vr`). Mirrors `hardness_HV`'s structure and key-set so a fractions/registry
+   mismatch still raises.
+
+2. **`tests/test_properties.py` — the three exact seams + the bound (the strong assertions).**
+   * **Seam A** — `martensite = 1` → `tempered_martensite_HV(C, T, t, comp, C_hj)` *exactly* (recovers
+     3b; the function is a strict generalization).
+   * **Seam B** — `martensite = 0` → `hardness_HV(fractions, C, comp, Vr)` *exactly* (tempering a
+     diffusional structure is a no-op — the byte-exact test of the delegation must-get).
+   * **Seam C** — sub-onset temper (`g = 1`, e.g. ~120 °C/1 h) at **any** mixture → as-quenched
+     `hardness_HV(…)` *exactly* (free, from `tempered_martensite_HV`'s `g≥1 → HV_aq` clamp — the
+     "negligible temper = as-quenched" boundary).
+   * **Monotone & bounded** — decreasing in `T_temper`; bounded in `[mixture-with-floored-martensite,
+     as-quenched-mixture]`.
+   * **Differential teeth** — a 50/50 martensite/pearlite mix's total softening equals
+     `f_martensite × (HV_aq − HV_tempered)_martensite` (the pearlite leg is constant), the unit-level
+     statement of the Jominy shape.
+
+3. **`tempered_jominy_hardness` + the banked figure (the teeth + the artifact).** Mirror
+   `jominy_hardness`; swap `hardness_HV` → `tempered_hardness_HV`. A `demo_*` + `plots.*` overlay of
+   tempered vs as-quenched traverse (the near-end-collapses / far-end-flat differential), banked as a
+   figure under `docs/figures/`. Test posture = the bracketing above: near-end anchored to the 3b
+   4140 temper response, far-end to the 2c as-quenched soft end, the differential shape asserted
+   qualitatively. **This is the phase's validation vehicle** — ship before touching the recommender.
+
+### Future session(s) — steps 4+ (the capability unlock + close-out; step 4 gated on RA)
+
+4. **`design.py` — the guarded unlock (the headline payoff, the named hazard).** Relax
+   `_is_fully_martensitic` (`MARTENSITE_TEMPER_MIN = 0.95`, design.py:76/228) so a **partially**-
+   martensitic candidate can be tempered: invert `tempered_hardness_HV(fractions, …)` instead of the
+   pure-martensite curve (still strictly monotone in `T` → the existing bisection in `_temper_to_target`
+   transfers). **The RA guard (advisor, load-bearing — this blocks step 4, nothing earlier):**
+   tempering a high-retained-austenite structure is *exactly* where "RA inert" is wrong — RA → bainite
+   / fresh martensite on tempering is **non-monotone and can raise hardness** — and `design` *recommends*
+   (vs Jominy, which only *reports*), so an unguarded relax could hand back a confidently-wrong recipe
+   (e.g. hard-quenched 1080). **Keep a martensite-dominant / RA-capped requirement**, do **not** relax to
+   "martensite > 0". Consequence to handle, not hide: the **§14 demo headline can flip** — 1045 (10 mm
+   water → ~0.88 martensite, today reported *infeasible*) may become feasible-via-temper, and a leaner
+   partially-martensitic grade may out-rank the 4140 oil-temper "textbook answer". That re-derivation is
+   the intended capability; do it **consciously** and rewrite the §14 record. design.py's *own* Phase-7
+   tests are **expected to change** — that is *not* a frozen-benchmark violation (the frozen set is
+   2c/3a/3b/Jominy/four-curves + `tempered_martensite_HV`/`hardness_HV`, none touched).
+5. **Surfaces.** The tempered-Jominy figure carries the phase (the 3b "no new figure, the triad carries
+   it" precedent, inverted because *here the figure is the teeth*); optionally extend the app/notebook
+   temper section from martensite-only to a mixed structure.
+6. **Close-out.** A §16 *as-built* record (this section is the pre-build plan), a memory note, suite
+   green, **commit + push** ([[commit-push-end-of-batch]]). No ADR expected (no engine touch, no new
+   scope ceiling beyond the named inert assumptions).
+
+**Named scope edges.** Tempering changes **hardness only**, never the **fractions** (a temper does not
+re-partition phases — TME/RA-decomposition micro-effects are out of scope, the RA case the step-4 guard
+fences). Bainite- and RA-inert are *named, not validated* (above). The differential-Jominy benchmark is
+*qualitative* (bracketed by two validated anchors); no absolute tempered-Jominy number is asserted from
+an extracted table. Mixed tempering remains **martensite + (inert everything-else)** — modeling bainite's
+own tempering response is a further deferral, the same boundary as the as-quenched bainite placeholder.
