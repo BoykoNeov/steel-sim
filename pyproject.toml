@@ -64,8 +64,9 @@ calphad = ["pycalphad>=0.11"]
 pythonpath = ["."]
 testpaths = ["engines", "steel"]
 # `-n auto` runs the suite across one worker per logical CPU (pytest-xdist, in [test]); ADR
-# 0003 deferred this to a ~30 s fast-lane trigger that has not fired (~8 s) — enabled early at
-# the user's direction (see that ADR's xdist amendment). The honest fast-lane gain is modest;
+# 0003 deferred this to a ~30 s fast-lane trigger that has not fired (~13 s serial, still well
+# under 30 s) — enabled early at the user's direction (see that ADR's xdist amendment). The
+# honest fast-lane gain is modest (~13 s -> ~6 s here);
 # the load-bearing value is `--dist loadgroup`, which honours `@pytest.mark.xdist_group(...)`:
 # the live-CALPHAD tests share the "calphad" group → one worker → their module-scoped pycalphad
 # backends are built once and no two heavyweight live solves run concurrently. Pass `-n0` for a
