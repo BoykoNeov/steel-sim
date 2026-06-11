@@ -311,11 +311,13 @@ early and by choice — this amendment records that honestly rather than back-fi
   kernel test. This is the load-bearing reason, not raw speed: the module-scoped pycalphad
   backends build **once** and no two heavyweight solves contend.
   - *The notebook is deliberately folded in* (reversing an earlier "leave it ungrouped" call,
-    at the user's direction — "grouping several slow tests together will have a benefit"):
-    serialising it onto the heavy worker keeps its timing-sensitive kernel handshake from
-    competing for CPU with a live CALPHAD solve. It is CI-skipped, so this only bites the local
-    full gate; the cost (a ~7 s test appended to the serial tail) is negligible against the
-    ~30 s+ CALPHAD tail it shares the worker with.
+    at the user's direction — "grouping several slow tests together will have a benefit"): under
+    the half-core cap, keeping the whole slow tail on one worker avoids general CPU
+    oversubscription. This is **not** a wedge mitigation — the notebook kernel wedge is
+    documented **load-independent** (it appears ~24 % of runs even with no other load), so
+    grouping does not change its probability; the retry-on-wedge logic remains its only fix. It
+    is CI-skipped, so the grouping only bites the local full gate; the cost (a ~7 s test
+    appended to the serial tail) is negligible against the ~30 s+ CALPHAD tail it shares.
 - `test_ideal_diameter.py` keeps its **own** group (`"ideal_diameter"`) for module-scoped
   fixture reuse (a shared Jominy solve) — it is fast-lane, not part of the slow tail.
 

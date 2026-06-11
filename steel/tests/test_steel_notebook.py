@@ -104,9 +104,13 @@ def _execute_with_retry(kernel, max_attempts=MAX_ATTEMPTS):
 
 
 @pytest.mark.slow
-@pytest.mark.xdist_group("heavy")  # run on the shared slow-tail worker so the kernel
-# subprocess never competes for CPU with a live-CALPHAD solve (the wedge is timing-sensitive);
-# joins test_calphad.py / test_demo_calphad.py under `--dist loadgroup` (pyproject addopts).
+@pytest.mark.xdist_group("heavy")  # join the shared slow-tail worker (test_calphad.py /
+# test_demo_calphad.py / test_ferrite live) under `--dist loadgroup` (pyproject addopts). Why:
+# the user asked to group the slow tests, and under the half-core worker cap keeping the whole
+# slow tail on one worker avoids general CPU oversubscription. This is NOT a wedge fix — the
+# kernel wedge is documented load-INDEPENDENT (~24% even with no other load; see this module's
+# docstring + the notebook-kernel-wedge handoff), so grouping does not change its odds; the
+# retry-on-wedge logic below stays its only mitigation.
 @pytest.mark.skipif(
     _SKIP_IN_CI,
     reason="steel.ipynb kernel wedged on the CI (Ubuntu) runner in a00f66a — a separate, "
