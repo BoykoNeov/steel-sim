@@ -8,14 +8,19 @@ recovers the textbook answer: **4140, oil quench, temper ~425 °C/1 h**, the cla
 quench-and-temper recipe.
 
 What it shows (the inverse-design payoff, each an honest edge):
-  * plain-carbon **1045 is infeasible** here — its 10 mm water quench is only ~0.88 martensite,
-    below the martensite-only temper model's scope, so the search will not dishonestly place it;
-  * the same 45 HRC is reachable by a more-severe **water** quench too, but that costs more *and*
-    trips the **Biot flag** (a 10 mm water quench sits past the 0-D lumped-model range) — surfaced,
-    not hidden;
-  * the **recommended** recipe is the cheapest lumped-valid one — leaner alloy + milder quench +
-    the smallest treatment that hits spec (a transparent convenience sort, *not* a validated cost
-    model).
+  * with the **§16 mixed-structure unlock**, plain-carbon **1045 *is* feasible** here — its 10 mm
+    water quench is ~0.88 martensite, so its martensite leg tempers down into band (a *partial-
+    martensite* mixed temper, the recipe labels the fraction) — and by raw cost it is the cheapest;
+    but it is **Biot-stretched** (a 10 mm water quench sits past the 0-D lumped-model range), so it
+    stays in the ranked set *flagged*, and is **not** the recommendation;
+  * the high-retained-austenite hazard is fenced: a hard-quenched **1080** (~0.18 retained
+    austenite) is **held out** of the temper branch — RA decomposes non-monotonically on tempering
+    and can *raise* hardness, and this surface *recommends*, so it is not offered a confidently-wrong
+    recipe;
+  * the **recommended** recipe is the cheapest *lumped-valid* one — **4140 oil-quench-and-temper**,
+    the textbook answer: a recipe the model flags as outside its own 0-D validity is never headlined
+    (the cheaper Biot-stretched 1045 stays surfaced, but the recommendation is the cheapest recipe
+    that actually holds). A transparent convenience sort, *not* a validated cost model.
 
 This is the banked Phase-7 artifact and the integration test of the inverse chain:
 ``design.find_recipes_for_HRC`` (outer grade × medium enumeration + the inner temper root-find) →
@@ -80,9 +85,11 @@ def print_summary(result, target_HRC: float = TARGET_HRC, tol_HRC: float = TOL_H
         star = "★" if r is result.recommended else " "
         print(f"{star}{i:>1}  {r.label():<48} {r.HV:5.0f} {r.HRC:5.1f} {r.cost:5.2f}  {flag}")
     rec = result.recommended
-    print(f"\nRecommended (cheapest that hits spec): {rec.label()} → {rec.HV:.0f} HV / {rec.HRC:.1f} HRC.")
+    print(f"\nRecommended (cheapest lumped-valid that hits spec): {rec.label()} "
+          f"→ {rec.HV:.0f} HV / {rec.HRC:.1f} HRC.")
     print("The classic medium-section quench-and-temper answer — recovered by running the simulator "
-          "backwards. (Cost ordering is a transparent convenience, not a validated model.)")
+          "backwards. A cheaper but Biot-stretched recipe may rank above it (surfaced, flagged, not "
+          "recommended). (Cost ordering is a transparent convenience, not a validated model.)")
 
 
 def save_figure(result, grid) -> Path:

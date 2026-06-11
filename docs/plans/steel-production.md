@@ -1528,6 +1528,15 @@ hardness** of a section (size enters through cooling rate), **not a radial profi
 `D_c`). The **cost ordering is a labelled convenience** (leaner alloy + milder quench + no extra
 temper ⇒ lower), explicitly *not* a validated cost model — the feasible *set* is the deliverable.
 
+> **§16 step-4 supersede (2026-06-11):** the *"1045 is infeasible"* edge above flipped when the
+> mixed-structure temper unlocked the gate. 1045 (10 mm water, ~0.88 martensite) is **now feasible**
+> as a *partial-martensite* mixed temper and is even the **cheapest by raw cost** — but it is
+> Biot-stretched, so it stays in the ranked set *flagged* and is **not** headlined. The recommendation
+> stays the cheapest *lumped-valid* recipe (4140 oil-temper) because §16 made `DesignResult.recommended`
+> **Biot-aware** — making explicit the "cheapest *lumped-valid*" intent this paragraph already stated,
+> which the old gate satisfied only by accident (1045 was excluded). The new honest scope edge is the
+> **retained-austenite guard** (a hard-quenched 1080 is held out). See §16 steps 4–6.
+
 **Scope ceiling (named):** **hardness-only target in v1** — yield is incoherent as a co-target
 (`grain.coupled_grain_properties` returns `nan` yield in the martensitic regime an inverse-hardness
 search returns, so it cannot share a recipe); **yield-target** and **case-depth** (carburise — a
@@ -1599,7 +1608,7 @@ construction-time config, evaluated inside assembly, never crossing the state bo
 
 ---
 
-## 16. Mixed-structure tempering — per-constituent temper of a phase mixture (STEPS 1–3 BUILT ✓ 2026-06-11; STEPS 4+ PLANNED)
+## 16. Mixed-structure tempering — per-constituent temper of a phase mixture (STEPS 1–6 BUILT ✓ 2026-06-11)
 
 > **Steps 1–3 built ✓ (2026-06-11) — the validated core.** `properties.py` gained
 > `tempered_hardness_HV` / `tempered_hardness_HRC` (the per-constituent rule of mixtures:
@@ -1613,8 +1622,20 @@ construction-time config, evaluated inside assembly, never crossing the state bo
 > `docs/figures/steel-tempered-jominy.png` via `demo_tempered_jominy.py` (+ `test_demo_tempered_jominy.py`,
 > + `plots.tempered_jominy_figure`). Every frozen 2c/3a/3b/Jominy/four-curves benchmark stays
 > byte-identical (a new function, not a changed signature); no engine touch, no new calibrated
-> constant. Suite 420 green (+2 env-gated skips). **Steps 4+ (the design.py RA-guarded unlock +
-> close-out) remain PLANNED** — see below.
+> constant. Suite 420 green (+2 env-gated skips).
+>
+> **Steps 4–6 built ✓ (2026-06-11) — the design.py guarded unlock + the §14 re-derivation.**
+> `design.py` relaxed `_is_fully_martensitic` → `_is_temperable` (martensite-**dominant**
+> `MARTENSITE_TEMPER_MIN 0.95→0.50` **and** retained-austenite-**capped** `RA_TEMPER_MAX = 0.05`, the
+> load-bearing guard) and now inverts `tempered_hardness_HV` over the *mixture* (the bisection in
+> `_temper_to_target` carries — still monotone in `T`). The §14 headline was **consciously
+> re-derived**: 1045 (10 mm water, ~0.88 M) is **now feasible** as a partial-martensite mixed temper
+> and cheapest by raw cost, **but Biot-stretched**, so `DesignResult.recommended` was made
+> **Biot-aware** (cheapest *lumped-valid*, fallback cheapest) — the textbook **4140 oil-temper**
+> recommendation holds, now by design not by accident. `Recipe` gained a `martensite` field (the label
+> flags a partial-M temper). The frozen set (2c/3a/3b/Jominy/four-curves + `tempered_martensite_HV`/
+> `hardness_HV`) stays **byte-identical** (`properties.py`/engine untouched); only `design.py`'s own
+> Phase-7 tests changed (expected, not a frozen-benchmark violation). Suite **425 green** (+2 skips).
 
 The named **§11 "smaller deferral"** chosen at the user's direction (2026-06-11), and the exact
 piece 3b flagged as out of scope: *tempering a **mixture**, per-constituent*. Phase 3b's
@@ -1623,8 +1644,9 @@ docstring (properties.py §5) names the mixed traverse — *"soften the martensi
 — as deferred. This section promotes it. **No new engine touch, no new calibrated constant** — it is
 a rule of mixtures (the already-validated Maynier form) over per-constituent *tempered* hardnesses,
 exactly as `hardness_HV` is a rule of mixtures over the as-quenched constituent functions. The work
-is split: **steps 1–3 (the validated core, no hazard) are the next session; steps 4+ (the capability
-unlock + close-out, gated on a retained-austenite decision) are a later one.**
+was split: **steps 1–3 (the validated core, no hazard)** in one session; **steps 4–6 (the capability
+unlock + close-out, gated on a retained-austenite decision)** in the next — **all six now built ✓**
+(2026-06-11; the steps-4–6 as-built record is below the pre-build plan).
 
 **The model.** A new opt-in `tempered_hardness_HV(fractions, C, T_temper, t_hours, comp=None,
 Vr=None, C_hj=…)` summing each constituent's *tempered* hardness weighted by its fraction:
@@ -1723,3 +1745,46 @@ fences). Bainite- and RA-inert are *named, not validated* (above). The different
 *qualitative* (bracketed by two validated anchors); no absolute tempered-Jominy number is asserted from
 an extracted table. Mixed tempering remains **martensite + (inert everything-else)** — modeling bainite's
 own tempering response is a further deferral, the same boundary as the as-quenched bainite placeholder.
+
+### As-built — steps 4–6 (BUILT ✓ 2026-06-11)
+
+The pre-build plan above held; the one design decision it left open (what becomes of the *recommended*
+recipe when the unlock admits a cheaper-but-Biot-stretched grade) was resolved **Biot-aware**, the
+faithful reading of §14's own "cheapest *lumped-valid*" headline (advisor-confirmed).
+
+* **The gate (step 4).** `_is_fully_martensitic` → **`_is_temperable`**: martensite-**dominant**
+  (`MARTENSITE_TEMPER_MIN` 0.95 → **0.50**) **and** retained-austenite-**capped**
+  (`RA_TEMPER_MAX = 0.05`, the load-bearing guard). Values are **data-grounded, not guessed** (the
+  [[di-crosscheck-source]] discipline): at 10 mm the temperable martensitic grades sit at RA ≤ 0.035,
+  the hazard (1080 water, ~0.78 M) at **RA 0.175** — 0.05 separates them conservatively; the dominance
+  floor excludes 1080 oil (0.24 M, bainite-heavy). The guard is the new honest scope edge replacing
+  Phase-7's "non-martensitic 1045 withheld".
+* **The inverse (step 4).** `_temper_to_target` now inverts **`tempered_hardness_HV(fractions, …)`**
+  over the mixture (bracket read from the function itself: sub-onset = as-quenched mixture, over-tempered
+  = floored-martensite under held inert legs; `{martensite: 1.0}` recovers the pure-martensite curve
+  exactly). **`Vr` threads through** (nan→None, matching `sweep.evaluate`) so a sub-onset temper recovers
+  the outcome's as-quenched HV exactly — the Seam-C consistency the inverse leans on. `Recipe` gained a
+  **`martensite`** field; `label()` appends "(NN% martensite)" for a partial-M temper (the honesty cue).
+* **The §14 re-derivation (step 4, the headline flip — done consciously).** At 45 HRC / 10 mm the
+  **cost-sorted** set is now `1045 water-temper (88% M, ⚠) < 4140 oil-temper < 4140 water-temper (⚠) <
+  8620 water-temper (⚠)`. The outright-cheapest **1045 water-temper is feasible** (the unlock) but
+  **Biot-stretched**, so **`DesignResult.recommended` was made Biot-aware** — *cheapest lumped-valid*,
+  fallback cheapest-overall when none holds. **The textbook 4140-oil-temper recommendation stands** (now
+  by design, not by the old accident of 1045 being excluded); the cheaper 1045 stays in the set, flagged.
+  This avoided the reductio of the alternative (which would have forced a regression test asserting the
+  tool's #1 recommendation is a recipe it flags outside its own 0-D validity).
+* **Tests (step 4).** `design.py`'s own Phase-7 tests changed (**expected**, not a frozen violation):
+  `_forward_HV` re-evaluates via `tempered_hardness_HV` over the live fractions; the three
+  `_temper_to_target` solver tests carry over under `{martensite: 1.0}`; the old "1045 not offered a
+  temper" inverted into **`test_partial_martensite_grade_is_now_temperable`** +
+  **`test_high_retained_austenite_structure_is_not_offered_a_temper`** (the RA guard) +
+  a `_is_temperable` gate unit test + a mixture-bisection test; the cost-sort/recommended test split into
+  *cost-sorted* and *recommended = cheapest-lumped-valid* (+ a fallback test).
+  `test_recommended_demo_recipe_is_4140_oil_temper` stayed **green, unchanged**.
+* **Surfaces (step 5).** `demo_design.py` docstring + summary re-derived (1045 now feasible-but-flagged;
+  recommended = cheapest lumped-valid); **`docs/figures/steel-design.png` regenerated**; **notebook §7
+  cell surgically refreshed** (a real `recipes[1:]`→skip-recommended **bug** the Biot-aware recommended
+  exposed, fixed; both outputs re-harvested via a minimal [setup + cell] kernel run; the other 38 cells
+  byte-identical). No app-table change needed — the `label()` cue already surfaces the partial-M fraction.
+* **Close-out (step 6).** Suite **425 green** (+2 env-skips); no ADR (no engine touch, no new scope
+  ceiling beyond the named inert assumptions); memory `[[mixed-temper-next]]` updated; commit + push.

@@ -27,12 +27,16 @@ from steel.design import find_recipes, find_recipes_for_HRC, Recipe, _temper_to_
 
 
 # Re-evaluate a recipe through the FORWARD model — the independent check that a recipe really does
-# what the inverse claims. Tempered ⇒ the martensite-only temper model; as-quenched ⇒ the full chain.
+# what the inverse claims. Tempered ⇒ the per-constituent mixed-temper model applied to the *same*
+# as-quenched fractions (the §16 unlock — a recipe may be a partial-martensite mixed temper, so the
+# re-eval must temper the whole mixture, not assume full martensite); as-quenched ⇒ the full chain.
 def _forward_HV(rec: Recipe) -> float:
+    out = sweep.evaluate(rec.steel, medium=rec.medium, diameter=rec.diameter)
     if rec.tempered:
-        return prop.tempered_martensite_HV(rec.steel.C, rec.temper_C, rec.t_hours,
-                                           comp=rec.steel.minor())
-    return sweep.evaluate(rec.steel, medium=rec.medium, diameter=rec.diameter).HV
+        Vr = out.Vr if np.isfinite(out.Vr) else None     # match sweep.evaluate's nan→None handling
+        return prop.tempered_hardness_HV(out.fractions(), rec.steel.C, rec.temper_C, rec.t_hours,
+                                         comp=rec.steel.minor(), Vr=Vr)
+    return out.HV
 
 
 # A spread of (target_HV, tol_HV, diameter) specs that between them exercise as-quenched feasibility,
@@ -74,6 +78,12 @@ def test_reported_HV_matches_forward_model_exactly():
 # --------------------------------------------------------------------------- #
 # 2. THE TEMPER ROOT-FIND — the only test with real solver content
 # --------------------------------------------------------------------------- #
+# The pure-martensite mixture — the §16 generalization's Seam-A case: _temper_to_target over
+# {martensite: 1.0} must reduce *exactly* to the old pure-martensite bisection (these three tests
+# carry over the original solver content under the new mixture signature).
+_PURE_M = {"martensite": 1.0}
+
+
 def test_temper_bisection_recovers_interior_target():
     s = sweep.STEELS["4140"]                       # deep-hardening: a real martensitic start
     comp = s.minor()
@@ -81,7 +91,7 @@ def test_temper_bisection_recovers_interior_target():
     HV_floor = prop.vickers_ferrite_pearlite(s.C, comp=comp)
     # An interior target, strictly between the floor and the as-quenched hardness.
     target = 0.5 * (HV_aq + HV_floor)
-    T = _temper_to_target(s.C, target, t_hours=1.0, comp=comp)
+    T = _temper_to_target(_PURE_M, s.C, target, t_hours=1.0, comp=comp)
     assert T is not None
     # The recovered temper genuinely lands on the target (the inversion is faithful) ...
     assert prop.tempered_martensite_HV(s.C, T, 1.0, comp=comp) == pytest.approx(target, abs=0.5)
@@ -93,8 +103,8 @@ def test_temper_bisection_is_monotone_inverse():
     # A harder target must need a LOWER temper than a softer one (the monotone-inverse sanity).
     s = sweep.STEELS["4140"]
     comp = s.minor()
-    T_hard = _temper_to_target(s.C, 520.0, 1.0, comp)
-    T_soft = _temper_to_target(s.C, 420.0, 1.0, comp)
+    T_hard = _temper_to_target(_PURE_M, s.C, 520.0, 1.0, comp)
+    T_soft = _temper_to_target(_PURE_M, s.C, 420.0, 1.0, comp)
     assert T_hard is not None and T_soft is not None
     assert T_hard < T_soft
 
@@ -105,9 +115,29 @@ def test_temper_infeasible_above_as_quenched_and_below_floor():
     HV_aq = prop.vickers_martensite(s.C, comp=comp)
     HV_floor = prop.vickers_ferrite_pearlite(s.C, comp=comp)
     # Above as-quenched: you cannot temper a steel HARDER — honest infeasible (bracketing failure).
-    assert _temper_to_target(s.C, HV_aq + 100.0, 1.0, comp) is None
+    assert _temper_to_target(_PURE_M, s.C, HV_aq + 100.0, 1.0, comp) is None
     # Below the spheroidite floor: you cannot soften past it — honest infeasible.
-    assert _temper_to_target(s.C, HV_floor - 50.0, 1.0, comp) is None
+    assert _temper_to_target(_PURE_M, s.C, HV_floor - 50.0, 1.0, comp) is None
+
+
+def test_temper_bisection_recovers_interior_target_for_a_mixture():
+    # The §16 unlock: the bisection inverts a real partial-martensite MIXTURE, not just pure
+    # martensite. 1045 water-quenched at 10 mm is ~0.88 martensite (the rest temper-inert FP/bainite);
+    # an interior target between the as-quenched mixture and its over-tempered floor is recoverable,
+    # and tempering the *whole mixture* at the solved T lands on it (the inert legs hold, only the
+    # martensite leg softens). This is the new solver content the mixed-structure temper adds.
+    s = sweep.STEELS["1045"]
+    comp = s.minor()
+    o = sweep.evaluate(s, medium="water", diameter=0.010)
+    fracs = o.fractions()
+    Vr = o.Vr if np.isfinite(o.Vr) else None
+    assert fracs["martensite"] == pytest.approx(0.877, abs=0.03)       # a genuine mixture, not ~1.0
+    HV_aq = prop.tempered_hardness_HV(fracs, s.C, 20.0, 1.0, comp=comp, Vr=Vr)      # sub-onset ceiling
+    HV_floor = prop.tempered_hardness_HV(fracs, s.C, 760.0, 1.0, comp=comp, Vr=Vr)  # over-tempered floor
+    target = 0.5 * (HV_aq + HV_floor)
+    T = _temper_to_target(fracs, s.C, target, 1.0, comp, Vr)
+    assert T is not None
+    assert prop.tempered_hardness_HV(fracs, s.C, T, 1.0, comp=comp, Vr=Vr) == pytest.approx(target, abs=0.5)
 
 
 # --------------------------------------------------------------------------- #
@@ -121,12 +151,46 @@ def test_out_of_envelope_target_returns_empty_set():
     assert result.recommended is None
 
 
-def test_non_martensitic_above_band_is_not_offered_a_temper():
-    # 1045 water-quenched at 10 mm is only ~0.88 martensite (below MARTENSITE_TEMPER_MIN), so the
-    # martensite-only temper model does NOT apply — the honest scope edge. It must be absent from the
-    # 45-HRC feasible set even though it is "above band", not silently tempered as if fully martensitic.
+def test_high_retained_austenite_structure_is_not_offered_a_temper():
+    # The §16 RA guard (the load-bearing scope edge now that the gate admits mixtures). 1080
+    # water-quenched at 10 mm is martensite-DOMINANT (~0.78) but carries ~0.18 retained austenite —
+    # above RA_TEMPER_MAX. RA is modelled temper-inert, which is exactly wrong there (RA → bainite /
+    # fresh martensite on tempering can RAISE hardness), and this surface RECOMMENDS, so the search
+    # must NOT offer a 1080 temper recipe (a confidently-wrong recommendation), even though it is
+    # "above band". The honest hold-out, replacing Phase-7's "non-martensitic 1045" scope edge.
+    s1080 = sweep.STEELS["1080"]
+    o = sweep.evaluate(s1080, medium="water", diameter=0.010)
+    assert o.fractions()["martensite"] >= design.MARTENSITE_TEMPER_MIN      # passes the dominance gate ...
+    assert o.fractions()["retained_austenite"] > design.RA_TEMPER_MAX       # ... but the RA cap stops it
     result = find_recipes_for_HRC(45.0, tol_HRC=2.0, diameter=0.010)
-    assert all(not (r.steel.name == "1045") for r in result.recipes)
+    assert all(r.steel.name != "1080" for r in result.recipes)
+
+
+def test_partial_martensite_grade_is_now_temperable():
+    # The §16 unlock (the inverse of Phase-7's old scope edge): 1045 water at 10 mm is ~0.88
+    # martensite with LOW retained austenite — so the per-constituent temper model now applies and
+    # 1045 IS a feasible (tempered) recipe at 45 HRC, no longer dishonestly withheld. Its label flags
+    # the partial-martensite mixed temper, and re-evaluating it through the forward model confirms it.
+    result = find_recipes_for_HRC(45.0, tol_HRC=2.0, diameter=0.010)
+    r1045 = [r for r in result.recipes if r.steel.name == "1045"]
+    assert r1045, "1045 water-temper should now be feasible (the §16 mixed-structure unlock)"
+    r = r1045[0]
+    assert r.tempered and r.martensite < design.MARTENSITE_NEARLY_FULL     # a genuine partial-M temper
+    assert "martensite" in r.label()                                       # the honesty cue is surfaced
+    lo, hi = result.target_band
+    assert lo <= _forward_HV(r) <= hi                                       # forward re-eval confirms it
+
+
+def test_is_temperable_gate_dominance_and_RA_cap():
+    # The gate unit test: martensite-DOMINANT and RA-CAPPED, both load-bearing.
+    # 1080 oil is bainite-heavy (~0.24 martensite) → fails the dominance floor;
+    # 1080 water is dominant (~0.78) but ~0.18 RA → fails the RA cap (the guard);
+    # 1045 water (~0.88 M, ~0.03 RA) and 4140 oil (~0.96 M, ~0.04 RA) → temperable.
+    ev = lambda g, m: sweep.evaluate(sweep.STEELS[g], medium=m, diameter=0.010)
+    assert not design._is_temperable(ev("1080", "oil"))     # not martensite-dominant
+    assert not design._is_temperable(ev("1080", "water"))   # dominant but high RA — the guard fires
+    assert design._is_temperable(ev("1045", "water"))       # the unlocked partial-martensite mixture
+    assert design._is_temperable(ev("4140", "oil"))         # the classic fully martensitic case
 
 
 # --------------------------------------------------------------------------- #
@@ -156,13 +220,45 @@ def test_alloy_outranks_carbon_for_a_deep_section_target():
 # --------------------------------------------------------------------------- #
 # 5. THE RESULT SHAPE — sorting, cost, Biot honesty, input flexibility
 # --------------------------------------------------------------------------- #
-def test_feasible_set_is_cost_sorted_and_recommended_is_cheapest():
+def test_feasible_set_is_cost_sorted():
+    # The feasible set is cost-sorted (cheapest first) — including the §16-unlocked Biot-stretched
+    # recipes, which keep their place in the ranking (surfaced honestly, not dropped).
     result = find_recipes_for_HRC(45.0, tol_HRC=2.0, diameter=0.010)
     assert result.feasible
     costs = [r.cost for r in result.recipes]
     assert costs == sorted(costs)                          # ascending
-    assert result.recommended is result.recipes[0]
-    assert result.recommended.cost == min(costs)
+
+
+def test_recommended_is_the_cheapest_lumped_valid_recipe():
+    # The §16 recommended re-derivation (Option B — the cheapest *lumped-valid* recipe, the §14
+    # intent): the outright-cheapest recipe at 45 HRC / 10 mm is now a 1045 water-temper, but it is
+    # Biot-stretched (Bi ≥ 0.1) — a recipe the model flags as outside its own 0-D validity must NOT be
+    # headlined as the answer. `recommended` is the cheapest recipe that IS lumped-valid; the cheaper
+    # Biot-stretched one stays in the set, flagged, but is not the recommendation.
+    result = find_recipes_for_HRC(45.0, tol_HRC=2.0, diameter=0.010)
+    valid = [r for r in result.recipes if r.lumped_valid]
+    assert valid, "expected at least one lumped-valid recipe at this spec"
+    assert result.recommended is valid[0]                 # cost-sorted ⇒ first valid = cheapest valid
+    assert result.recommended.lumped_valid
+    # And the outright-cheapest is cheaper but stretched — the honest capability the unlock surfaces.
+    assert result.recipes[0].cost <= result.recommended.cost
+    if not result.recipes[0].lumped_valid:
+        assert result.recipes[0] is not result.recommended
+
+
+def test_recommended_falls_back_to_cheapest_when_none_lumped_valid():
+    # The fallback branch, exercised for real (not a guarded no-op): a 45 HRC target in a 30 mm
+    # section is feasible but reachable ONLY by Biot-stretched quenches (4140 oil tips past Bi 0.1 at
+    # this size), so NO recipe is lumped-valid. `recommended` then falls back to the outright cheapest
+    # — still the best honest option, carrying its ⚠ flag, rather than None-on-feasible. Asserted
+    # unconditionally: if the model ever shifts so a valid recipe appears here, this fails loudly
+    # (the fallback case moved) instead of silently passing vacuous.
+    result = find_recipes_for_HRC(45.0, tol_HRC=3.0, diameter=0.030)
+    assert result.feasible
+    assert not any(r.lumped_valid for r in result.recipes), \
+        "precondition moved: this spec is meant to be feasible-but-all-Biot-stretched"
+    assert result.recommended is result.recipes[0]         # the outright cheapest
+    assert not result.recommended.lumped_valid             # ... carrying its ⚠ flag, honestly
 
 
 def test_recommended_demo_recipe_is_4140_oil_temper():
