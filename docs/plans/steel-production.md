@@ -238,8 +238,9 @@ Draft of `engines/diffusion/CONTRACT.md`:
 - **Boundary conditions** (each end, independently): **Dirichlet** `u=u_b`;
   **Neumann** `flux=q` (`q=0` ⇒ insulated/symmetry/conservation); **Robin**
   `−D ∂u/∂x = h(u−u_ext)` (Newton cooling / quench).
-- **`D`** may be constant, `D(x)`, or a callable `D(T)`/`D(t)`. Full nonlinear
-  `D(u)` (e.g. `D(C)`) is **v1.1**, flagged not built, to keep v1 small.
+- **`D`** may be constant, `D(x)`, or a callable `D(T)`/`D(t)`. Nonlinear
+  `D(u)` (e.g. `D(C)`) was the named **v1.1** omission — **now built** (the engine was
+  unfrozen and re-sealed at v1.1; CONTRACT.md / ADR 0004 / §15).
 - **API sketch:**
   `solver = Diffusion1D(grid, D, bc_left, bc_right, source=None)` →
   `state = solver.step(state, dt)` / `solver.solve(state, t_end, dt)`;
@@ -431,6 +432,9 @@ slices, in order:
 `CONTRACT.md` + a 5-file test seal: erfc/2nd-order convergence, exact no-flux
 conservation, per-method stability, source-augmented conservation, heat-mode
 Robin + flux bookkeeping). The diffusion spine the entire trio inherits is sealed.
+*(**Re-sealed at v1.1, 2026-06-11** — the spine was unfrozen to add native nonlinear
+`D(u)`, with the linear surface byte-identical + a 6th seal file `test_nonlinear_d.py`;
+see §15 / ADR 0004.)*
 
 **Phase 1b is built ✓** (2026-06-08) — `steel/fe_c.py`. Metastable
 Fe–Fe₃C boundaries linear between the pinned invariant points (A₁=727 °C; A₃
@@ -635,7 +639,10 @@ on the transformation timescale). 18 new tests; full suite **204 green**. **Avai
 (not triad-required):** the **D_I** downstream check (ideal-quench a series of diameters, find the
 critical one, vs published `D_I`) — still available. **Still deferred from Phase 1c:** the
 experimentation surface (`sweep.py`, `app.py`, `steel.ipynb`). Nothing downstream touched the frozen
-solver's internals — only its `CONTRACT.md`.
+solver's internals — only its `CONTRACT.md`. *(**Superseded 2026-06-11:** the engine was later
+**unfrozen and re-sealed at v1.1** for native nonlinear `D(u)`, and 3c's constant-`D` erfc gained an
+opt-in concentration-dependent `D(C)` (Tibbetts) that closes the under-predicted absolute case depth —
+see §15.)*
 
 **Phase 4 is built ✓** (2026-06-08) — `steel/calphad_backend.py` + `calphad_reference.py` +
 `demo_calphad.py`, the **CALPHAD-backed equilibrium** (the bounded deep end). Phase 1b's `fe_c` drew
@@ -798,10 +805,10 @@ mostly harder to validate honestly): the **full Charpy curve** — absolute shel
 the **tempering-axis** non-monotonicity (tempered-martensite / temper embrittlement troughs),
 3b's named ceiling — stays deferred (Phase 5 option (b) models only the **grain-size→DBTT
 *transition temperature***, a monotone Cottrell–Petch law on a different axis; see §12);
-**concentration-dependent diffusivity `D(C)`** in carburizing
-(Tibbetts — would extend the *frozen* engine's flagged-but-unbuilt nonlinear `D(u)`);
 **mixed-structure tempering** (per-constituent, vs 3b's martensite-only); **welding/HAZ**
-thermal cycles; **fatigue**.
+thermal cycles; **fatigue**. *(The **concentration-dependent diffusivity `D(C)`** in carburizing,
+once deferred here, is **built** as of 2026-06-11 — the engine was unfrozen for native nonlinear
+`D(u)` and `carburize` gained the opt-in Tibbetts `D(C)`; §15 / ADR 0004.)*
 
 ---
 
@@ -1544,5 +1551,48 @@ load-bearing static figure — plus the `interact` slider sugar, the slice-1 dis
 **This completes Phase 7.** All of Steel's planned phases (1–6) + both post-v1 phases (5 grain, 7
 inverse design) + the full §9 experimentation surface are built. The remaining §11 menu items
 (residual-stress/distortion, the unified KV-pearlite rebuild from 6b, and the smaller deferrals —
-`D(C)` carburising, mixed-structure tempering, martempering, grain morphology) stay `[available]`,
-appetite-driven, blocking nothing.
+mixed-structure tempering, martempering) stay `[available]`, appetite-driven, blocking nothing.
+*(The smaller deferral **`D(C)` carburising** is **built** as of 2026-06-11 — §15.)*
+
+---
+
+## 15. Engine unfrozen for nonlinear `D(u)` + carburizing `D(C)` (BUILT ✓ 2026-06-11)
+
+The diffusion spine was **unfrozen and re-sealed at v1.1** to add native nonlinear `D(u)` — the
+v1.0 named omission — so carburizing could use a concentration-dependent diffusivity. Full
+decision record: **ADR 0004**. User-directed: the alternative (composing a lagged `D(C)` *around*
+the frozen engine via the ADR-0001 array seam — the original recommendation) was set aside in
+favour of putting the capability in the spine, where it is validated once and inherited by every
+consumer.
+
+**Engine (`engines/diffusion/diffusion1d.py`, CONTRACT.md → v1.1).** An opt-in keyword
+`D_of_u(u_cells) → D array` (mutually exclusive with `D`, kept a *separate* parameter so the
+`D(t)`-of-time and `D(u)`-of-state callable shapes never alias). When set, the backward-Euler step
+is **nonlinear**, solved by **Picard iteration** inside `step` (raises on non-convergence); `method`
+must be `backward_euler` (the monotone scheme the seal covers). **The linear path is byte-identical**
+— the five v1.0 seal files are unchanged and still pass; the unfreeze is purely additive. **The
+load-bearing design point (advisor):** conservation is *not* automatically machine-precise on the
+native path — the discrete flux identity holds only if `flux` uses the **same** D-field the solve
+assembled, so `step` **caches the accepted-assembly D-field** and `flux` reads it (the one wart:
+`flux` then reflects the most recent `step`). Re-seal = the 6th file `test_nonlinear_d.py` (6 tests):
+constant-`D(u)` ≡ scalar-`D` to machine precision; varying `D(u)` vs the **Boltzmann self-similar**
+reference (independent `solve_bvp`); exact conservation (no-flux + flux identity); monotonicity at
+large dt; Picard tol-independence + raise-on-non-convergence.
+
+**Consumer (`steel/carburize.py`).** `solve_carburize(D_of_C=…)` is the opt-in path — default
+`None` keeps the constant-`D` erfc solve **byte-identical** (the validated analytical limit). The
+cited **Tibbetts (1980)** `carbon_diffusivity_tibbetts` (`D = 0.47·exp(−1.6 C)·exp[−(37000−6600 C)/RT]`
+cm²/s; independent steady-state diffusion data, *not* case-depth-fit — so the benchmark stays a
+genuine cross-check) is wired straight into the engine's `D_of_u`: the consumer drops to one
+`Diffusion1D` + an ordinary march (no per-step reassembly, no operator splitting). `D(C)` **deepens
+the 0.4 %C effective case depth ~0.66 → ~0.97 mm** (into the published ~1 mm band — the named
+"constant-`D` under-predicts" scope edge turned into a cited result), validated against a
+consumer-level Boltzmann reference; the **√t case-depth scaling survives** (self-similar in η = x/√t).
+Conservation stays machine-exact on the `D(C)` path (~1e-18, the cached-field guarantee). +8
+`test_carburize` tests + the demo's `D(C)`-vs-constant comparison. **Mild, named edge:** the default
+925 °C sits ~50 °C below Tibbetts' measured 975–1075 °C floor (the standard carburizing-sim
+extrapolation).
+
+**Backward-compatible for the trio:** Microchip / Planet inherit a *richer* contract with the linear
+behaviour byte-identical; ADR 0001's plain-array `state` boundary is unchanged (`D_of_u` is
+construction-time config, evaluated inside assembly, never crossing the state boundary).

@@ -91,6 +91,32 @@ def print_summary(profile, traverse) -> None:
           f"{traverse.HV_as_quenched[0]:.0f}) is the real heavy-case effect — reported, not asserted.")
 
 
+def print_dofC_comparison(t_hours: float = T_HOURS) -> None:
+    """Contrast the constant-``D`` erfc case with the concentration-dependent Tibbetts ``D(C)``.
+
+    The constant-``D`` erfc is the validated *analytical limit* but under-predicts the absolute
+    case depth (real carbon diffusivity rises with carbon content — Tibbetts 1980). The opt-in
+    ``D(C)``, solved by the (unfrozen) engine's **native nonlinear** path (CONTRACT.md / ADR
+    0004), deepens the case toward the published ~1 mm rule of thumb — the named scope edge
+    turned into a cited, validated result.
+    """
+    const = cb.solve_carburize(C_surface=CARBON_POTENTIAL, C_core=CORE_CARBON,
+                               T_carburize=T_CARBURIZE, t_hours=t_hours)
+    dc = cb.solve_carburize(C_surface=CARBON_POTENTIAL, C_core=CORE_CARBON,
+                            T_carburize=T_CARBURIZE, t_hours=t_hours,
+                            D_of_C=cb.carbon_diffusivity_tibbetts)
+    ecd_c = const.case_depth(0.4) * 1000.0
+    ecd_d = dc.case_depth(0.4) * 1000.0
+    resid = abs(dc.mass_uptake - dc.surface_flux_uptake)
+    print("\nConstant-D (erfc)  vs  concentration-dependent D(C) (Tibbetts 1980, native engine D(u))")
+    print(f"  effective case depth (0.4 %C):  constant-D {ecd_c:.2f} mm  →  D(C) {ecd_d:.2f} mm "
+          f"(+{(ecd_d / ecd_c - 1) * 100:.0f} %, toward the published ~1 mm)")
+    print(f"  carbon conserved on the D(C) path:  |Δ∫C dx − Σ dt·flux| = {resid:.1e} "
+          f"(the engine's cached-field identity — machine-exact)")
+    print("  D(C) profile validated against the Boltzmann self-similar reference (not erfc); "
+          "the √(t) case-depth scaling survives.")
+
+
 def save_figure(profile, traverse) -> Path:
     """Render and save the carburized-gradient artifact (needs the optional ``viz`` extra)."""
     import matplotlib
@@ -111,6 +137,7 @@ def main() -> None:
 
     profile, traverse = compute()
     print_summary(profile, traverse)
+    print_dofC_comparison()
     try:
         saved = save_figure(profile, traverse)
         print(f"\nFigure saved → {saved.relative_to(_REPO_ROOT)}")

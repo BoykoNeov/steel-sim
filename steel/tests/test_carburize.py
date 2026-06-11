@@ -219,3 +219,124 @@ def test_solve_rejects_inverted_carbon_gradient():
     # Carbon must flow inward: a surface potential at/below the core is a configuration error.
     with pytest.raises(ValueError):
         cb.solve_carburize(C_surface=0.2, C_core=0.4)
+
+
+# --------------------------------------------------------------------------- #
+# Concentration-dependent diffusivity D(C): the opt-in Tibbetts path + its triad
+# --------------------------------------------------------------------------- #
+# The constant-D erfc above is the validated *analytical limit* and stays the default.
+# D(C) (Tibbetts 1980) is the opt-in concentration-dependent diffusivity, wired to the
+# (now unfrozen) engine's native nonlinear ``D_of_u`` — ADR 0004. It turns the named
+# "constant-D under-predicts the absolute case depth" scope edge into a quantified, cited
+# result, with its own triad: the Boltzmann self-similar reference (analytical), the exact
+# conservation identity (the engine's cached-field guarantee), and a deeper case in the
+# published band (benchmark). Tibbetts D is independent diffusion data — not fit to case
+# depth — so the case-depth benchmark stays a genuine cross-check.
+def test_tibbetts_diffusivity_rises_with_carbon_and_matches_cited_value():
+    D02 = float(cb.carbon_diffusivity_tibbetts(0.2, 925.0))
+    D04 = float(cb.carbon_diffusivity_tibbetts(0.4, 925.0))
+    D08 = float(cb.carbon_diffusivity_tibbetts(0.8, 925.0))
+    # Rises with carbon (the −6600·C activation lowering beats the −1.6·C prefactor decay) —
+    # the physical basis for the fuller-than-erfc profile.
+    assert D08 > D04 > D02
+    # Pin the cited closed form at a reference (0.4 %C, 925 °C):
+    # 0.47·e^(−0.64)·e^(−34360/(1.987·1198.15)) cm²/s = 1.337e-7 cm²/s = 1.337e-11 m²/s.
+    assert D04 == pytest.approx(1.337e-11, rel=0.02)
+    # …and it sits ABOVE the constant Callister D (8.1e-12) across the active band — the
+    # "constant-D under-predicts" direction the constant-D scope note names.
+    assert D02 > cb.carbon_diffusivity(925.0)
+    # Arrhenius in temperature, at fixed carbon.
+    assert float(cb.carbon_diffusivity_tibbetts(0.4, 950.0)) > D04
+    # Vectorized over a carbon array → an elementwise, increasing D array.
+    Darr = cb.carbon_diffusivity_tibbetts(np.array([0.2, 0.4, 0.8]), 925.0)
+    assert Darr.shape == (3,)
+    assert np.all(np.diff(Darr) > 0)
+
+
+def test_dofC_is_opt_in_constant_path_byte_identical():
+    # The additive-default discipline (mirrors 3a's byte-for-byte comp/Vr defaults): passing
+    # D_of_C=None reproduces the constant-D erfc solve exactly — the validated analytical
+    # limit is untouched. The D(C) path carries its diagnostics; the constant path does not.
+    base = cb.solve_carburize()
+    same = cb.solve_carburize(D_of_C=None)
+    assert np.array_equal(base.C, same.C)
+    assert base.D_array is None and base.concentration_dependent is False
+    dc = cb.solve_carburize(D_of_C=cb.carbon_diffusivity_tibbetts)
+    assert dc.concentration_dependent is True
+    assert dc.D_array is not None and dc.D_array.shape == base.C.shape
+
+
+def test_dofC_profile_matches_boltzmann_similarity():
+    # The D(C) analytical leg: the numeric concentration-dependent solve (the engine's native
+    # nonlinear Picard step) matches the self-similar Boltzmann BVP reference in the interior
+    # — two independent numerics (finite-volume marching vs a similarity BVP) agreeing is the
+    # real check that the D(C) solve is correct, not merely self-consistent.
+    p = cb.solve_carburize(D_of_C=cb.carbon_diffusivity_tibbetts, n_cells=400, n_steps=800)
+    ref = p.boltzmann_profile()
+    active = (ref - p.C_core) > 1e-3 * (p.C_surface - p.C_core)
+    active[0] = False                                   # drop the Dirichlet surface half-cell
+    rel = np.abs(p.C[active] - ref[active]) / (p.C_surface - p.C_core)
+    assert np.max(rel) < 2e-3                            # two independent solvers agree tightly
+
+
+def test_dofC_case_depth_still_scales_as_sqrt_t():
+    # The tight scaling leg SURVIVES the loss of erfc: with D(C) the profile is self-similar
+    # in η = x/√t, so x_case/√t is still constant. (Conservation of the scaling is the leg
+    # with content here; the absolute depth is the benchmark below.)
+    ratios = []
+    for th in (2.0, 4.0, 8.0):
+        p = cb.solve_carburize(D_of_C=cb.carbon_diffusivity_tibbetts,
+                               t_hours=th, length=8e-3, n_cells=400, n_steps=800)
+        ratios.append(p.case_depth(0.4) / math.sqrt(th))
+    ratios = np.array(ratios)
+    assert np.all(np.isfinite(ratios))
+    assert (ratios.std() / ratios.mean()) < 0.02
+
+
+def test_dofC_resolution_converged_under_refinement():
+    # The fuller profile must be PHYSICS, not a time-discretization artifact: the D(C) case
+    # depth is converged under time refinement (mirrors jominy's <1.2 % check). The engine's
+    # per-step Picard converges to tol, so this isolates the backward-Euler time accuracy.
+    coarse = cb.solve_carburize(D_of_C=cb.carbon_diffusivity_tibbetts,
+                                length=8e-3, n_cells=400, n_steps=400)
+    fine = cb.solve_carburize(D_of_C=cb.carbon_diffusivity_tibbetts,
+                              length=8e-3, n_cells=400, n_steps=1600)
+    assert abs(coarse.case_depth(0.4) - fine.case_depth(0.4)) / fine.case_depth(0.4) < 0.01
+
+
+def test_dofC_conservation_is_machine_precise():
+    # Conservation is STRUCTURAL and exact on the D(C) path too: the engine caches the
+    # accepted-assembly D-field, so the backward-Euler flux identity holds per step and
+    # telescopes — the carbon absorbed = the integrated surface flux to machine precision,
+    # exactly as on the constant-D path (the cached-field guarantee, CONTRACT.md / ADR 0004).
+    p = cb.solve_carburize(D_of_C=cb.carbon_diffusivity_tibbetts)
+    assert p.mass_uptake > 0.0
+    assert abs(p.mass_uptake - p.surface_flux_uptake) < 1e-12
+
+
+def test_dofC_gives_a_deeper_case_than_constant_D():
+    # The teeth: turning the named "constant-D under-predicts" edge into a quantified, cited
+    # result. At the same cycle the Tibbetts D(C) case (0.4 %C) is DEEPER than constant-D —
+    # and lands in the published rule-of-thumb band for a 925 °C / 8 h gas-carburize, a
+    # genuine cross-check (Tibbetts D is independent diffusion data, not fit to case depth).
+    const = cb.solve_carburize(length=8e-3, n_cells=400, n_steps=800)
+    dc = cb.solve_carburize(D_of_C=cb.carbon_diffusivity_tibbetts,
+                            length=8e-3, n_cells=400, n_steps=800)
+    ecd_const = const.case_depth(0.4)
+    ecd_dc = dc.case_depth(0.4)
+    assert ecd_dc > ecd_const * 1.10                    # meaningfully deeper, not a wash
+    assert 0.7e-3 < ecd_dc < 1.2e-3                     # in the published ~1 mm band (was ~0.66 mm)
+    # The self-similar Boltzmann case depth agrees with the numeric one (cross-check of the
+    # two D(C) numerics at the benchmark point).
+    assert cb.boltzmann_case_depth(dc.t) == pytest.approx(ecd_dc, rel=0.05)
+
+
+def test_dofC_traverse_runs_and_keeps_the_case_gradient():
+    # The downstream microstructure→hardness chain is agnostic to how C(x) was produced, so
+    # the D(C) profile flows through carburized_traverse unchanged: still a hard case over a
+    # softer core, with mass-conservation intact. (The hardness model itself is Phase 2c/3a;
+    # here we only confirm the deeper D(C) profile composes cleanly.)
+    p = cb.solve_carburize(D_of_C=cb.carbon_diffusivity_tibbetts)
+    tr = cb.carburized_traverse(p)
+    assert tr.HV[0] > tr.HV[-1]                          # case still harder than core
+    assert 62.0 <= tr.HRC[0] <= 67.0                     # hard martensite case (carbon-set)

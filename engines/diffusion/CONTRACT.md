@@ -1,22 +1,28 @@
 # `engines.diffusion` — 1-D conservative parabolic solver — CONTRACT
 
-> **Status: FROZEN — 2026-06-08** (Steel Phase 1a). Sealed behind its passing
-> validation suite (`engines/diffusion/tests/`, run via `./run_tests.ps1`).
-> This one page is the unit of context downstream projects load — Microchip and
-> Planet depend on *this*, never on `steel/`. Changing the frozen
-> surface below means a new ADR + re-running the seal (ARCHITECTURE.md §5–6).
+> **Status: SEALED — v1.1, re-sealed 2026-06-11** (Steel Phase 1a froze v1.0 on
+> 2026-06-08; v1.1 **unfroze and re-sealed** the surface to add native nonlinear
+> `D(u)` — see ADR 0004). Held behind its passing validation suite
+> (`engines/diffusion/tests/`, run via `./run_tests.ps1`). This one page is the unit
+> of context downstream projects load — Microchip and Planet depend on *this*, never
+> on `steel/`. The v1.0 **linear surface is byte-identical** under v1.1 (the original
+> five seal files are unchanged and still pass); only the *additive*, opt-in `D_of_u`
+> path is new, with its own seal (`test_nonlinear_d.py`). Changing the sealed surface
+> below means a new ADR + re-running the seal (ARCHITECTURE.md §5–6).
 
 ## What it solves
 
 The conservative 1-D parabolic PDE
 
 ```
-∂u/∂t = ∂/∂x( D(x,t) ∂u/∂x ) + S(x,t)        on   x ∈ [0, L]
+∂u/∂t = ∂/∂x( D(x, t, u) ∂u/∂x ) + S(x,t)        on   x ∈ [0, L]
 ```
 
-`u` is a generic conserved intensive scalar. The engine is **material-agnostic**;
-two usage patterns ship with Steel (the physics constants live in the *consumer*,
-not here — see "Validation boundary"):
+`u` is a generic conserved intensive scalar. `D` may be constant, `D(x)`, `D(t)`, or
+— the v1.1 addition — **nonlinear `D(u)`** (a diffusivity that depends on the solution,
+solved by an in-step Picard iteration; see the API + invariant 6 below). The engine is
+**material-agnostic**; two usage patterns ship with Steel (the physics constants live in
+the *consumer*, not here — see "Validation boundary"):
 
 | Mode | `u` | `D` | Conserved quantity | Quench BC |
 |---|---|---|---|---|
@@ -50,6 +56,11 @@ grid   = uniform_grid(length, n)          # or grid_from_edges([...])  (non-unif
 solver = Diffusion1D(grid, D, bc_left, bc_right, source=None,
                      method="backward_euler")   # or "crank_nicolson"
 
+# nonlinear D(u) (v1.1): pass D=None + a callable of the state (backward Euler only)
+solver = Diffusion1D(grid, None, bc_left, bc_right, method="backward_euler",
+                     D_of_u=lambda u: D0*(1 + beta*u),   # D as a function of the solution
+                     picard_tol=1e-10, picard_max_iters=50)
+
 state = solver.step(state, dt, t0=0.0)            # one step; returns new array
 state = solver.solve(state, t_end, dt, t0=0.0)    # march to t0+t_end
 q     = solver.total(state)                       # ∫u dx = Σ uᵢΔxᵢ
@@ -58,8 +69,15 @@ J     = solver.flux(state, end, t=0.0)            # end ∈ {"left","right"}
 
 - **`D`**: scalar, length-`n` cell-centered array `D(x)`, or callable `D(t)`
   returning either. (`D(T)` is expressed as a callable closing over a temperature
-  schedule: `lambda t: D0*np.exp(-Q/(R*T(t)))`.) Full nonlinear `D(u)` is **v1.1,
-  not built** (keeps v1 small).
+  schedule: `lambda t: D0*np.exp(-Q/(R*T(t)))`.) Pass `None` when using `D_of_u`.
+- **`D_of_u`** (v1.1, opt-in): a callable `D_of_u(u_cells) -> D array` giving a
+  **nonlinear, solution-dependent** diffusivity. The implicit step is then nonlinear,
+  solved by **Picard iteration** (`method="backward_euler"` required); `picard_tol` /
+  `picard_max_iters` control convergence and `step` **raises** if it does not converge.
+  Mutually exclusive with `D` (provide exactly one). The accepted assembly's D-field is
+  **cached** so `flux` — and hence the conservation identity — stays *exact* on the
+  nonlinear path; the one documented wart is that `flux` then reflects the most recent
+  `step`. Steel's carburizing `D(C)` (Tibbetts) is the first consumer (ADR 0004).
 - **`source`**: scalar, length-`n` array, or callable `S(t)`; units of `u`/time.
 - **Boundary conditions** (each end, independently):
   - `Dirichlet(value)` — `u = value` at the face (`value` scalar or `value(t)`).
@@ -81,11 +99,13 @@ precision (test `test_flux_bookkeeping_exact_backward_euler`).
 
 `state` is a **plain 1-D `ndarray`** of cell-centered `u`. That array — and only
 it — crosses the per-step boundary: `step`/`solve` consume and return it,
-`total`/`flux` consume it. No live objects cross. `Grid`, `D`, and BCs are
-**construction-time configuration** that reduces to numbers during matrix
-assembly; a compiled reimplementation (PyO3/Cython/…) parameterizes them natively
-(e.g. `D₀,Q`; a BC enum + params) and exposes the same `state` array. The viz
-layer (ADR 0002) consumes the same `state` — never a live solver object.
+`total`/`flux` consume it. No live objects cross. `Grid`, `D` (or `D_of_u`), and BCs
+are **construction-time configuration** that reduces to numbers during matrix assembly;
+the nonlinear `D_of_u` is evaluated *inside* assembly and never enters the `state`
+representation, so the data boundary is **unchanged** by v1.1. A compiled reimplementation
+(PyO3/Cython/…) parameterizes them natively (e.g. `D₀,Q`; a BC enum + params; the `D(u)`
+coefficients) and exposes the same `state` array. The viz layer (ADR 0002) consumes the
+same `state` — never a live solver object.
 
 ## Frozen invariants (what the test suite guarantees — = the contract)
 
@@ -112,6 +132,12 @@ layer (ADR 0002) consumes the same `state` — never a live solver object.
    case steel uses next), and an array `D(x)` two-layer medium reproduces the
    exact series-resistance steady state — the one check that exercises the
    harmonic-mean face diffusivity.
+6. **Nonlinear `D(u)`** (`test_nonlinear_d.py`, the v1.1 re-seal): a constant `D(u)`
+   reproduces the scalar-`D` run to machine precision (the linear path is unperturbed);
+   a varying `D(u)` matches the **Boltzmann self-similar** reference (independent
+   `solve_bvp`); conservation stays exact under no-flux *and* through the flux identity
+   (the cached accepted-assembly D-field); the converged step is **monotone** for `D>0`;
+   and the Picard solve is tolerance-independent and **raises** on non-convergence.
 
 ## Validation boundary (what 1a does *not* claim)
 
@@ -125,6 +151,7 @@ TTT/Jominy data (Steel plan §3, Phases 1–2). The frozen seal here promises a
 ## Units & scope
 
 - **SI throughout.** Mass vs heat mode differ only by relabelling.
-- **Not in v1:** nonlinear `D(u)`; 2-D/3-D; explicit time stepping. The
-  array-`state` boundary is the seam where a deferred heavy regime (or a compiled
-  core) is later slotted without touching consumers (ARCHITECTURE.md §8, ADR 0001).
+- **Not in scope:** 2-D/3-D; explicit time stepping. (Nonlinear `D(u)` *was* v1.0's
+  named omission — it is now **built in v1.1**, ADR 0004.) The array-`state` boundary
+  is the seam where a deferred heavy regime (or a compiled core) is later slotted without
+  touching consumers (ARCHITECTURE.md §8, ADR 0001).

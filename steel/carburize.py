@@ -123,10 +123,15 @@ What is validated vs what is calibrated (the project's standing split)
 
 Deliberate scope (named, not hidden)
 ------------------------------------
-  * **Constant ``D`` (concentration-independent).** Real carbon diffusivity in austenite
-    rises with carbon content (Tibbetts), so a real profile is a little fuller than erfc.
-    Constant ``D`` is the standard textbook reduction and is *what makes erfc exact* — the
-    validated analytical limit. ``D(C)`` is the engine's flagged-not-built v1.1 (CONTRACT).
+  * **Constant ``D`` (concentration-independent) is the default.** Real carbon diffusivity
+    in austenite rises with carbon content (Tibbetts), so a real profile is a little fuller
+    than erfc. Constant ``D`` is the standard textbook reduction and is *what makes erfc
+    exact* — the validated analytical limit, kept as the default. The concentration-dependent
+    ``D(C)`` is now **built** as the opt-in :func:`carbon_diffusivity_tibbetts` →
+    :func:`solve_carburize` ``D_of_C``: it deepens the case toward the published band and is
+    validated against the Boltzmann self-similar reference. It is wired to the diffusion
+    engine's **native nonlinear ``D_of_u``** — the v1.1 surface for which the spine was
+    unfrozen and re-sealed (CONTRACT.md / ADR 0004), not composed around the engine.
   * **Dirichlet (constant carbon potential).** A finite surface reaction rate (a Robin /
     mass-transfer boundary, and boost-diffuse cycles that ramp ``Cs``) is deferred — the
     constant-potential erfc case is the canonical one.
@@ -149,9 +154,11 @@ Units & conventions
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
+from scipy.integrate import solve_bvp
 from scipy.special import erfc, erfcinv
 
 from engines.diffusion import Diffusion1D, uniform_grid, Dirichlet, Neumann
@@ -206,6 +213,53 @@ def carbon_diffusivity(T_celsius: float) -> float:
 
 
 # --------------------------------------------------------------------------- #
+# 1b. Concentration-dependent carbon diffusivity — Tibbetts (1980): the opt-in D(C)
+# --------------------------------------------------------------------------- #
+# Real carbon diffusivity in austenite RISES with carbon content. The constant-D erfc
+# (above) is the textbook reduction the *validated analytical limit* needs, but it
+# UNDER-predicts the absolute case depth (the named scope edge). Tibbetts (1980,
+# J. Appl. Phys. 51(9):4813, "Diffusivity of carbon in iron and steels at high
+# temperatures") measured D for C in austenite by the steady-state method (975–1075 °C,
+# up to 1.3 %C) and fit the empirical concentration- and temperature-dependent form
+#
+#     D = 0.47 · exp(−1.6·C) · exp[ −(37000 − 6600·C) / (R_cal·T) ]   cm²/s
+#
+# with C in wt%, energies in cal/mol (R_cal = 1.987 cal/mol·K), T in kelvin. Like the
+# Callister constant-D it is anchored to *diffusion* measurements, NOT fit to case-depth
+# tables — so the D(C) case-depth benchmark stays a genuine cross-check, not a tautology.
+# Net effect: the activation-energy lowering (−6600·C) outweighs the prefactor decay
+# (−1.6·C), so D increases with C → a fuller-than-erfc profile and a deeper case. (The
+# default carburizing T = 925 °C sits ~50 °C below Tibbetts' measured floor — a mild,
+# named extrapolation; the relation is the standard one used in carburizing simulation at
+# 900–950 °C.) Fed to the (now unfrozen) engine's native nonlinear ``D_of_u`` — ADR 0004.
+R_GAS_CAL = 1.987                # cal/(mol·K) — gas constant in Tibbetts' calorie units
+TIBBETTS_D0 = 0.47               # cm²/s — prefactor
+TIBBETTS_C_PREFACTOR = 1.6       # 1/wt% — concentration coefficient of the prefactor
+TIBBETTS_Q0 = 37_000.0           # cal/mol — activation energy extrapolated to C → 0
+TIBBETTS_Q_PER_C = 6_600.0       # cal/(mol·wt%) — activation lowering per wt% carbon
+
+
+def carbon_diffusivity_tibbetts(C, T_celsius: float = DEFAULT_T_CARBURIZE):
+    """Concentration-dependent diffusivity of carbon in austenite ``D(C, T)`` (m²/s).
+
+    The cited Tibbetts (1980) form ``D = 0.47·exp(−1.6 C)·exp[−(37000−6600 C)/(R_cal T)]``
+    cm²/s (``C`` in wt%, ``T`` in **°C** → kelvin internally), returned in **m²/s**.
+    Vectorized over ``C`` — accepts a scalar or the per-cell carbon array the D(C) solve
+    feeds it. Rises with carbon: at 925 °C, ``D ≈ 1.05e-11`` (0.2 %C) → ``1.34e-11``
+    (0.4 %C) → ``2.13e-11`` m²/s (0.8 %C), all above the constant ``8.1e-12`` — the
+    deeper-case effect the constant-``D`` erfc misses. Pass to :func:`solve_carburize`'s
+    ``D_of_C`` (it is wired to the engine's native nonlinear ``D_of_u`` — ADR 0004).
+    """
+    C = np.asarray(C, dtype=float)
+    T_K = T_celsius + ABS_ZERO
+    if T_K <= 0.0:
+        raise ValueError(f"temperature must be above absolute zero, got {T_celsius} °C")
+    Q = TIBBETTS_Q0 - TIBBETTS_Q_PER_C * C            # cal/mol — falls with carbon
+    D_cm2 = TIBBETTS_D0 * np.exp(-TIBBETTS_C_PREFACTOR * C) * np.exp(-Q / (R_GAS_CAL * T_K))
+    return D_cm2 * 1.0e-4                              # cm²/s → m²/s
+
+
+# --------------------------------------------------------------------------- #
 # 2. The analytic erfc solution + case depth (the analytical-limit leg)
 # --------------------------------------------------------------------------- #
 def analytic_erfc_carbon(
@@ -245,7 +299,93 @@ def analytic_case_depth(
 
 
 # --------------------------------------------------------------------------- #
-# 3. The numeric carburizing solve (frozen engine, mass mode) → CarburizedProfile
+# 2b. The Boltzmann self-similar reference for D(C) — the D(C) analytical leg
+# --------------------------------------------------------------------------- #
+def boltzmann_carbon_profile(
+    x: np.ndarray,
+    t: float,
+    T_carburize: float = DEFAULT_T_CARBURIZE,
+    C_surface: float = DEFAULT_CARBON_POTENTIAL,
+    C_core: float = DEFAULT_CORE_CARBON,
+    D_of_C: Callable = carbon_diffusivity_tibbetts,
+) -> np.ndarray:
+    """The self-similar carbon profile for concentration-dependent ``D`` (wt%).
+
+    With ``D = D(C)`` the profile is no longer erfc — but the constant-surface
+    semi-infinite problem is still **Boltzmann self-similar**: the variable ``η = x/√t``
+    collapses Fick's second law to the ODE
+
+        d/dη( D(C) dC/dη ) + (η/2) dC/dη = 0,    C(0) = Cs,  C(∞) = C0
+
+    solved here as a boundary-value problem (:func:`scipy.integrate.solve_bvp`). This is
+    the reference the numeric D(C) :func:`solve_carburize` is validated against (the D(C)
+    analogue of :func:`analytic_erfc_carbon`), and an *independent* numeric from the
+    engine's own re-seal (``engines/diffusion/tests/test_nonlinear_d.py``) — a cross-check
+    at two layers. Because the solution depends on ``x`` and ``t`` only through ``η``, the
+    case depth still scales **exactly** as ``√t`` — the tight scaling leg of the Phase-3
+    triad survives the loss of erfc. ``x`` (m, from the surface), ``t`` (s); ``D_of_C(C, T)``
+    returns m²/s (defaults to the cited Tibbetts D(C)).
+    """
+    x = np.asarray(x, dtype=float)
+    if t <= 0.0:
+        raise ValueError(f"time must be > 0, got {t}")
+    # η reaches the core near ~6·√D (erfc argument ≈ 3); integrate out to a generous
+    # multiple so C(η_max) ≈ C0. Use the surface (largest) D — the deepest penetration.
+    D_hi = float(np.asarray(D_of_C(C_surface, T_carburize)))
+    eta_max = 12.0 * math.sqrt(D_hi)
+    eta = np.linspace(0.0, eta_max, 400)
+
+    def odes(e, y):
+        C = y[0]
+        w = y[1]                                       # w = D(C)·dC/dη (the flux variable)
+        dC = w / D_of_C(C, T_carburize)
+        return np.vstack((dC, -0.5 * e * dC))
+
+    def bc(ya, yb):
+        return np.array([ya[0] - C_surface, yb[0] - C_core])
+
+    # Initial guess: a linear ramp Cs→C0, with w from its finite-difference slope.
+    C_guess = C_core + (C_surface - C_core) * (1.0 - eta / eta_max)
+    w_guess = D_of_C(C_guess, T_carburize) * np.gradient(C_guess, eta)
+    sol = solve_bvp(odes, bc, eta, np.vstack((C_guess, w_guess)), tol=1e-8, max_nodes=20000)
+    if not sol.success:
+        raise RuntimeError(f"Boltzmann similarity BVP did not converge: {sol.message}")
+    return sol.sol(np.clip(x / math.sqrt(t), 0.0, eta_max))[0]
+
+
+def boltzmann_case_depth(
+    t: float,
+    T_carburize: float = DEFAULT_T_CARBURIZE,
+    C_surface: float = DEFAULT_CARBON_POTENTIAL,
+    C_core: float = DEFAULT_CORE_CARBON,
+    C_threshold: float = CASE_DEPTH_CARBON,
+    D_of_C: Callable = carbon_diffusivity_tibbetts,
+) -> float:
+    """Case depth (m) to ``C_threshold`` for the concentration-dependent D(C) profile.
+
+    The D(C) analogue of :func:`analytic_case_depth`. Evaluates the self-similar
+    :func:`boltzmann_carbon_profile` on a dense grid and interpolates the threshold
+    crossing; ``∝ √t`` by self-similarity. ``nan`` if the threshold lies outside
+    ``(C_core, C_surface)`` or beyond the resolved profile.
+    """
+    denom = C_surface - C_core
+    if denom <= 0.0:
+        raise ValueError("C_surface must exceed C_core (carbon flows inward)")
+    r = (C_threshold - C_core) / denom
+    if not (0.0 < r < 1.0):
+        return float("nan")
+    D_hi = float(np.asarray(D_of_C(C_surface, T_carburize)))
+    x_grid = np.linspace(0.0, 12.0 * math.sqrt(D_hi * t), 800)
+    C = boltzmann_carbon_profile(x_grid, t, T_carburize, C_surface, C_core, D_of_C)
+    if C_threshold >= C[0] or C_threshold <= C[-1]:
+        return float("nan")
+    return float(np.interp(C_threshold, C[::-1], x_grid[::-1]))
+
+
+# --------------------------------------------------------------------------- #
+# 3. The numeric carburizing solve (diffusion engine, mass mode) → CarburizedProfile
+#    Constant ``D`` (erfc) by default, or the opt-in nonlinear ``D(C)`` (Tibbetts) wired
+#    to the unfrozen engine's native ``D_of_u`` (ADR 0004).
 # --------------------------------------------------------------------------- #
 @dataclass(frozen=True)
 class CarburizedProfile:
@@ -272,10 +412,28 @@ class CarburizedProfile:
     mass_uptake: float
     surface_flux_uptake: float
     method: str
+    concentration_dependent: bool = False    # True when solved with the opt-in D(C) (Tibbetts)
+    D_array: np.ndarray | None = None         # the final per-cell D(x) of a D(C) solve (else None)
 
     def erfc_profile(self) -> np.ndarray:
-        """The analytic erfc carbon profile at this solve's ``x``, ``t``, ``D`` (wt%)."""
+        """The analytic erfc carbon profile at this solve's ``x``, ``t``, ``D`` (wt%).
+
+        Uses the constant reference ``D``; on a D(C) solve
+        (:attr:`concentration_dependent`) this is the *under-predicting* constant-``D``
+        baseline to overlay against — the exact reference there is
+        :meth:`boltzmann_profile`, not erfc.
+        """
         return analytic_erfc_carbon(self.x, self.t, self.D, self.C_surface, self.C_core)
+
+    def boltzmann_profile(self, D_of_C: Callable = carbon_diffusivity_tibbetts) -> np.ndarray:
+        """The Boltzmann self-similar reference profile (wt%) — the D(C) analogue of erfc.
+
+        Defaults to the cited Tibbetts D(C); pass a matching ``D_of_C`` if the solve used a
+        custom diffusivity. See :func:`boltzmann_carbon_profile`.
+        """
+        return boltzmann_carbon_profile(
+            self.x, self.t, self.T_carburize, self.C_surface, self.C_core, D_of_C
+        )
 
     def case_depth(self, C_threshold: float = CASE_DEPTH_CARBON) -> float:
         """Numeric case depth (m): the depth where ``C(x)`` falls through ``C_threshold``.
@@ -304,14 +462,21 @@ def solve_carburize(
     n_cells: int = 300,
     n_steps: int = 600,
     method: str = "backward_euler",
+    D_of_C: Callable | None = None,
 ) -> CarburizedProfile:
-    """Diffuse carbon into the surface — the frozen engine in **mass mode** → ``C(x)``.
+    """Diffuse carbon into the surface — the diffusion engine in **mass mode** → ``C(x)``.
 
-    Solves ``∂C/∂t = D ∂²C/∂x²`` (constant ``D`` at ``T_carburize``) with a Dirichlet
-    surface at the carbon potential ``C_surface`` and a no-flux core/centreline, from a
-    uniform core ``C_core``. Marches a uniform time grid (``n_steps`` of
-    ``t_hours·3600/n_steps``), accumulating the surface-flux integral so the conservation
-    leg can compare it to the change in ``∫C dx``.
+    Solves ``∂C/∂t = ∂ₓ(D ∂ₓC)`` with a Dirichlet surface at the carbon potential
+    ``C_surface`` and a no-flux core/centreline, from a uniform core ``C_core``. Marches a
+    uniform time grid (``n_steps`` of ``t_hours·3600/n_steps``), accumulating the
+    surface-flux integral so the conservation leg can compare it to the change in ``∫C dx``.
+
+    By default ``D`` is the **constant** Callister value at ``T_carburize`` (the textbook
+    erfc case — the validated analytical limit). Pass ``D_of_C`` (e.g.
+    :func:`carbon_diffusivity_tibbetts`) for the **concentration-dependent** diffusivity:
+    it is wired straight into the engine's native nonlinear ``D_of_u`` (the unfrozen v1.1
+    path — CONTRACT.md / ADR 0004), which Picard-solves the nonlinear step and caches the
+    accepted D-field so the conservation identity stays machine-exact.
 
     Parameters
     ----------
@@ -332,15 +497,32 @@ def solve_carburize(
         *exact*, so the conservation bookkeeping is machine-precise; Crank–Nicolson is
         more accurate in the interior profile but only approximately closes the flux
         identity (so ``surface_flux_uptake`` carries a small splitting residual there).
+        The ``D_of_C`` (nonlinear) path requires backward Euler (the engine enforces it).
+    D_of_C : callable, optional
+        Opt-in **concentration-dependent** diffusivity ``D_of_C(C, T_celsius) → m²/s``
+        (e.g. :func:`carbon_diffusivity_tibbetts`). ``None`` (default) keeps the
+        **constant-``D`` erfc** solve byte-identical. When supplied it is passed to the
+        engine's native nonlinear ``D_of_u``; the result carries
+        :attr:`CarburizedProfile.concentration_dependent` and the final ``D_array``, and is
+        validated against :func:`boltzmann_carbon_profile`, not erfc.
     """
     if C_surface <= C_core:
         raise ValueError("C_surface must exceed C_core for carbon to diffuse inward")
-    D = carbon_diffusivity(T_carburize)
+    D = carbon_diffusivity(T_carburize)        # the constant reference (the erfc baseline's D)
     t_end = t_hours * 3600.0
     dt = t_end / n_steps
-
     grid = uniform_grid(length, n_cells)
-    solver = Diffusion1D(grid, D, Dirichlet(C_surface), Neumann(0.0), method=method)
+
+    if D_of_C is None:
+        solver = Diffusion1D(grid, D, Dirichlet(C_surface), Neumann(0.0), method=method)
+    else:
+        # The unfrozen engine handles the nonlinear D(C) natively (Picard inside step,
+        # caching the accepted D-field — CONTRACT.md / ADR 0004): hand it the diffusivity
+        # as a function of the live carbon. No per-step reassembly or operator splitting.
+        solver = Diffusion1D(
+            grid, None, Dirichlet(C_surface), Neumann(0.0), method=method,
+            D_of_u=lambda u: np.asarray(D_of_C(u, T_carburize), dtype=float),
+        )
 
     C = np.full(n_cells, float(C_core))
     total0 = solver.total(C)
@@ -349,11 +531,13 @@ def solve_carburize(
     for _ in range(n_steps):
         C = solver.step(C, dt, t0=t)
         t += dt
-        # Frozen identity (backward Euler): Δtotal = dt·(flux_left − flux_right). The core
-        # (right) is no-flux, so the surface (left) flux integral is the carbon uptake.
+        # Discrete identity (backward Euler): Δtotal = dt·(flux_left − flux_right). The core
+        # (right) is no-flux, so the surface (left) flux integral is the carbon uptake. On the
+        # D(C) path the engine caches the accepted-assembly D-field, so this stays exact.
         surface_flux_uptake += dt * solver.flux(C, "left", t=t)
 
     total1 = solver.total(C)
+    D_array = None if D_of_C is None else np.asarray(D_of_C(C, T_carburize), dtype=float)
     return CarburizedProfile(
         x=grid.centers,
         C=C,
@@ -366,6 +550,8 @@ def solve_carburize(
         mass_uptake=total1 - total0,
         surface_flux_uptake=surface_flux_uptake,
         method=method,
+        concentration_dependent=D_of_C is not None,
+        D_array=D_array,
     )
 
 

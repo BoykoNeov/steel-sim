@@ -38,7 +38,8 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   Dirichlet surface / Neumann core) for the erfc carbon profile, then reuses
   `kinetics`/`pathint`/`properties` for the gradient. The module docstring is its contract.
 - **To use the diffusion/heat spine:** load `engines/diffusion/CONTRACT.md` only —
-  the frozen one-pager. You never need the engine's internals.
+  the sealed one-pager (**v1.1**: the linear surface plus the opt-in nonlinear `D(u)`,
+  ADR 0004). You never need the engine's internals.
 - **To work on CALPHAD equilibrium (Phase 4):** `calphad_backend.py` (the optional
   pycalphad wrapper) + `calphad_reference.py` (the frozen table) + `tests/test_calphad.py`
   (committed-vs-live) and `demo_calphad.py` + `tests/test_demo_calphad.py` (the artifact).
@@ -116,7 +117,7 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 
 | Phase | File | What | Status |
 |---|---|---|---|
-| 1a | `engines/diffusion/` | conservative 1-D parabolic (diffusion/heat) solver — the spine | **frozen ✓** (2026-06-08) |
+| 1a | `engines/diffusion/` | conservative 1-D parabolic (diffusion/heat) solver — the spine | **sealed ✓** (v1.0 2026-06-08; **v1.1 + native nonlinear `D(u)`** 2026-06-11) |
 | 1b | `fe_c.py` | metastable Fe–Fe₃C boundaries + lever rule → equilibrium phase fractions & constituents | **built ✓** |
 | 1c | `kinetics.py` | Avrami/TTT, Scheil additivity/CCT, Koistinen–Marburger, Andrews `M_s` | **built ✓** |
 | 1c | `pathint.py` | steel-local path-integrator (additivity ∫dt/τ + Avrami-along-path + 0-D cooler) | **built ✓** |
@@ -142,6 +143,7 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 6c | `ideal_diameter.py`, `demo_ideal_diameter.py` | the **critical-diameter (D_c) / measured-Jominy cross-check** — compute the critical diameter *from* the model (`fM=0.5` → EMJ p.29 water-quench conversion) vs **measured** H-bands (SAE J1268 / EMJ; *not* Grossmann-computed): the hardenability **ranking is correct**, 4340 **under-predicted** (Ni potency), 4140 in-band by construction (plan §13) | **built ✓** (2026-06-10) |
 | 7 | `design.py`, `demo_design.py`, `plots.design_figure`, `steel.ipynb` §7, `app.py` §7 | **post-v1 — inverse design**: *name a hardness, get the recipe* — outer grade×quench enumeration × inner temper root-find over the validated forward chain; feasible set cheapest-first, infeasible first-class, Biot honesty. No new physics (plan §14) | **built ✓** (2026-06-10) |
 | viz | `plots.grain_voronoi_swatch` / `grain_morphology_figure`, `demo_grain_morphology.py`, `app.py` §5 | **grain-morphology swatch** — size-accurate Voronoi *illustration* of the scalar grain size `d` (grains/area ∝ ASTM `N_A = 1/d²`; shapes decorative, scale bar). Reach not physics (ADR 0002); **alongside** `microstructure_schematic`, not replacing it (plan §12) | **built ✓** (2026-06-10) |
+| v1.1 | `engines/diffusion/` (unfreeze), `carburize.py` (`carbon_diffusivity_tibbetts`, `solve_carburize(D_of_C=…)`) | **engine unfrozen for native nonlinear `D(u)`** (Picard-in-step, cached D-field, re-sealed v1.1 — ADR 0004 / `test_nonlinear_d.py`) → carburizing's opt-in concentration-dependent **Tibbetts `D(C)`** deepens the case ~0.66→~0.97 mm (published band). Linear path byte-identical (plan §15) | **built ✓** (2026-06-11) |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
 
@@ -467,7 +469,8 @@ the frozen engine's *own* guarantees re-instantiated — no new calibration:
   depth scales **exactly** as `√(Dt)` (the self-similar variable `x/2√(Dt)`). The scaling is
   asserted *tightly*; the *absolute* case depth is asserted *loosely* — carbon potential and
   case-depth definition vary across sources, and the cited constant-`D` (vs the concentration-
-  enhanced Tibbetts `D(C)`) under-predicts the absolute depth, a **named** scope limitation.
+  enhanced Tibbetts `D(C)`) under-predicts the absolute depth, a **named** scope limitation
+  (now closable via the opt-in `D(C)` — see "Scope named" below).
 - *Conservation.* `Δ∫C dx` equals the integrated surface flux `Σ dt·flux(left)` to machine
   precision — the engine's exact backward-Euler flux identity (confirmed for the **Dirichlet**
   surface, the core being no-flux), plus the semi-infinite tie `Δ∫C dx = 2(Cs−C0)√(Dt/π)`.
@@ -500,9 +503,13 @@ One carburized 8620 section → the figure
 three panels sharing the depth axis — the carbon profile (numeric + erfc overlay + case-depth
 marker), the microstructure gradient (martensite case, retained-γ rising into the surface), and
 the hardness traverse (martensite potential over the as-quenched curve, with the published surface
-band sitting honestly between them). **Scope named:** constant `D` (vs Tibbetts `D(C)`), Dirichlet
-constant potential (vs a Robin finite-surface-reaction / boost-diffuse ramp), and the high-carbon
-extrapolation. The **D_I cross-check** is now **built (Phase 6c)** — `ideal_diameter.py`, below.
+band sitting honestly between them). **Scope named:** constant `D` is the **default** (the validated
+erfc analytical limit); the concentration-dependent Tibbetts **`D(C)` is now built** as the opt-in
+`solve_carburize(D_of_C=…)` — wired to the engine's native nonlinear `D_of_u` (ADR 0004), it deepens
+the case toward the published band and is validated against the Boltzmann self-similar reference, so
+that scope edge is closable. Dirichlet constant potential (vs a Robin finite-surface-reaction /
+boost-diffuse ramp) and the high-carbon extrapolation remain. The **D_I cross-check** is **built
+(Phase 6c)** — `ideal_diameter.py`, below.
 
 ## Phase 4 — CALPHAD-backed equilibrium (`calphad_backend.py`, `calphad_reference.py`, `demo_calphad.py`)
 

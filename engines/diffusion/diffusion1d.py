@@ -28,6 +28,11 @@ Discretization
       (discrete maximum principle: no new extrema, no oscillation, for any dt>0).
     - ``crank_nicolson`` (θ=½) — 2nd-order in time, unconditionally stable but
       *not monotone* (can produce decaying oscillations at large dt).
+* **Nonlinear diffusivity ``D(u)``** (opt-in via ``D_of_u``; CONTRACT.md / ADR 0004).
+  When the diffusivity depends on the solution the implicit step is nonlinear; it is
+  solved by Picard iteration (backward Euler only). The D-field of the *accepted*
+  assembly is cached so that :meth:`Diffusion1D.flux` — and hence the conservation
+  identity — stays exact on the nonlinear path, not merely Picard-accurate.
 
 The frozen data boundary (ADR 0001)
 -----------------------------------
@@ -62,6 +67,11 @@ from scipy.linalg import solve_banded
 ArrayLike = Union[float, np.ndarray]
 DSpec = Union[float, np.ndarray, Callable[[float], ArrayLike]]
 BCParam = Union[float, Callable[[float], float]]
+# A nonlinear diffusivity ``D(u)``: a callable mapping the current cell-centered state
+# to a cell-centered ``D`` array (the unfrozen v1.1 path — CONTRACT.md / ADR 0004). Kept
+# a *separate* parameter from the ``D(t)`` form above so the two callable shapes — a
+# function of time vs a function of state — never alias on a single ``D`` argument.
+DofU = Callable[[np.ndarray], ArrayLike]
 
 _METHODS = {"backward_euler": 1.0, "crank_nicolson": 0.5}
 
@@ -169,10 +179,12 @@ class Diffusion1D:
     ----------
     grid : Grid
         The finite-volume grid (use :func:`uniform_grid` / :func:`grid_from_edges`).
-    D : float | ndarray | callable
+    D : float | ndarray | callable | None
         Diffusivity. Scalar, length-N cell-centered array ``D(x)``, or a callable
         ``D(t)`` returning either. Interior face diffusivity is the harmonic mean
         of the two adjacent cell values (correct flux continuity for layered media).
+        Pass ``None`` when supplying the nonlinear ``D_of_u`` instead (exactly one of
+        the two is required).
     bc_left, bc_right : Dirichlet | Neumann | Robin
         Boundary condition at each end, independently.
     source : float | ndarray | callable, optional
@@ -181,24 +193,55 @@ class Diffusion1D:
     method : {"backward_euler", "crank_nicolson"}
         Time-integration scheme; backward Euler (default) is the unconditionally
         stable *and monotone* one the stability invariant guarantees.
+    D_of_u : callable, optional
+        Opt-in **nonlinear** diffusivity ``D_of_u(u_cells) -> D array`` — the unfrozen
+        v1.1 path (CONTRACT.md / ADR 0004). Mutually exclusive with ``D`` (pass exactly
+        one). With ``D_of_u`` the implicit step is nonlinear and solved by Picard
+        iteration, so ``method`` must be ``"backward_euler"`` (the monotone scheme the
+        stability/conservation seal covers). The accepted assembly's D-field is cached so
+        :meth:`flux` — and the conservation identity — stay exact, not Picard-approximate.
+    picard_tol, picard_max_iters : float, int
+        Convergence tolerance (on the max state update) and iteration cap for the
+        ``D_of_u`` Picard solve; :meth:`step` **raises** if it fails to converge. Ignored
+        on the linear ``D`` path.
     """
 
     def __init__(
         self,
         grid: Grid,
-        D: DSpec,
+        D: Union[DSpec, None],
         bc_left: Union[Dirichlet, Neumann, Robin],
         bc_right: Union[Dirichlet, Neumann, Robin],
         source: Union[DSpec, None] = None,
         method: str = "backward_euler",
+        *,
+        D_of_u: Union[DofU, None] = None,
+        picard_tol: float = 1e-10,
+        picard_max_iters: int = 50,
     ) -> None:
         if method not in _METHODS:
             raise ValueError(f"method must be one of {sorted(_METHODS)}, got {method!r}")
         for bc in (bc_left, bc_right):
             if not isinstance(bc, (Dirichlet, Neumann, Robin)):
                 raise TypeError(f"boundary condition must be Dirichlet/Neumann/Robin, got {bc!r}")
+        # Exactly one diffusivity spec: the linear ``D`` (scalar / array / D(t)) XOR the
+        # nonlinear ``D_of_u`` (the unfrozen v1.1 path — CONTRACT.md / ADR 0004).
+        if (D is None) == (D_of_u is None):
+            raise ValueError("provide exactly one of D (linear) or D_of_u (nonlinear D(u))")
+        if D_of_u is not None:
+            if not callable(D_of_u):
+                raise TypeError("D_of_u must be callable: D_of_u(u_cells) -> D array")
+            if method != "backward_euler":
+                raise ValueError(
+                    "D_of_u (nonlinear D(u)) requires method='backward_euler' — the monotone "
+                    "scheme the stability/conservation seal covers"
+                )
         self.grid = grid
         self._D = D
+        self._D_of_u = D_of_u
+        self._picard_tol = float(picard_tol)
+        self._picard_max_iters = int(picard_max_iters)
+        self._D_cache: Union[np.ndarray, None] = None   # accepted-assembly D-field (nonlinear path)
         self.bc_left = bc_left
         self.bc_right = bc_right
         self._source = source
@@ -209,10 +252,19 @@ class Diffusion1D:
         self._dx_face = np.diff(grid.centers)
 
     # -- coefficient assembly ------------------------------------------------ #
-    def _D_cells(self, t: float) -> np.ndarray:
-        """Cell-centered diffusivity at time ``t`` as a length-N array."""
-        D = self._D(t) if callable(self._D) else self._D
-        D = np.asarray(D, dtype=float)
+    def _D_cells(self, t: float, u: Union[np.ndarray, None] = None) -> np.ndarray:
+        """Cell-centered diffusivity as a length-N array.
+
+        Linear path: read from ``D`` at time ``t``. Nonlinear path (``D_of_u`` set):
+        evaluate ``D(u)`` from the current cell state ``u`` (required).
+        """
+        if self._D_of_u is not None:
+            if u is None:
+                raise ValueError("nonlinear D_of_u needs the current state to evaluate D(u)")
+            D = np.asarray(self._D_of_u(np.asarray(u, dtype=float)), dtype=float)
+        else:
+            D = self._D(t) if callable(self._D) else self._D
+            D = np.asarray(D, dtype=float)
         if D.ndim == 0:
             D = np.full(self.grid.n, float(D))
         if D.shape != (self.grid.n,):
@@ -230,7 +282,7 @@ class Diffusion1D:
             raise ValueError(f"source must be scalar or length {self.grid.n}, got shape {S.shape}")
         return S
 
-    def _operator(self, t: float):
+    def _operator(self, t: float, Dc: Union[np.ndarray, None] = None):
         """Assemble the semidiscrete system  du/dt = A·u + b  at time ``t``.
 
         Returns the three diagonals of the tridiagonal matrix ``A`` (``sub[i] =
@@ -238,11 +290,15 @@ class Diffusion1D:
         boundary/source vector ``b``. ``A`` carries the diffusion operator plus
         the diagonal contributions of Dirichlet/Robin boundaries; ``b`` carries
         their inhomogeneous parts, the Neumann flux, and the source.
+
+        ``Dc`` may be passed in (the nonlinear ``D(u)`` solve supplies the current
+        iterate's cell diffusivity); when ``None`` it is read from the linear ``D``.
         """
         g = self.grid
         n = g.n
         dx = g.widths
-        Dc = self._D_cells(t)
+        if Dc is None:
+            Dc = self._D_cells(t)
 
         # Interior face transmissibilities  T_{i+1/2} = D_face / dist(centers).
         # Harmonic-mean face diffusivity gives exact flux continuity across a
@@ -309,6 +365,8 @@ class Diffusion1D:
         u0 = np.asarray(state, dtype=float)
         if u0.shape != (self.grid.n,):
             raise ValueError(f"state must have length {self.grid.n}, got shape {u0.shape}")
+        if self._D_of_u is not None:
+            return self._step_nonlinear(u0, dt, t0)
         theta = self.theta
         t1 = t0 + dt
 
@@ -332,6 +390,46 @@ class Diffusion1D:
         ab[1, :] = 1.0 - dt * theta * diag1
         ab[2, :-1] = -dt * theta * sub1[1:]
         return solve_banded((1, 1), ab, rhs)
+
+    def _step_nonlinear(self, u0: np.ndarray, dt: float, t0: float) -> np.ndarray:
+        """One backward-Euler step with a nonlinear ``D(u)`` (Picard / lagged solve).
+
+        The implicit operator depends on the unknown new state through ``D(u)``, so the
+        step is nonlinear. It is solved by Picard iteration: evaluate ``D`` from the
+        current iterate, assemble the linear system, solve, and repeat until the state
+        update drops below ``picard_tol``. Each sub-solve is the ordinary backward-Euler
+        M-matrix (positive ``D`` ⇒ unconditionally stable and monotone), so the converged
+        step inherits those guarantees — the discrete maximum principle holds wherever
+        ``D > 0`` (no new extrema, no oscillation).
+
+        The D-field of the *accepted* assembly is cached in :attr:`_D_cache`, so that
+        :meth:`flux` reports a flux consistent with the field the solve actually used.
+        That is what keeps ``total(stepped) − total(state) = dt·(flux_left − flux_right)``
+        **exact** on the nonlinear path (the conservation invariant), rather than accurate
+        only to the Picard tolerance.
+        """
+        t1 = t0 + dt
+        n = self.grid.n
+        u_iter = u0
+        for _ in range(self._picard_max_iters):
+            Dc = self._D_cells(t1, u_iter)
+            sub1, diag1, sup1, b1 = self._operator(t1, Dc)
+            rhs = u0 + dt * b1               # backward Euler (θ=1, the only D(u) scheme)
+            ab = np.zeros((3, n))
+            ab[0, 1:] = -dt * sup1[:-1]
+            ab[1, :] = 1.0 - dt * diag1
+            ab[2, :-1] = -dt * sub1[1:]
+            u_new = solve_banded((1, 1), ab, rhs)
+            update = float(np.max(np.abs(u_new - u_iter)))
+            if update <= self._picard_tol * max(1.0, float(np.max(np.abs(u_new)))):
+                self._D_cache = Dc          # the assembly field that produced u_new
+                return u_new
+            u_iter = u_new
+        raise RuntimeError(
+            f"nonlinear D(u) Picard iteration did not converge in {self._picard_max_iters} "
+            f"iterations (tol={self._picard_tol:g}); the diffusivity may vary too steeply "
+            f"over a step for this dt"
+        )
 
     def solve(self, state: np.ndarray, t_end: float, dt: float, t0: float = 0.0) -> np.ndarray:
         """Advance from ``t0`` to ``t0 + t_end`` in steps of ``dt`` (last step trimmed)."""
@@ -361,7 +459,14 @@ class Diffusion1D:
         conservation the operator enforces.
         """
         u = np.asarray(state, dtype=float)
-        Dc = self._D_cells(t)
+        if self._D_of_u is not None:
+            # Nonlinear path: use the cached field from the most recent step so the flux is
+            # consistent with the D the solve used (→ the conservation identity stays exact).
+            # Falls back to a fresh D(u) evaluation only if no step has run yet. NOTE: on this
+            # path ``flux`` reflects the last ``step`` — the one documented wart of D(u).
+            Dc = self._D_cache if self._D_cache is not None else self._D_cells(t, u)
+        else:
+            Dc = self._D_cells(t)
         if end == "left":
             bc, dxi, Db, u_cell = self.bc_left, self.grid.widths[0], Dc[0], u[0]
         elif end == "right":
