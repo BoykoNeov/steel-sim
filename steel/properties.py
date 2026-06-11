@@ -130,6 +130,25 @@ toughness is non-monotone through the tempered-martensite/temper-embrittlement t
 named scope ceiling). Tempering is **martensite-only** here (pearlite barely tempers; a mixed
 traverse would temper per-constituent — deferred).
 
+§16: mixed-structure (per-constituent) tempering — temper a *mixture*
+--------------------------------------------------------------------
+Phase 3b's :func:`tempered_martensite_HV` tempers a **fully** martensitic structure. Section 6
+below (Steel plan §16) promotes the deferral it names: tempering a *mixture* of constituents,
+**per-constituent**. :func:`tempered_hardness_HV` is the same **rule of mixtures** as
+:func:`hardness_HV` (the validated Maynier form) — only now each constituent contributes its
+*tempered* hardness: **martensite** softens down the 3b Hollomon–Jaffe master curve, while the
+diffusional products (ferrite / pearlite / bainite / retained austenite) are held **temper-inert**
+and *delegate* to their as-quenched :data:`CONSTITUENT_HV` model (carrying ``comp``/``Vr``, so the
+no-op is byte-exact). It is a **new function** (not a changed signature), so every as-quenched
+surface and the frozen 2c/3a/3b/Jominy/four-curves benchmarks stay byte-identical — the same opt-in
+discipline 3a/3b used for ``comp``/``Vr``. What is *validated by construction* is the rule-of-mixtures
+form + three exact seams (martensite=1 ≡ 3b; martensite=0 ≡ as-quenched; sub-onset ≡ as-quenched);
+what is *named, not validated* is **bainite-inert** and **retained-austenite-inert** (both already
+the least-anchored placeholders — see :data:`TEMPER_ACTIVE`). The teeth live in
+:func:`tempered_jominy_hardness`: the near end (full martensite) softens hard while the far end
+(pearlite) barely moves — a falsifiable differential, bracketed by 3b's validated 4140 temper
+response (near) and 2c's as-quenched soft end (far).
+
 Units & conventions
 -------------------
 * **Hardness** internally **HV** (Vickers, kgf/mm²); reported **HRC** (Rockwell-C)
@@ -602,8 +621,9 @@ def tempered_martensite_HV(
 
     **Scope (deliberate):** martensite-only. Pearlite/ferrite are near-equilibrium and barely
     temper, so a *mixed* Jominy traverse would have to be tempered **per-constituent** (soften
-    the martensite, leave the pearlite) — that integration is deferred. This models the
-    quench-and-temper part, not 'tempered pearlite'.
+    the martensite, leave the pearlite). That integration is **Steel plan §16**, now built as
+    :func:`tempered_hardness_HV` (section 6) — this function stays the pure-martensite case it
+    delegates to. This models the quench-and-temper part, not 'tempered pearlite'.
     """
     HV_aq = vickers_martensite(C, comp=comp)
     HV_floor = vickers_ferrite_pearlite(C, comp=comp)
@@ -682,3 +702,154 @@ def toughness_index(HV: float | np.ndarray) -> float | np.ndarray:
     idx = (TOUGH_HV_BRITTLE - HV_arr) / (TOUGH_HV_BRITTLE - TOUGH_HV_TOUGH)
     out = np.clip(idx, 0.0, 1.0)
     return float(out) if out.ndim == 0 else out
+
+
+# --------------------------------------------------------------------------- #
+# 6. Mixed-structure tempering: per-constituent temper of a phase mixture (Phase §16)
+# --------------------------------------------------------------------------- #
+# Phase 3b's tempered_martensite_HV tempers a FULLY martensitic structure. A real Jominy
+# traverse is a *mixture* — martensite near the quenched end shading to ferrite-pearlite at
+# the far end — and a temper acts on it **per-constituent**: it softens the metastable
+# martensite (down the Hollomon–Jaffe master curve) while leaving the near-equilibrium
+# diffusional products essentially untouched. tempered_hardness_HV is exactly hardness_HV's
+# rule of mixtures (the validated Maynier form) with each constituent's *tempered* hardness:
+#
+#     HV_tempered = Σ fᵢ · HVᵢ_tempered(C, ...)
+#
+# This is a NEW function, not a changed signature, so every as-quenched call and the frozen
+# 2c/3a/3b/Jominy/four-curves benchmarks stay byte-identical (the 3a/3b opt-in discipline).
+#
+# THE ONE TEMPER-ACTIVE CONSTITUENT (the load-bearing modelling claim, plan §16). Only
+# martensite softens; every other constituent is held **temper-INERT** — its hardness is
+# unchanged by the temper, so it *delegates* to its as-quenched CONSTITUENT_HV model, carrying
+# comp/Vr so the no-op is byte-exact (ferrite-pearlite's live Vr term survives), not silently
+# zeroed. "Diffusional products are temper-inert" is a NEW PHYSICAL CLAIM, graded honestly:
+#   * ferrite / pearlite — CITED ("pearlite barely tempers"; it is already a near-equilibrium
+#     aggregate, so a temper at these temperatures coarsens it only slightly — second-order
+#     against the martensite collapse);
+#   * bainite — NAMED, NOT VALIDATED. It is already the least-anchored as-quenched placeholder
+#     (its own tempering magnitude is genuinely uncertain), so holding it fixed is the
+#     *conservative* choice. Consequence, not hidden: a bainite-heavy structure keeps its
+#     placeholder hardness through tempering and can invert vs over-tempered martensite — the
+#     same family as the existing as-quenched bainite caveat, invisible on the bainite-poor
+#     1045/4140 benchmark grades;
+#   * retained austenite — NAMED, NOT VALIDATED, and the load-bearing hazard *for a later
+#     design.py unlock* (not for this section): RA → bainite / fresh martensite on tempering is
+#     non-monotone and can *raise* hardness. tempered_jominy_hardness only **reports**, so RA-inert
+#     is safe here; relaxing design.py (which **recommends**) is gated on an RA cap (plan §16 step 4).
+TEMPER_ACTIVE = frozenset({"martensite"})
+
+
+def tempered_hardness_HV(
+    fractions: dict, C: float, T_temper: float, t_hours: float,
+    comp: dict | None = None, Vr: float | None = None, C_hj: float = HJ_CONSTANT,
+) -> float:
+    """Rule-of-mixtures hardness of a **tempered mixture** ``HV = Σ fᵢ·HVᵢ_tempered`` (Vickers).
+
+    The mixed-structure generalization of :func:`tempered_martensite_HV` and the temper-aware
+    sibling of :func:`hardness_HV`: tempers a phase mixture (``fractions`` — the
+    :meth:`pathint.TransformResult.fractions` dict) **per-constituent** after ``t_hours`` h at
+    ``T_temper`` °C. Each constituent contributes its *tempered* hardness, fraction-weighted:
+
+      * **martensite** → :func:`tempered_martensite_HV` (softens down the 3b Hollomon–Jaffe
+        master curve; ``comp``/``C_hj`` thread through, ``Vr`` is martensite-irrelevant);
+      * **everything else** (ferrite / pearlite / bainite / retained austenite) → **temper-inert**,
+        *delegating* to its as-quenched :data:`CONSTITUENT_HV` model called as
+        ``CONSTITUENT_HV[name](C, comp, Vr)`` — the *identical* call :func:`hardness_HV` makes,
+        so the no-op is byte-exact (see :data:`TEMPER_ACTIVE` for the inert-claim ledger).
+
+    Unknown constituent keys raise :class:`KeyError` — the key-set is :data:`CONSTITUENT_HV`,
+    exactly as in :func:`hardness_HV`, so a fractions/registry mismatch is a real error.
+
+    Three exact **seams** hold by construction (validated in ``test_properties``):
+
+      * ``{"martensite": 1.0}`` → :func:`tempered_martensite_HV` *exactly* (recovers 3b — this is
+        a strict generalization);
+      * ``martensite = 0`` → :func:`hardness_HV` *exactly* (tempering a diffusional structure is a
+        no-op: the inert legs are identical calls, the absent martensite leg adds exactly ``0.0``);
+      * a **sub-onset** temper (P below onset, e.g. ~120 °C / 1 h) → :func:`hardness_HV` *exactly*
+        at any mixture (from :func:`tempered_martensite_HV`'s ``g ≥ 1 → HV_aq`` clamp).
+
+    ``comp`` (minor-alloy wt% dict) and ``Vr`` (cooling rate at 700 °C, °C/h) are the optional
+    Phase-3 Maynier terms threaded to each constituent, exactly as in :func:`hardness_HV`.
+    """
+    HV = 0.0
+    for name, f in fractions.items():
+        if name not in CONSTITUENT_HV:
+            raise KeyError(f"no hardness model for constituent {name!r}")
+        if name in TEMPER_ACTIVE:                          # martensite: softens down the HJ curve
+            hv_i = tempered_martensite_HV(C, T_temper, t_hours, comp=comp, C_hj=C_hj)
+        else:                                              # diffusional product: temper-inert,
+            hv_i = CONSTITUENT_HV[name](C, comp, Vr)       # the identical as-quenched call → byte-exact
+        HV += f * hv_i
+    return HV
+
+
+def tempered_hardness_HRC(
+    fractions: dict, C: float, T_temper: float, t_hours: float,
+    comp: dict | None = None, Vr: float | None = None, C_hj: float = HJ_CONSTANT,
+) -> float:
+    """Tempered-mixture hardness in **HRC** — :func:`tempered_hardness_HV` then ASTM E140.
+
+    ``nan`` when the tempered mixture is softer than ~20 HRC (HRC undefined there — read
+    :func:`tempered_hardness_HV` for the soft end). The temper-inert far end of a Jominy bar
+    (soft ferrite-pearlite) lives below this floor, which is exactly why the *figure* and the
+    differential-shape claim are read in **HV**, not HRC.
+    """
+    return vickers_to_rockwell_c(
+        tempered_hardness_HV(fractions, C, T_temper, t_hours, comp=comp, Vr=Vr, C_hj=C_hj)
+    )
+
+
+def tempered_jominy_hardness(
+    field, ccurve: CCurve, C: float, T_temper: float, t_hours: float,
+    distances: np.ndarray | None = None, comp: dict | None = None,
+    use_cooling_rate: bool = False, T_ref_rate: float = 700.0, C_hj: float = HJ_CONSTANT,
+) -> JominyHardness:
+    """A **tempered** Jominy traverse — :func:`jominy_hardness` with a per-constituent temper.
+
+    Mirrors :func:`jominy_hardness` exactly (same thermal → kinetics composition, same nearest-cell
+    array seam), swapping the as-quenched :func:`hardness_HV` for :func:`tempered_hardness_HV` at
+    each position — so the microstructure at every distance is tempered ``t_hours`` h at ``T_temper``
+    °C *per-constituent*. Returns a :class:`JominyHardness` (reused — a tempered traverse is still
+    hardness vs distance with a martensite cue).
+
+    **This is the phase's teeth** (plan §16): a falsifiable *differential* across the bar — the
+    near end (full martensite) softens hard while the far end (diffusional, temper-inert) barely
+    moves. The validation posture is **bracketing, not extraction** (no tempered-Jominy atlas is
+    baked): the near end reduces to 3b's already-validated 4140 1 h temper response (full
+    martensite → the Seam-A limit), the far end to 2c's already-validated as-quenched soft end
+    (pearlite, inert → byte-identical to the as-quenched traverse), and the new content is the
+    *qualitative differential shape* between them.
+
+    Parameters mirror :func:`jominy_hardness`; ``T_temper`` (°C) / ``t_hours`` (h) / ``C_hj`` are
+    the Hollomon–Jaffe temper, applied to the martensite fraction at each position. ``comp`` and
+    ``use_cooling_rate`` thread the Phase-3 Maynier terms (the cooling-rate term lifts the
+    temper-inert ferrite-pearlite far tail, as in :func:`jominy_hardness`).
+    """
+    x = np.asarray(field.x, dtype=float)
+    if distances is None:
+        distances = x
+    distances = np.asarray(distances, dtype=float)
+
+    rates_Cph = None
+    if use_cooling_rate:
+        rates_Cph = field.cooling_rate(T_ref_rate) * SECONDS_PER_HOUR
+
+    HV = np.empty(distances.size)
+    mart = np.empty(distances.size)
+    for k, d in enumerate(distances):
+        j = int(np.argmin(np.abs(x - d)))              # nearest cell (the array seam)
+        t, T = field.history(j)
+        result = pathint.transform_along_path(t, T, ccurve)
+        Vr = float(rates_Cph[j]) if (rates_Cph is not None and np.isfinite(rates_Cph[j])) else None
+        HV[k] = tempered_hardness_HV(result.fractions(), C, T_temper, t_hours,
+                                     comp=comp, Vr=Vr, C_hj=C_hj)
+        mart[k] = result.martensite
+    return JominyHardness(
+        distance=distances,
+        HV=HV,
+        HRC=vickers_to_rockwell_c(HV),
+        martensite=mart,
+        carbon=C,
+    )

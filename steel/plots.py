@@ -27,7 +27,7 @@ from .kinetics import CCurve
 from .pathint import TransformResult
 from .cooling import CoolingPath
 from .grain import GrainProperties
-from .properties import JominyHardness, RELIABLE_HRC_MIN
+from .properties import JominyHardness, RELIABLE_HRC_MIN, rockwell_c_to_vickers
 from .carburize import CarburizedProfile, CarburizedTraverse
 
 # Stable colours so the legend reads the same across every figure.
@@ -281,6 +281,70 @@ def jominy_hardness_figure(
     ax.set_ylabel("hardness  (HRC)")
     ax.set_ylim(RELIABLE_HRC_MIN - 2.0, 66.0)
     ax.set_xlim(left=0.0)
+    ax.grid(True, alpha=0.25)
+    ax.legend(loc="upper right", fontsize=9, framealpha=0.9)
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    fig.tight_layout()
+    return fig
+
+
+def tempered_jominy_figure(
+    as_quenched: dict[str, JominyHardness],
+    tempered: dict[str, JominyHardness],
+    temper_label: str = "tempered 1 h @ 400 °C",
+    title: str = "Mixed-structure tempering: per-constituent temper across a Jominy bar",
+) -> "plt.Figure":
+    """The banked **§16 artifact**: an as-quenched vs **tempered** Jominy traverse overlay.
+
+    ``as_quenched`` and ``tempered`` each map a steel label → its
+    :class:`~steel.properties.JominyHardness` traverse on the *same* distances (from
+    :func:`~steel.properties.jominy_hardness` and :func:`~steel.properties.tempered_jominy_hardness`).
+    Each steel is drawn as-quenched (**solid**) and tempered (**dashed**) in the same colour.
+
+    The thesis the figure makes visible — the **differential** temper (plan §16): the temper
+    acts **per-constituent**, so the **near end** (full martensite) softens *hard* while the
+    **far end** (diffusional ferrite-pearlite, temper-INERT) does not move at all — the dashed
+    and solid curves *coincide* there. A shallow-hardening steel (1045: martensite near →
+    pearlite far) shows the differential within one bar; a deep-hardening one (4140: martensite
+    throughout) softens more uniformly. Drawn in **HV**, not HRC, on purpose: the "far end
+    barely moves" story lives in the soft-pearlite region that Rockwell-C cannot display
+    (``nan`` below ~20 HRC) — the deliberate departure from :func:`jominy_hardness_figure`.
+    """
+    fig, ax = plt.subplots(figsize=(9, 6))
+
+    for label, h_aq in as_quenched.items():
+        color = STEEL_COLORS.get(label, None)
+        dist_mm = h_aq.distance * 1000.0
+        ax.plot(dist_mm, h_aq.HV, "-", color=color, lw=2.2, label=f"{label} as-quenched")
+        h_t = tempered[label]
+        ax.plot(h_t.distance * 1000.0, h_t.HV, "--", color=color, lw=2.2,
+                label=f"{label} {temper_label}")
+        # Shade the near-end softening gap (the martensite that tempered away) for emphasis.
+        ax.fill_between(dist_mm, h_t.HV, h_aq.HV, color=color, alpha=0.08)
+
+    # The two ends, annotated as the differential: near collapses, far is inert.
+    any_label = next(iter(as_quenched))
+    d_mm = as_quenched[any_label].distance * 1000.0
+    ax.annotate("near end (full martensite):\ntempers hard ↓",
+                (d_mm[0], tempered[any_label].HV[0]),
+                xytext=(d_mm[0] + 2.0, 300.0), fontsize=8.5, color="0.25",
+                arrowprops=dict(arrowstyle="->", color="0.4", lw=1.0))
+    ax.annotate("far end (ferrite-pearlite):\ntemper-inert — curves coincide",
+                (d_mm[-1], as_quenched[any_label].HV[-1]),
+                xytext=(d_mm[-1] - 9.0, as_quenched[any_label].HV[-1] + 130.0),
+                fontsize=8.5, color="0.25", ha="left",
+                arrowprops=dict(arrowstyle="->", color="0.4", lw=1.0))
+
+    # A faint HRC reference: the E140 scale floor in HV (below it, HRC is undefined).
+    floor_HV = rockwell_c_to_vickers(RELIABLE_HRC_MIN)
+    ax.axhline(floor_HV, color="0.7", ls=":", lw=1.0)
+    ax.text(ax.get_xlim()[1], floor_HV + 4.0, f"~{RELIABLE_HRC_MIN:.0f} HRC (E140 floor)",
+            va="bottom", ha="right", fontsize=8, color="0.5")
+
+    ax.set_xlabel("distance from quenched end  (mm)")
+    ax.set_ylabel("hardness  (HV)")
+    ax.set_xlim(left=0.0)
+    ax.set_ylim(bottom=0.0)
     ax.grid(True, alpha=0.25)
     ax.legend(loc="upper right", fontsize=9, framealpha=0.9)
     ax.set_title(title, fontsize=12, fontweight="bold")

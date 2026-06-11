@@ -144,6 +144,7 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | 7 | `design.py`, `demo_design.py`, `plots.design_figure`, `steel.ipynb` §7, `app.py` §7 | **post-v1 — inverse design**: *name a hardness, get the recipe* — outer grade×quench enumeration × inner temper root-find over the validated forward chain; feasible set cheapest-first, infeasible first-class, Biot honesty. No new physics (plan §14) | **built ✓** (2026-06-10) |
 | viz | `plots.grain_voronoi_swatch` / `grain_morphology_figure`, `demo_grain_morphology.py`, `app.py` §5 | **grain-morphology swatch** — size-accurate Voronoi *illustration* of the scalar grain size `d` (grains/area ∝ ASTM `N_A = 1/d²`; shapes decorative, scale bar). Reach not physics (ADR 0002); **alongside** `microstructure_schematic`, not replacing it (plan §12) | **built ✓** (2026-06-10) |
 | v1.1 | `engines/diffusion/` (unfreeze), `carburize.py` (`carbon_diffusivity_tibbetts`, `solve_carburize(D_of_C=…)`) | **engine unfrozen for native nonlinear `D(u)`** (Picard-in-step, cached D-field, re-sealed v1.1 — ADR 0004 / `test_nonlinear_d.py`) → carburizing's opt-in concentration-dependent **Tibbetts `D(C)`** deepens the case ~0.66→~0.97 mm (published band). Linear path byte-identical (plan §15) | **built ✓** (2026-06-11) |
+| §16 | `properties.py` (`tempered_hardness_HV` / `tempered_jominy_hardness`), `demo_tempered_jominy.py`, `plots.tempered_jominy_figure` | **mixed-structure tempering** — per-constituent temper of a *mixture* (the 3b deferral): rule of mixtures over tempered constituents (martensite softens, diffusional products temper-inert). Three exact seams + the differential tempered-Jominy teeth (bracketed, not extracted). New function → frozen benchmarks byte-identical; no engine touch, no new constant (plan §16). **Steps 1–3 of 6** — steps 4+ (`design.py` RA-guarded unlock) planned | **built ✓** (2026-06-11, steps 1–3) |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
 
@@ -441,8 +442,8 @@ deliberately **rough, relative** direction opposite to hardness — *no Charpy-J
 because real impact toughness is steel/heat-specific and **non-monotone** through the
 tempered-martensite (~260–370 °C) and temper-embrittlement (~375–575 °C, alloy) troughs (the
 named scope ceiling). Tempering is **martensite-only** here (pearlite barely tempers; a mixed
-traverse would temper per-constituent — deferred). No new figure: 3b is a `properties.py`
-extension validated by the test triad.
+traverse would temper per-constituent — **promoted in §16 below**, built 2026-06-11). No new
+figure: 3b is a `properties.py` extension validated by the test triad.
 
 ## Phase 3c — carburizing case-hardening (`carburize.py`, `demo_carburize.py`)
 
@@ -802,6 +803,52 @@ anchor** — it lands in its (wide) band *by construction*, not teeth. 4340 is *
 in `sweep.STEELS`/the app). Artifact:
 [`docs/figures/steel-ideal-diameter.png`](../../docs/figures/steel-ideal-diameter.png). No new
 physics/geometry — pure re-composition of the validated Jominy chain + two cited tables.
+
+## §16 — mixed-structure tempering (`properties.py`, `demo_tempered_jominy.py`) — steps 1–3
+
+The exact deferral 3b named: tempering a **mixture**, *per-constituent*. Phase 3b's
+`tempered_martensite_HV` tempers a **fully** martensitic structure; §16 promotes the mixed
+case. `tempered_hardness_HV(fractions, C, T_temper, t_hours, comp, Vr, C_hj)` is the same **rule
+of mixtures** as `hardness_HV` (the validated Maynier form), only each constituent contributes
+its *tempered* hardness — **martensite** softens down the 3b Hollomon–Jaffe curve, every
+diffusional product (ferrite / pearlite / bainite / retained austenite) is held **temper-inert**
+and *delegates* to its as-quenched `CONSTITUENT_HV[name](C, comp, Vr)` model (carrying comp/Vr, so
+the no-op is byte-exact). It is a **new function**, not a changed signature → every as-quenched
+surface and the frozen 2c/3a/3b/Jominy/four-curves benchmarks stay byte-identical. **No engine
+touch, no new calibrated constant.**
+
+```python
+from steel import properties as prop
+frac = {"martensite": 0.6, "pearlite": 0.4}
+prop.hardness_HV(frac, 0.45)                          # as-quenched mixture
+prop.tempered_hardness_HV(frac, 0.45, 400.0, 1.0)    # tempered 1 h @ 400 °C — only the martensite softens
+prop.tempered_jominy_hardness(field, cc, 0.45, 400.0, 1.0)   # a TEMPERED Jominy traverse
+```
+
+**Validated** (`test_properties.py`) — three exact **seams** (asserted `==`, not approx) +
+monotone/bounded + the differential teeth:
+- **Seam A** `{"martensite": 1.0}` → `tempered_martensite_HV` exactly (a strict generalization of 3b);
+- **Seam B** `martensite = 0` → `hardness_HV` exactly (tempering a diffusional structure is a no-op —
+  the byte-exact test of the delegation must-get);
+- **Seam C** a sub-onset temper (~120 °C/1 h) → as-quenched exactly at any mixture (the `g≥1 → HV_aq` clamp);
+- **differential softening** — a 50/50 martensite/pearlite mix's *total* softening equals
+  `f_martensite·(HV_aq − HV_tempered)_martensite` (the pearlite leg is constant).
+
+**The teeth** are the tempered-Jominy traverse `tempered_jominy_hardness` — a falsifiable
+*differential* across the bar: the near end (full martensite) softens **hard** while the far end
+(diffusional, temper-inert) **does not move at all**. The validation posture is **bracketing, not
+extraction** (no tempered-Jominy atlas baked — that is the `ideal_diameter` "verify the extracted
+table" trap): the near end reduces to 3b's *validated* 4140 1 h response (~45 HRC @ 400 °C), the far
+end is *byte-identical* to the 2c as-quenched soft end (Seam B along the bar), and the differential
+shape is asserted qualitatively (`drop_near ≫ drop_far == 0` for 1045). Artifact (drawn in **HV**, not
+HRC, because the soft "far end barely moves" region is below the Rockwell-C floor):
+[`docs/figures/steel-tempered-jominy.png`](../../docs/figures/steel-tempered-jominy.png) via
+`python -m steel.demo_tempered_jominy`.
+
+**Named, not validated** (graded honestly, plan §16): **bainite-inert** and **retained-austenite-inert**
+(both already the least-anchored placeholders; holding them fixed is conservative). RA-inert is safe
+here because the Jominy traverse only *reports*; the **steps 4+** `design.py` unlock (which
+*recommends*) is **gated on an RA cap** and remains **planned**.
 
 ## Run the tests
 

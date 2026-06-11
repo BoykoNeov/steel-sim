@@ -1599,7 +1599,22 @@ construction-time config, evaluated inside assembly, never crossing the state bo
 
 ---
 
-## 16. Mixed-structure tempering — per-constituent temper of a phase mixture (PLANNED 2026-06-11)
+## 16. Mixed-structure tempering — per-constituent temper of a phase mixture (STEPS 1–3 BUILT ✓ 2026-06-11; STEPS 4+ PLANNED)
+
+> **Steps 1–3 built ✓ (2026-06-11) — the validated core.** `properties.py` gained
+> `tempered_hardness_HV` / `tempered_hardness_HRC` (the per-constituent rule of mixtures:
+> martensite → `tempered_martensite_HV`; ferrite/pearlite/bainite/RA → temper-inert, delegating
+> to `CONSTITUENT_HV[name](C, comp, Vr)`) + `tempered_jominy_hardness` (mirrors `jominy_hardness`,
+> swapping in the tempered mixture). Validated by the three exact seams + monotone/bounded + the
+> differential-softening unit test (`test_properties.py`), and the **tempered-Jominy teeth** by
+> bracketing — near end anchored to 3b's validated 4140 1 h temper response, far end byte-identical
+> to the 2c as-quenched soft end (Seam B along the bar), the differential shape asserted
+> qualitatively (`drop_near ≫ drop_far == 0` for 1045). Banked artifact:
+> `docs/figures/steel-tempered-jominy.png` via `demo_tempered_jominy.py` (+ `test_demo_tempered_jominy.py`,
+> + `plots.tempered_jominy_figure`). Every frozen 2c/3a/3b/Jominy/four-curves benchmark stays
+> byte-identical (a new function, not a changed signature); no engine touch, no new calibrated
+> constant. Suite 420 green (+2 env-gated skips). **Steps 4+ (the design.py RA-guarded unlock +
+> close-out) remain PLANNED** — see below.
 
 The named **§11 "smaller deferral"** chosen at the user's direction (2026-06-11), and the exact
 piece 3b flagged as out of scope: *tempering a **mixture**, per-constituent*. Phase 3b's

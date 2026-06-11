@@ -512,3 +512,148 @@ def test_strength_toughness_trade_off():
     assert np.all(np.diff(HV) < 0)                                    # tempering softens
     assert np.all(np.diff(strength) < 0)                             # strength falls
     assert np.all(np.diff(toughness) > 0)                            # toughness rises (opposite)
+
+
+# =========================================================================== #
+# Phase §16 — mixed-structure (per-constituent) tempering: temper a *mixture*.
+#
+# tempered_hardness_HV is hardness_HV's rule of mixtures with each constituent's *tempered*
+# hardness: martensite softens down the 3b Hollomon–Jaffe curve, every diffusional product
+# is temper-INERT (delegates to its as-quenched CONSTITUENT_HV, carrying comp/Vr). Being a
+# NEW function it leaves every frozen 2c/3a/3b/Jominy benchmark above byte-identical; what it
+# ADDS is a new physical claim ("diffusional products are temper-inert"), so it carries its
+# own teeth — three exact SEAMS (the strong assertions, ==) + the differential-softening shape
+# (unit-level here; Jominy-level in the bracketing tests at the end of the file).
+# =========================================================================== #
+def test_seam_A_pure_martensite_recovers_3b_exactly():
+    # SEAM A: martensite = 1 → tempered_martensite_HV EXACTLY (a strict generalization of 3b;
+    # 1.0·x + 0.0 is byte-exact). Holds with comp / C_hj threaded through.
+    for C in (0.20, 0.45, 0.80):
+        for T, t in ((250.0, 1.0), (400.0, 1.0), (600.0, 2.0)):
+            assert (prop.tempered_hardness_HV({"martensite": 1.0}, C, T, t)
+                    == prop.tempered_martensite_HV(C, T, t))
+            assert (prop.tempered_hardness_HV({"martensite": 1.0}, C, T, t, comp=COMP_4140, C_hj=22.0)
+                    == prop.tempered_martensite_HV(C, T, t, comp=COMP_4140, C_hj=22.0))
+
+
+def test_seam_B_no_martensite_is_as_quenched_byte_for_byte():
+    # SEAM B (the delegation must-get): martensite = 0 → hardness_HV EXACTLY. Tempering a
+    # diffusional structure is a no-op — the inert legs are the *identical* CONSTITUENT_HV
+    # calls and the (absent/zero) martensite leg adds exactly 0.0, so the running sum is
+    # byte-identical. Asserted ==, not approx. comp/Vr thread through the inert legs unchanged.
+    frac = {"ferrite": 0.42, "pearlite": 0.50, "bainite": 0.05,
+            "martensite": 0.0, "retained_austenite": 0.03}
+    for C in (0.20, 0.45, 0.80):
+        assert prop.tempered_hardness_HV(frac, C, 400.0, 1.0) == prop.hardness_HV(frac, C)
+        assert (prop.tempered_hardness_HV(frac, C, 400.0, 1.0, comp=COMP_4140, Vr=2000.0)
+                == prop.hardness_HV(frac, C, comp=COMP_4140, Vr=2000.0))
+    # A mixture with NO martensite key at all is equally a no-op.
+    frac2 = {"pearlite": 0.7, "ferrite": 0.3}
+    assert prop.tempered_hardness_HV(frac2, 0.45, 550.0, 3.0) == prop.hardness_HV(frac2, 0.45)
+
+
+def test_seam_C_sub_onset_temper_is_as_quenched_at_any_mixture():
+    # SEAM C (free, from tempered_martensite_HV's g≥1 → HV_aq clamp): a sub-onset temper
+    # (P below onset; ~120 °C/1 h) returns the as-quenched mixture EXACTLY, at any mixture and
+    # any composition (vickers_martensite ignores Vr, so the martensite leg matches bit-for-bit).
+    assert prop._temper_softening(prop.hollomon_jaffe_parameter(120.0, 1.0)) == 1.0   # genuinely sub-onset
+    frac = {"martensite": 0.6, "pearlite": 0.25, "bainite": 0.10, "retained_austenite": 0.05}
+    for C in (0.20, 0.45, 0.80):
+        assert prop.tempered_hardness_HV(frac, C, 120.0, 1.0) == prop.hardness_HV(frac, C)
+        assert (prop.tempered_hardness_HV(frac, C, 120.0, 1.0, comp=COMP_4140, Vr=3000.0)
+                == prop.hardness_HV(frac, C, comp=COMP_4140, Vr=3000.0))
+
+
+def test_tempered_mixture_monotone_in_temperature_and_bounded():
+    # The mixed-structure analogue of 3b's monotone+bounded check: decreasing in T_temper, and
+    # bounded between the as-quenched mixture (ceiling) and the floored-martensite mixture (floor).
+    frac = {"martensite": 0.6, "pearlite": 0.4}
+    C = 0.45
+    by_T = [prop.tempered_hardness_HV(frac, C, T, 1.0) for T in np.linspace(200.0, 650.0, 12)]
+    assert np.all(np.diff(by_T) < 0)
+    aq = prop.hardness_HV(frac, C)                                   # as-quenched ceiling
+    floor = prop.tempered_hardness_HV(frac, C, 750.0, 10.0)         # martensite at its floor, pearlite inert
+    for T in (250.0, 400.0, 550.0, 650.0):
+        hv = prop.tempered_hardness_HV(frac, C, T, 1.0)
+        assert floor - 1e-9 <= hv <= aq + 1e-9
+
+
+def test_differential_softening_is_martensite_only():
+    # THE DIFFERENTIAL TEETH (unit level): a 50/50 martensite/pearlite mix's TOTAL softening
+    # equals f_martensite·(HV_aq − HV_tempered)_martensite — the pearlite leg is constant
+    # (temper-inert), so every bit of softening comes from the martensite leg. This is the
+    # unit-level statement of the Jominy shape (near end collapses, far end flat).
+    C, T, t = 0.50, 400.0, 1.0
+    frac = {"martensite": 0.5, "pearlite": 0.5}
+    total = prop.hardness_HV(frac, C) - prop.tempered_hardness_HV(frac, C, T, t)
+    mart_leg = 0.5 * (prop.vickers_martensite(C) - prop.tempered_martensite_HV(C, T, t))
+    assert total == pytest.approx(mart_leg, abs=1e-9)
+    assert total > 0.0                                              # it really does soften
+
+
+def test_tempered_unknown_constituent_raises():
+    # Same key-set as hardness_HV (CONSTITUENT_HV) → a fractions/registry mismatch raises,
+    # not a silent zero.
+    with pytest.raises(KeyError):
+        prop.tempered_hardness_HV({"graphite": 1.0}, 0.4, 400.0, 1.0)
+
+
+def test_tempered_hardness_HRC_is_E140_image():
+    # The HRC wrapper is exactly the E140 image of the HV mixture (the reporting boundary).
+    frac = {"martensite": 0.7, "pearlite": 0.3}
+    hv = prop.tempered_hardness_HV(frac, 0.45, 400.0, 1.0)
+    assert prop.tempered_hardness_HRC(frac, 0.45, 400.0, 1.0) == prop.vickers_to_rockwell_c(hv)
+
+
+# --------------------------------------------------------------------------- #
+# The tempered Jominy traverse — the phase's teeth (bracketing, not extraction).
+#
+# tempered_jominy_hardness mirrors jominy_hardness with a per-constituent temper. Its
+# benchmark posture is BRACKETING (no tempered-Jominy atlas is baked — that is the
+# di-crosscheck "verify the extracted table" trap): the near end reduces to 3b's VALIDATED
+# 4140 1 h temper response, the far end to 2c's VALIDATED as-quenched soft end, and the new
+# content is the QUALITATIVE differential shape between them.
+# --------------------------------------------------------------------------- #
+def _tempered_jominy_pair(T_temper=400.0, t_hours=1.0):
+    """As-quenched + tempered Jominy traverses for 1045 and 4140 on a shared field/distances."""
+    f = solve_thermal_field(JominyBar(), T0=850.0, n_cells=200, per_decade=120)
+    d = jominy_distances(16)
+    aq45 = prop.jominy_hardness(f, ccurve_for_steel(**STEEL_1045), STEEL_1045["C"], d)
+    tj45 = prop.tempered_jominy_hardness(f, ccurve_for_steel(**STEEL_1045), STEEL_1045["C"],
+                                         T_temper, t_hours, distances=d)
+    aq41 = prop.jominy_hardness(f, ccurve_for_steel(**STEEL_4140), STEEL_4140["C"], d, comp=COMP_4140)
+    tj41 = prop.tempered_jominy_hardness(f, ccurve_for_steel(**STEEL_4140), STEEL_4140["C"],
+                                         T_temper, t_hours, distances=d, comp=COMP_4140)
+    return d, aq45, tj45, aq41, tj41
+
+
+def test_tempered_jominy_near_end_brackets_to_3b_4140():
+    # BRACKET (near end): the quenched end is full martensite, so the tempered value there
+    # reduces to 3b's already-VALIDATED 4140 1 h temper response — ~45 HRC at 400 °C (the 3b
+    # band 41–49). The anchor is the 3b benchmark, not an extracted tempered-Jominy number.
+    _, _, _, aq41, tj41 = _tempered_jominy_pair(400.0, 1.0)
+    assert 41.0 <= tj41.HRC[0] <= 49.0                              # = 3b's validated 4140/400°C/1h band
+    assert tj41.HV[0] < aq41.HV[0]                                  # tempering softened the quenched end
+
+
+def test_tempered_jominy_far_end_is_inert_byte_for_byte():
+    # BRACKET (far end): 1045's far end is fully diffusional (martensite == 0) → temper-INERT,
+    # so the tempered HV there is BYTE-IDENTICAL to the 2c as-quenched soft end (Seam B along
+    # the bar). Asserted == at every position where martensite is exactly 0, not approx.
+    _, aq45, tj45, _, _ = _tempered_jominy_pair(400.0, 1.0)
+    assert tj45.martensite[-1] == 0.0                              # far end: no martensite (the precondition)
+    inert = tj45.martensite == 0.0
+    assert np.any(inert)
+    assert np.array_equal(tj45.HV[inert], aq45.HV[inert])         # inert positions unchanged, exactly
+
+
+def test_tempered_jominy_differential_near_collapses_far_flat():
+    # THE TEETH (plan §16): the differential shape across the bar. The 1045 near end (full
+    # martensite) softens HARD while the far end (pearlite, inert) does not move at all — a
+    # falsifiable prediction asserted QUALITATIVELY (no extracted numbers): near drop ≫ far drop.
+    _, aq45, tj45, _, _ = _tempered_jominy_pair(400.0, 1.0)
+    drop_near = aq45.HV[0] - tj45.HV[0]
+    drop_far = aq45.HV[-1] - tj45.HV[-1]
+    assert drop_near > 100.0                                       # near end collapses (model ≈ 188 HV)
+    assert drop_far == 0.0                                         # far end (diffusional) is untouched
+    assert drop_near > drop_far                                    # the differential — the observable
