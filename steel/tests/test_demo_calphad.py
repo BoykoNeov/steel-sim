@@ -21,7 +21,11 @@ from steel import demo_calphad as demo        # noqa: E402
 # `binary_data`. So the whole file is `slow` (ADR 0003): a per-test mark would leak the
 # 15-80 s fixture setup into the fast inner loop. Deselected by `pytest -m "not slow"`,
 # always run in the full commit gate.
-pytestmark = pytest.mark.slow
+#
+# xdist_group("calphad") (shared with test_calphad.py) pins these to ONE worker under
+# `-n auto --dist loadgroup` (pyproject addopts): the module-scoped fixtures build once and
+# no two live solves run concurrently. See test_calphad.py's live-section note.
+pytestmark = [pytest.mark.slow, pytest.mark.xdist_group("calphad")]
 
 
 @pytest.fixture(scope="module")

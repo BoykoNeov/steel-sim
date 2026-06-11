@@ -39,7 +39,14 @@ jupyter lab steel/steel.ipynb           # the teaching notebook (needs .[viz,not
 ```powershell
 ./run_tests.ps1 -m "not slow"     # routine fast lane — 386 tests
 ./run_tests.ps1                   # full suite — 395 tests (adds slow live-CALPHAD, notebook + kinetics checks)
+./run_tests.ps1 -n0               # force serial (the default is `-n auto`, parallel)
 ```
+
+The suite runs **in parallel by default** — `addopts` sets `-n auto --dist loadgroup`
+(pytest-xdist, in the `[test]` extra), so xdist is required to run it (`-n0` forces serial for
+a clean single-test traceback). `--dist loadgroup` keeps the live-CALPHAD tests on one worker
+(`xdist_group("calphad")`) so their solver is built once and no two heavy solves run at once —
+see the [ADR 0003 xdist amendment](docs/decisions/0003-test-execution-policy.md).
 
 The suite is **395 tests**, all green. The **live-CALPHAD** cross-checks need the
 `[calphad]` extra (pycalphad) and otherwise skip — they run in CI on Python 3.12, where

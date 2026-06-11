@@ -127,6 +127,13 @@ def test_4140_shows_chromium_carbide_beyond_fe_c_currency():
 # the pycalphad gate (ADR 0003): they are deselected from the fast inner loop
 # (`pytest -m "not slow"`) but always run in the full commit gate. The committed
 # fe_c-vs-frozen tests above are pure/fast and stay in the inner loop.
+#
+# Under `-n auto` (pytest-xdist) each also carries @pytest.mark.xdist_group("calphad")
+# — shared with test_demo_calphad.py — so every live solve lands on ONE worker
+# (`--dist loadgroup`, set in pyproject addopts). That makes the module-scoped backends
+# below build once per module and stops two heavyweight live solves running concurrently
+# (oversubscription / the known multicomponent flake). The fast committed tests above are
+# deliberately left ungrouped so they parallelise freely.
 # =========================================================================== #
 @pytest.fixture(scope="module")
 def binary_backend():
@@ -142,6 +149,7 @@ def steel_backend():
 
 
 @pytest.mark.slow
+@pytest.mark.xdist_group("calphad")
 @requires_pycalphad
 def test_live_binary_reproduces_frozen_reference(binary_backend):
     # Match-by-construction: the frozen table *is* what this backend produces.
@@ -156,6 +164,7 @@ def test_live_binary_reproduces_frozen_reference(binary_backend):
 
 
 @pytest.mark.slow
+@pytest.mark.xdist_group("calphad")
 @requires_pycalphad
 def test_live_conservation_closes_to_machine_precision(binary_backend):
     # The real conservation leg: recombine CALPHAD's phases at a two-phase α+Fe₃C
@@ -171,6 +180,7 @@ def test_live_conservation_closes_to_machine_precision(binary_backend):
 
 
 @pytest.mark.slow
+@pytest.mark.xdist_group("calphad")
 @requires_pycalphad
 def test_live_phase_fractions_is_fe_c_drop_in(binary_backend):
     # The consumer-facing currency: same keys, same shape as fe_c.phase_fractions,
@@ -184,6 +194,7 @@ def test_live_phase_fractions_is_fe_c_drop_in(binary_backend):
 
 
 @pytest.mark.slow
+@pytest.mark.xdist_group("calphad")
 @requires_pycalphad
 def test_live_multicomponent_reproduces_frozen_reference(steel_backend):
     live = ref.regenerate(steel_backend=steel_backend)["alloy_4140"]

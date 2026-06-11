@@ -21,7 +21,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=7.0"]
+# pytest-xdist is part of the test stack, not an optional feature: `addopts` below defaults
+# to `-n auto`, so running the suite needs it. (A bare `pip install pytest` without this extra
+# now errors on the unrecognised `-n` — install `.[test]`, or pass `-n0` to force serial.)
+test = ["pytest>=7.0", "pytest-xdist>=3.0"]
 # Visualization is opt-in (ADR 0002): the compute core and the test suite stay
 # headless/matplotlib-free; only the render layer (steel/plots.py, demos, the notebook,
 # the app) needs this. Install with `pip install -e .[viz]`.
@@ -60,7 +63,14 @@ calphad = ["pycalphad>=0.11"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["engines", "steel"]
-addopts = "-q"
+# `-n auto` runs the suite across one worker per logical CPU (pytest-xdist, in [test]); ADR
+# 0003 deferred this to a ~30 s fast-lane trigger that has not fired (~8 s) — enabled early at
+# the user's direction (see that ADR's xdist amendment). The honest fast-lane gain is modest;
+# the load-bearing value is `--dist loadgroup`, which honours `@pytest.mark.xdist_group(...)`:
+# the live-CALPHAD tests share the "calphad" group → one worker → their module-scoped pycalphad
+# backends are built once and no two heavyweight live solves run concurrently. Pass `-n0` for a
+# clean serial traceback while debugging a single test.
+addopts = "-q -n auto --dist loadgroup"
 markers = [
     "slow: drives a live external solver / kernel / subprocess; deselect in the inner loop with -m 'not slow' (ADR 0003)",
 ]

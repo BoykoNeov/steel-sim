@@ -30,6 +30,11 @@ import pytest
 from steel import ideal_diameter as idd
 from steel import sweep
 
+# Keep this module's tests on one worker under `-n auto --dist loadgroup` (pyproject addopts)
+# so the module-scoped `field`/`checks` below — a shared Jominy thermal solve — is computed
+# once, not re-solved on every worker that would otherwise receive a scattered test.
+pytestmark = pytest.mark.xdist_group("ideal_diameter")
+
 
 @pytest.fixture(scope="module")
 def field():

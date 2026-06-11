@@ -158,7 +158,10 @@ reason or pin the solve. Until then it is a known, full-gate-visible flake.
 - **`pytest-xdist` parallelism instead of a marker** — rejected for now: with the
   cost in 8 tests (some serialized behind a shared solver/import) parallelism
   yields far less than simply not running them in the inner loop. Reconsider at
-  the ~30 s fast-lane trigger.
+  the ~30 s fast-lane trigger. *(Superseded 2026-06-11 — xdist was enabled
+  alongside the marker, ahead of that trigger, at the user's direction. See the
+  Amendment below. The reasoning here still holds in spirit: the fast-lane gain is
+  modest; the load-bearing win is serializing the live-CALPHAD tests, not raw speed.)*
 - **Per-project / dependency-aware selection now** — rejected as premature (§8): two
   packages and an ~8 s core do not justify the machinery. The committed successor (see
   *Successor* below) is a **declared manifest** (project → used modules → test suites),
@@ -281,3 +284,45 @@ Decisions settled at build (the ones the ADR left open / flagged):
   has nothing to check (§8: name the extension, don't build it). Forward note: when built it
   must run *inside* the per-project gate, not only the whole-repo lane, or it won't fire on
   a per-project commit.
+
+## Amendment (2026-06-11) — `pytest-xdist` enabled (ahead of the trigger)
+
+Decision #4 and the *Alternatives* both **deferred** parallelism until a ~30 s fast-lane
+trigger. **That trigger has not fired** — the serial fast lane measured ~13 s the day this
+was enabled (it has crept up from the ~8 s of the original ADR as phases 5–6 added tests, but
+is still well under 30 s). Parallelism was nonetheless turned on **at the user's direction**,
+early and by choice — this amendment records that honestly rather than back-fitting a trigger.
+
+**What changed (`pytest-xdist` added to the `[test]` extra):**
+
+- `addopts` now carries `-n auto --dist loadgroup`. `-n auto` = one worker per logical CPU;
+  `--dist loadgroup` makes xdist honour `@pytest.mark.xdist_group(...)` (tests sharing a group
+  name run on the **same** worker).
+- The live-CALPHAD tests — the 4 live cases in `test_calphad.py` and the whole of
+  `test_demo_calphad.py` — share `xdist_group("calphad")`, so they all land on **one** worker.
+  This is the load-bearing reason, not raw speed: their module-scoped pycalphad backends are
+  built **once**, and **no two heavyweight live solves run concurrently** — which both avoids
+  CPU oversubscription on the heavy tail and keeps the Open Issue's known multicomponent flake
+  from being aggravated by parallelism. `test_ideal_diameter.py` gets its own group for the
+  same module-scoped-fixture-reuse reason (a shared Jominy solve), in the fast lane.
+- The notebook kernel test is left **ungrouped**: it has no shared fixture, its wedge is
+  documented load-independent and retry-mitigated, and it is CI-skipped — folding it into a
+  group would be scope creep.
+
+**The honest cost/benefit:**
+
+- The fast-lane gain is real but **modest** for a sub-15 s lane — ~13 s → ~6 s here (≈2.3×),
+  with xdist worker startup eating part of it. This is *not* the kind of win the ADR's
+  30 s trigger was waiting for; it was enabled because the user asked, with the CALPHAD
+  serialization as the durable benefit.
+- **`pytest-xdist` is now a hard requirement to run the suite** (not an optional feature
+  stack). Because `-n auto` lives in `addopts`, a bare `pytest` in an environment without
+  xdist errors on the unrecognised `-n` rather than degrading to serial — a conditional
+  `conftest.py` hook was tried first and **rejected** because xdist resolves `numprocesses`
+  in `pytest_cmdline_main`, before any `pytest_configure`, so the hook (even `tryfirst`) is
+  too late to engage parallelism. The escape hatch is `-n0` (force serial, e.g. for a clean
+  single-test traceback); the fix for a missing-xdist error is `pip install -e .[test]`.
+- This change **does not touch the `slow` marker, the tiered gate, or the canonical green
+  count** — xdist changes *how* tests run, not *which*. Full-gate CI (`full-gate.yml`) inherits
+  `-n auto --dist loadgroup` automatically from `addopts`, so the grouping is exercised in CI
+  exactly where the multicomponent live tests actually run (with the TDB present).

@@ -62,7 +62,7 @@ jobs:
       - name: Fail loudly if any optional stack is missing
         run: >
           python -c "import importlib.util as u;
-          mods=['numpy','scipy','pytest','matplotlib','nbformat','nbclient','ipykernel','ipywidgets','streamlit','pycalphad'];
+          mods=['numpy','scipy','pytest','xdist','matplotlib','nbformat','nbclient','ipykernel','ipywidgets','streamlit','pycalphad'];
           miss=[m for m in mods if u.find_spec(m) is None];
           assert not miss, f'missing optional stacks: {miss}';
           print('all optional stacks present:', mods)"
