@@ -2030,3 +2030,97 @@ def heat_state_figure(d):
                  fontsize=12.0, fontweight="bold")
     fig.subplots_adjust(left=0.07, right=0.97, top=0.86, bottom=0.13, wspace=0.26)
     return fig
+
+
+# Solute line colours for the Scheil profile — impurities (S, P) hot/dark (the dangerous segregators),
+# carbon warm (over-predicted), the substitutional alloys cool.
+_SOLUTE_COLORS = {
+    "S": "#7b1fa2", "P": "#c0392b", "C": "#e8833a", "Mo": "#1e8449",
+    "Mn": "#2471a3", "Si": "#16a085", "Cr": "#8e7cc3", "Ni": "#95a5a6",
+}
+
+
+def casting_figure(d):
+    """The F4 artifact: Scheil microsegregation, Chvorinov time, and the centerline band it propagates.
+
+    ``d`` is a :class:`~steel.demo_casting.CastingDemo` (already-computed arrays/scalars — this layer only
+    draws them, ADR 0002). Three panels:
+
+    * **left — Scheil microsegregation.** The interdendritic **liquid** enrichment ``C_L/C₀`` vs solid
+      fraction for each solute; the **severity ordering** is the un-tuned tooth (smallest ``k`` — S, C, P —
+      climbs steepest, the dangerous segregators that enrich the last liquid; Cr, Ni stay near 1). The
+      dashed line is the last-to-freeze ``f_s*`` whose liquid the centerline solid inherits at ``k×``; past
+      it Scheil diverges (the named ceiling).
+    * **middle — Chvorinov's rule.** Solidification time ``t = B·M²`` vs casting modulus — the ``∝ M²``
+      foundry law (the cast section marked); the magnitude is rule-of-thumb grade, the ranking reliable.
+    * **right — the propagation.** The *same* oil quench on the nominal section vs the Scheil centerline:
+      the enriched centerline over-hardens into a band the bulk never reaches (martensite bars vs the
+      soft-core spec line, ΔHV annotated) — the §6 uneven-hardenability link, front-to-back.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_seg, ax_chv, ax_band) = plt.subplots(1, 3, figsize=(16.0, 5.2))
+    s = d.section
+
+    # --- left: the Scheil segregation profile (interdendritic liquid enrichment) --- #
+    for el in d.liquid_ratio:
+        ax_seg.plot(d.fs, d.liquid_ratio[el], color=_SOLUTE_COLORS.get(el, "0.4"), lw=2.0)
+        ax_seg.annotate(f" {el}", (d.fs[-1], d.liquid_ratio[el][-1]), va="center", ha="left",
+                        fontsize=8.5, color=_SOLUTE_COLORS.get(el, "0.4"), fontweight="bold")
+    ax_seg.axhline(1.0, color="0.6", ls=":", lw=1.0)
+    ax_seg.axvline(s.fs_centerline, color="0.35", ls="--", lw=1.4)
+    ax_seg.annotate(f"centerline f_s* = {s.fs_centerline:.2f}", (s.fs_centerline, 1.0),
+                    textcoords="offset points", xytext=(-5, 2), ha="right", va="bottom",
+                    fontsize=8.0, color="0.35", rotation=90)
+    ax_seg.set_yscale("log")
+    ax_seg.set_xlabel("solid fraction  f_s")
+    ax_seg.set_ylabel("interdendritic liquid enrichment  C_L / C₀")
+    ax_seg.set_xlim(0.0, 1.0)
+    ax_seg.set_title(f"Scheil microsegregation (primary {s.phase}-ferrite)\n"
+                     "smallest k — S, C, P — enrich the last liquid most; Cr, Ni mild", fontsize=10.2)
+    ax_seg.grid(True, which="both", alpha=0.22)
+
+    # --- middle: Chvorinov t = B·M² ------------------------------------------- #
+    ax_chv.plot(d.modulus_grid * 1000.0, d.time_grid / 60.0, color="0.2", lw=2.4)
+    ax_chv.plot([s.modulus * 1000.0], [s.solidification_time / 60.0], "o", color="#c0392b", ms=9, zorder=5)
+    ax_chv.annotate(f"this cast section\nM = {s.modulus * 1000:.0f} mm → {s.solidification_time / 60:.1f} min",
+                    (s.modulus * 1000.0, s.solidification_time / 60.0), textcoords="offset points",
+                    xytext=(-10, 10), ha="right", fontsize=8.6, color="#c0392b")
+    ax_chv.set_xlabel("casting modulus  M = V/A  (mm)")
+    ax_chv.set_ylabel("solidification time  t = B·M²  (min)")
+    ax_chv.set_title("Chvorinov's rule — time ∝ modulus²\n(B for steel in greensand; rank-grade)",
+                     fontsize=10.2)
+    ax_chv.grid(True, alpha=0.25)
+
+    # --- right: the centerline band (the propagation) ------------------------- #
+    fracs = [d.nominal_fM, d.centerline_fM]
+    hvs = [d.nominal_HV, d.centerline_HV]
+    labels = ["nominal\nsection", "segregated\ncenterline"]
+    colors = ["#9aa3b2", "#c0392b"]                  # nominal grey, centerline the hot band
+    x = np.arange(2)
+    ax_band.bar(x, fracs, width=0.58, color=colors, edgecolor="0.25", zorder=3)
+    ax_band.axhline(d.spec, color="0.35", ls="--", lw=1.6, zorder=2)
+    ax_band.annotate(f"soft-core spec (≥ {d.spec:.0%})", (1.0, d.spec),
+                     xycoords=("axes fraction", "data"), ha="right", va="bottom",
+                     fontsize=8.4, color="0.3")
+    for xi, frac, hv in zip(x, fracs, hvs):
+        ax_band.annotate(f"{frac:.0%}\n{hv:.0f} HV", (xi, frac), textcoords="offset points",
+                         xytext=(0, 5), ha="center", va="bottom", fontsize=10, fontweight="bold",
+                         color="0.15")
+    dHV = d.centerline_HV - d.nominal_HV
+    ax_band.annotate(f"hard centerline BAND\nΔ{dHV:+.0f} HV", (1, d.centerline_fM),
+                     textcoords="offset points", xytext=(0, 34), ha="center", fontsize=9,
+                     color="#c0392b", fontweight="bold",
+                     bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#c0392b", lw=1.0))
+    ax_band.set_xticks(x)
+    ax_band.set_xticklabels(labels, fontsize=9)
+    ax_band.set_ylabel("core martensite fraction")
+    ax_band.set_ylim(0.0, 1.30)               # headroom so the BAND callout clears the panel title
+    ax_band.set_title(f"Same {d.section.steel.label()} casting, same oil quench →\n"
+                      "the centerline over-hardens (uneven hardenability)", fontsize=10.2)
+    ax_band.grid(True, axis="y", alpha=0.25)
+
+    fig.suptitle("F4 — casting & solidification: segregation propagates front-to-back into a hard band",
+                 fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.06, right=0.97, top=0.86, bottom=0.12, wspace=0.28)
+    return fig

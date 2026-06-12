@@ -189,6 +189,15 @@ CATALOG: tuple[Entry, ...] = (
         "flagged on the Heat. Not a scripted failure — the back-end martensite fraction crossing a "
         "spec line.",
     ),
+    Entry(
+        "Casting (front-end)", "demo_casting", "steel-casting.png",
+        "Casting & solidification — segregation runs front-to-back",
+        "The chain closes front-to-back: cast a billet and Scheil microsegregation enriches the "
+        "last-to-freeze centerline (S, P, C the worst), so the *same* casting heat-treats "
+        "non-uniformly — the enriched centerline over-hardens into a hard band the bulk never "
+        "reaches. A real front-end engine produces the Heat the validated back end consumes. "
+        "Chvorinov solidification time alongside.",
+    ),
 )
 
 

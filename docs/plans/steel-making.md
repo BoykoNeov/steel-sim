@@ -270,6 +270,48 @@ porosity (a feeding / Niyama-style proxy), hot-tear susceptibility.
 - **Banked artifact.** A cast section — solidification map, segregation profile,
   and a defect-risk readout, all from the *same* frozen solver.
 
+> **As built — 2026-06-12 (build-order item 3, Slice 1).** `steel/casting.py` (+ `demo_casting.py`,
+> `plots.casting_figure`, `tests/test_casting.py` 17 + `test_demo_casting.py` 5; fast lane 542 →
+> **564 green**). **Standalone — no solver, no engine touch, no ADR** (this plan is the record). Two
+> findings reshaped the plan's "thin reuse" wording into a **new-physics phase**, and the build was
+> **sliced** accordingly (the user okayed Slice 1 now, Slice 2 deferred):
+> - **The plan's premises were wrong, and the slice follows from fixing them.** (1) The repo's "Scheil"
+>   is *additivity* (transformation kinetics, `pathint.py`), **not microsegregation** — the
+>   ``C_s = k·C₀·(1−f_s)^(k−1)`` solute-redistribution is *new* (small, closed-form). (2) There is **no
+>   solidification thermodynamics** in the repo (no liquidus/solidus/latent-heat/partition data) — also
+>   new. So F4 is new physics, not a reuse. The advisor's reframe: the **front-to-back proof rides on the
+>   microsegregation → composition handoff through the `heat_state` spine, NOT the latent-heat solve** —
+>   so Slice 1 builds the proof and needs **no solver at all** (the "reuse the heat engine" move is
+>   entirely in the deferred Slice 2).
+> - **Slice 1 (built).** Scheil microsegregation (cited partition coefficients ``k`` in two honest tiers:
+>   **Won & Thomas 2001** Table I for C/Si/Mn/P/S in δ *and* γ — **read from the paper, primary-source
+>   verified**, the teeth rest here; **ISIJ in-situ** for Cr/Ni/Mo — **verified against that paper but
+>   γ-mode-measured, used as a single representative value, δ not separately pinned**, the demo verified
+>   robust across the δ/γ spread so it does not rest there) + the **centerline-enriched Heat** handed to the
+>   back end (a real "cast" origin
+>   replacing `from_grade`'s stand-in) + **Chvorinov** ``t = B·M²``. **The chain closes front-to-back:** a
+>   4140 casting heat-treats **non-uniformly** — bulk under-hardens (soft core), the enriched centerline
+>   over-hardens into a **+93 HV hard band** (the §6 uneven-hardenability link), all from cited physics.
+> - **Triad — what cleared, honestly.** *Teeth:* the **conservation** mass balance (solute in solid +
+>   liquid returns C₀ — two independently-written closed forms reconciling, *not* the tautological
+>   "the closed form integrates to its own value"); the **severity ordering** (smallest cited ``k`` — S,
+>   C, P — enriches the last liquid most; Cr/Ni mild, the un-tuned data reproducing *why* S/P are the
+>   dangerous segregators). *By construction:* ``C_s(f_s=0)=k·C₀``, ``t ∝ M²``.
+> - **Scope ceiling (named).** Scheil is the **no-back-diffusion upper bound** (over-predicts segregation);
+>   **carbon is the worst case** (interstitial, fast back-diffusion) → the handoff leans on the
+>   **substitutional** alloys (Mn/Cr/Mo/Ni/Si, which also drive hardenability) and leaves C at nominal.
+>   The δ/γ **peritectic** (C > 0.53 %; the demo grades are below it), dendrite coarsening, and the
+>   ``f_s → 1`` singularity (characterised at a cutoff ``f_s*``) are omitted.
+> - **Slice 2 (deferred, named).** The **latent-heat solidification temperature-field map** on the
+>   diffusion solver (an apparent-heat-capacity / enthalpy formulation — *not* a trivial source term,
+>   because the solver's PDE carries no LHS capacity coefficient) and the **defect criteria** (Niyama
+>   shrinkage-porosity, hot-tear — mostly game-layer "plausible, not validated"). The map is iconic but
+>   does **not** feed the composition handoff the proof rides on, so it does not gate Slice 1.
+> - **Surfacing.** Demo + banked figure (`docs/figures/steel-casting.png`: Scheil profile + Chvorinov +
+>   the centerline band) + gallery card (new **"Casting (front-end)"** section) + both READMEs. **Notebook
+>   & app deferred** (same as F1/spine). The "frozen engine" framing is dropped from this build's docs (a
+>   monorepo artifact; the solver is used as a plain library — Slice 2 only).
+
 **Hand-off.** After F4 the `Heat` is a real cast billet; it flows into the back
 end's grain → heat-treatment → properties chain, and the loop is **end-to-end**.
 
@@ -359,18 +401,22 @@ copied as datasets. No export-control dimension. (Same posture as
    "dramatic early win."
 2. **`heat_state.py` — the `Heat` record + orchestrator seam. ✅ BUILT 2026-06-12**
    (as-built record under §5). The spine that lets steps compose and failures
-   propagate. **← next: item 3 (F4).**
-3. **F4 — casting link.** Reuses the frozen heat engine + existing Scheil; proves
-   the chain runs **front-to-back inside steel-sim** before any game scaffolding.
+   propagate.
+3. **F4 — casting link. ✅ BUILT 2026-06-12 (Slice 1; as-built record under §7).**
+   Proves the chain runs **front-to-back inside steel-sim** (Scheil microsegregation
+   → centerline `Heat` → back-end divergence) — a *new-physics* phase, not the "thin
+   reuse" first imagined. The latent-heat solidification map is **deferred to Slice 2**.
+   **← next: item 4 (F2/F3), or Slice 2 (latent-heat map + defects).**
 4. **F2 / F3 — refining + ladle.** Fill in the middle of the chain.
 5. **`game/`.** The loop/economy/UI on a *proven verified spine* — last, by
    design, never first.
 
-**Immediate next step.** ~~Plan only — this document.~~ **F1 (Ellingham) and the
-`heat_state.py` spine are built** (2026-06-12; as-built records under §7 and §5). The
-next slice is **F4 — the casting link** (build-order item 3): reuse the frozen heat
-engine in heat mode + the existing Scheil, proving the chain runs **front-to-back
-inside steel-sim** before any game scaffolding.
+**Immediate next step.** ~~Plan only — this document.~~ **F1 (Ellingham), the
+`heat_state.py` spine, and F4 casting (Slice 1) are built** (2026-06-12; as-built
+records under §7, §5, §7). The chain now **runs front-to-back inside steel-sim** (cast
+billet → segregated centerline `Heat` → back-end divergence). The next slice is the
+**middle of the chain (F2/F3 — refining + ladle)**, or **F4 Slice 2** (the latent-heat
+solidification map + defect criteria) — then `game/` last.
 
 ---
 
