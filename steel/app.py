@@ -70,6 +70,10 @@ from steel import design
 from steel import properties as prop
 from steel import unified_kv as ukv
 from steel import pathint
+from steel import cooling
+from steel import jominy
+from steel import martemper as mt
+from steel import carburize as cb
 
 
 # The dropdown vocabularies — the real-composition grades and the slow→fast media. The preset
@@ -125,6 +129,32 @@ UNIFIED_COOLING = {
 # and composition knobs, deliberately *not* wired to the sidebar's quench medium (those quench
 # toward martensite, which the ferrite-pearlite laws return nan for), the same isolation §3 uses.
 GRAIN_C_MAX = 0.80
+
+# The Jominy end-quench (Phase 2) — the two ≈0.4 %C benchmark steels (shallow 1045 vs deep 4140)
+# and their published overlays live in :mod:`steel.demo_jominy` (reused, not re-listed). The
+# read-depth select_slider walks the standard ASTM-A255 read distances (so a drag lands exactly on
+# a sampled point — no interpolation), shared by every steel's traverse.
+JOMINY_READ_MM = [round(d * 1000.0, 1) for d in jominy.jominy_distances(16)]
+
+# Martempering (Phase 6e) — the atlas-anchored pair ONLY (the same per-steel wall austempering
+# rides; a free-composition martemper slider would dress the probe-falsified cross-steel kinetics
+# as a knob). T0 matches demo_martemper's austenitizing temperature.
+MARTEMPER_STEELS = list(aus.ATLAS_STEELS)        # ["1080", "4340"]
+MARTEMPER_T0 = 850.0
+
+# Residual stress (Phase 6f) — same anchored pair; section size + quench medium are the knobs. The
+# three-solve mechanics is the app's ONE expensive compute (~3 s at RESIDUAL_N_T), so main()
+# memoizes it in st.session_state keyed on its inputs (recomputing only when they change, not on
+# every unrelated rerun). The teeth — the surface-sign reversal and ∫σ=0 — are resolution-robust,
+# so the coarser n_t trades figure-smoothness for responsiveness without moving the verdict.
+RESIDUAL_STEELS = list(aus.ATLAS_STEELS)
+RESIDUAL_MEDIA = ["water", "oil"]                # severe enough to yield the hot core (Biot ≳ 1)
+RESIDUAL_N_T = 2000
+
+# Carburizing (Phase 3c) — the mass-diffusion face (an ≈8620, 0.2 %C-core gear; the cb defaults).
+# The cycle knobs feed the same transform + property chain as Jominy; constant-D erfc (the
+# validated analytic limit). The quench is the standard case-hardening oil/water.
+CARBURIZE_MEDIA = ["oil", "water"]
 
 
 # --------------------------------------------------------------------------- #
@@ -436,6 +466,156 @@ def design_readout(result, target_HRC: float, tol_HRC: float) -> dict:
     }
 
 
+def jominy_traverses(n_cells: int = 200, per_decade: int = 120) -> dict:
+    """The benchmark Jominy hardness traverses — shallow 1045 vs deep 4140 (Phase 2).
+
+    A pure re-composition of :func:`steel.demo_jominy.compute` (one shared ASTM-A255 thermal field
+    → :func:`steel.properties.jominy_hardness` per steel): returns the demo's ``curves`` dict
+    (label → :class:`~steel.properties.JominyHardness`). Imports neither Streamlit nor matplotlib;
+    the field solve is light (~0.1 s), so it runs every rerun without the residual section's
+    memoizing.
+    """
+    from steel.demo_jominy import compute
+
+    _, curves = compute(n_cells=n_cells, per_decade=per_decade)
+    return curves
+
+
+def jominy_readout_at(curves: dict, distance_mm: float) -> dict:
+    """The hardness each benchmark steel holds at a chosen Jominy depth — the divergence, read out.
+
+    At the quenched end both steels are full ≈0.4 %C martensite (the same HRC — the property model
+    in isolation); with distance 4140 holds its deep-hardening plateau while 1045 falls to a soft,
+    off-scale ferrite-pearlite tail (the validated hardenability shift). Reads both traverses at the
+    standard read point nearest ``distance_mm`` and flattens to display strings (all nan/HRC logic
+    here, so :func:`main` only forwards strings).
+    """
+    rows: dict[str, dict] = {}
+    d_read = distance_mm
+    for label, h in curves.items():
+        i = int(np.argmin(np.abs(h.distance - distance_mm / 1000.0)))
+        d_read = h.distance[i] * 1000.0
+        rows[label] = {
+            "HV": f"{h.HV[i]:.0f} HV",
+            "HRC": format_hrc(h.HRC[i]),
+            "martensite": f"{h.martensite[i]:.0%}",
+        }
+    ends = {label: format_hrc(h.HRC[0]) for label, h in curves.items()}
+    return {"distance_mm": f"{d_read:.1f} mm", "steels": rows, "quenched_end": ends}
+
+
+def martemper_outcome(steel: str, diameter_mm: float):
+    """The martempering what-if: an anchored steel + plate thickness → the distortion comparison.
+
+    One :func:`steel.martemper.distortion_comparison` (the same slab solved direct-quench vs
+    martemper on the frozen heat engine — Phase 6e). ``diameter_mm`` is the full plate thickness
+    (the slider unit); the model takes the half-thickness it halves to. Adds no physics — a
+    re-composition of the validated 6e chain. Imports neither Streamlit nor matplotlib.
+    """
+    return mt.distortion_comparison(steel, float(diameter_mm) / 2000.0, T0=MARTEMPER_T0)
+
+
+def martemper_readout(steel: str, dc) -> dict:
+    """Display strings for the martempering panel — the equivalence, the distortion cut, feasibility.
+
+    Surfaces the three falsifiable pieces the demo prints: the **equivalence** (martemper HV = the
+    ideal nose-missing quench's HV, exact by construction), the **distortion reduction** (the
+    surface−centre ΔT at the Mₛ crossing, cut by ``dc.reduction``×), and the **feasibility** verdict
+    (can the section equalise before bainite nucleates — the section-size / hardenability limit).
+    All nan/format logic here, so :func:`main` only forwards strings (+ reads ``feasible``).
+    """
+    iq = mt.ideal_quench(steel)
+    r = mt.martemper(steel, T_bath=iq.Ms + 20.0, t_hold=30.0)
+    feas = mt.feasibility(steel, dc.half_thickness)
+    return {
+        "HV": f"{r.HV:.0f} HV",
+        "HRC": format_hrc(r.HRC),
+        "quench_HV": f"{r.quench_HV:.0f} HV",
+        "quench_HRC": format_hrc(r.quench_HRC),
+        "gradient_direct": f"{abs(dc.gradient_direct):.0f} °C",
+        "gradient_martemper": f"{abs(dc.gradient_martemper):.0f} °C",
+        "reduction": f"{dc.reduction:.0f}×",
+        "feasible": bool(feas.feasible),
+        "margin": "∞" if feas.margin == float("inf") else f"{feas.margin:.1f}×",
+        "biot": f"{feas.biot:.2f}",
+        "Ms": f"{dc.Ms:.0f} °C",
+    }
+
+
+def residual_solves(steel: str, diameter_mm: float, medium: str, n_t: int = RESIDUAL_N_T):
+    """The residual-stress what-if: a steel + plate thickness + quench → the three solved fields.
+
+    A pure re-composition of :func:`steel.demo_residual.compute` (the same plate solved three ways
+    on the frozen heat engine — thermal-only OFF, transformation ON, and martemper — Phase 6f),
+    returning ``(on, off, marte)``. ``diameter_mm`` is the full plate thickness; ``medium`` indexes
+    :data:`steel.cooling.MEDIA` for the quench coefficient. This is the app's one expensive compute
+    (three slab + plasticity solves), so :func:`main` memoizes it on its inputs. Imports neither
+    Streamlit nor matplotlib.
+    """
+    from steel.demo_residual import compute
+
+    return compute(steel=steel, half_thickness=float(diameter_mm) / 2000.0,
+                   h_quench=cooling.MEDIA[medium], n_t=n_t)
+
+
+def residual_readout(on, off, marte) -> dict:
+    """Display strings for the residual-stress panel — the sign reversal, equilibrium, the route cut.
+
+    Surfaces the headline tooth: the surface goes from **compression** (thermal-only, benign) to
+    **tension** (with the martensite dilatation, quench-crack-prone), and martempering **removes**
+    that tension; plus the self-equilibrium check (∫σ ∝ mean ≈ 0) and the peak magnitude. All
+    sign/format logic here, so :func:`main` only forwards strings (+ reads ``surface_tension``).
+    """
+    peak = max(abs(on.peak_tension), abs(on.peak_compression)) / 1e6
+    return {
+        "surface_off": f"{off.surface_MPa:+.0f} MPa",
+        "surface_off_kind": "compression — benign" if off.surface_stress < 0 else "tension",
+        "surface_on": f"{on.surface_MPa:+.0f} MPa",
+        "surface_on_kind": "tension — crack-prone" if on.surface_stress > 0 else "compression",
+        "surface_marte": f"{marte.surface_MPa:+.0f} MPa",
+        "center_on": f"{on.center_MPa:+.0f} MPa",
+        "peak": f"{peak:.0f} MPa",
+        "equilibrium": f"{on.mean_stress:.1e} Pa",
+        "Ms": f"{on.Ms:.0f} °C",
+        "surface_tension": bool(on.surface_stress > 0),
+    }
+
+
+def carburize_outcome(C_surface: float, t_hours: float, T_carburize: float, medium: str):
+    """The carburizing what-if: an atmosphere + cycle → the carbon profile and the case traverse.
+
+    Two steps of the Phase-3c mass-mode chain: :func:`steel.carburize.solve_carburize` (the erfc
+    carbon profile from the frozen diffusion engine, constant-D analytic limit) →
+    :func:`steel.carburize.carburized_traverse` (per-depth transform + property). Returns
+    ``(profile, traverse)``; the 0.2 %C ≈8620 core is the library default. Imports neither Streamlit
+    nor matplotlib (~0.3 s, so no memoizing needed).
+    """
+    profile = cb.solve_carburize(C_surface=float(C_surface), C_core=cb.DEFAULT_CORE_CARBON,
+                                 T_carburize=float(T_carburize), t_hours=float(t_hours))
+    traverse = cb.carburized_traverse(profile, medium=medium)
+    return profile, traverse
+
+
+def carburize_readout(profile, traverse) -> dict:
+    """Display strings for the carburizing panel — the case depth, the surface/core split, retained γ.
+
+    Surfaces the case depth two honest ways (to 0.4 %C carbon and to the 50-HRC hardness line), the
+    hard-case-over-tough-core hardness split, and the surface retained austenite (the real heavy-case
+    effect — reported, not asserted; the surface HRC is read off the martensite *potential*, the case
+    as designed). All nan/format logic here, so :func:`main` only forwards strings.
+    """
+    return {
+        "case_depth_C": f"{profile.case_depth(0.4) * 1000.0:.2f} mm",
+        "case_depth_HRC": f"{traverse.case_depth_50HRC() * 1000.0:.2f} mm",
+        "surface_HRC": format_hrc(traverse.HRC[0]),
+        "surface_HV": f"{traverse.HV[0]:.0f} HV",
+        "core_HRC": format_hrc(traverse.HRC[-1]),
+        "core_HV": f"{traverse.HV[-1]:.0f} HV",
+        "retained_surface": f"{traverse.retained_austenite[0]:.0%}",
+        "D": f"{profile.D:.2e} m²/s",
+    }
+
+
 # --------------------------------------------------------------------------- #
 # 2. Figure builders — thin wrappers over plots.py (matplotlib imported lazily)
 # --------------------------------------------------------------------------- #
@@ -576,6 +756,54 @@ def design_overview_figure(result):
 
     grid = sweep.sweep_grid(list(sweep.STEELS), media=sweep.DEFAULT_MEDIA, diameter=result.diameter)
     return design_figure(result, grid)
+
+
+def jominy_overview_figure(curves: dict):
+    """The Jominy benchmark figure — the model traverses with the published Callister/ASM overlays.
+
+    A thin wrapper over :func:`steel.plots.jominy_hardness_figure` with the published reference
+    points from :mod:`steel.demo_jominy` (the render layer owns the drawing; the app invents none).
+    Raises ``ImportError`` without matplotlib — caught in :func:`main`.
+    """
+    from steel.demo_jominy import PUBLISHED
+    from steel.plots import jominy_hardness_figure
+
+    references = {lbl: (np.array([p[0] for p in pts]), np.array([p[1] for p in pts]))
+                 for lbl, pts in PUBLISHED.items()}
+    return jominy_hardness_figure(curves, references=references)
+
+
+def martemper_overview_figure(dc):
+    """The martempering distortion figure — the same slab quenched direct vs martemper (Phase 6e).
+
+    A thin wrapper over :func:`steel.plots.martemper_distortion_figure` (the render layer owns the
+    drawing; the app invents none). Raises ``ImportError`` without matplotlib — caught in :func:`main`.
+    """
+    from steel.plots import martemper_distortion_figure
+
+    return martemper_distortion_figure(dc)
+
+
+def residual_overview_figure(on, off, marte):
+    """The residual-stress figure — the plate solved thermal-only / with-transform / martemper (6f).
+
+    A thin wrapper over :func:`steel.plots.residual_stress_figure` (the render layer owns the
+    drawing; the app invents none). Raises ``ImportError`` without matplotlib — caught in :func:`main`.
+    """
+    from steel.plots import residual_stress_figure
+
+    return residual_stress_figure(on, off, marte)
+
+
+def carburize_overview_figure(profile, traverse):
+    """The carburized-gradient figure — carbon, microstructure, and hardness vs depth (Phase 3c).
+
+    A thin wrapper over :func:`steel.plots.carburize_figure` (the render layer owns the drawing; the
+    app invents none). Raises ``ImportError`` without matplotlib — caught in :func:`main`.
+    """
+    from steel.plots import carburize_figure
+
+    return carburize_figure(profile, traverse)
 
 
 # --------------------------------------------------------------------------- #
@@ -755,6 +983,33 @@ def main() -> None:
             "outcome. The one lever that helps *both* strength and toughness is **grain "
             "refinement** (the Grain section) — exactly what the V/Nb/Ti row buys."
         )
+
+    # ---- section 3b: the Jominy end-quench — hardenability as hardness vs depth (Phase 2) ---- #
+    st.subheader("Jominy end-quench — hardness vs depth, shallow 1045 vs deep 4140")
+    st.caption(
+        "Hardenability made visible the standard way: one ASTM-A255 bar quenched from a single end, "
+        "hardness read along its length. Two ≈0.4 %C steels **share the quenched-end hardness** "
+        "(both are full martensite there, and ~0.4 %C martensite is ~57 HRC whatever the alloy) and "
+        "then **diverge with depth** — deep-hardening **4140** holds a plateau while plain-carbon "
+        "**1045** falls to a soft, off-scale ferrite-pearlite tail. Drag the read depth to watch the "
+        "gap open. The figure carries published Callister/ASM overlays; the 1045 knee sits a few mm "
+        "deep — the documented A₁/A₃ kinetics simplification."
+    )
+    j_curves = jominy_traverses()
+    j_mm = st.select_slider("Read depth from the quenched end (mm)", options=JOMINY_READ_MM,
+                            value=JOMINY_READ_MM[min(4, len(JOMINY_READ_MM) - 1)], key="jominy_mm")
+    jr = jominy_readout_at(j_curves, j_mm)
+    jcols = st.columns(len(jr["steels"]) + 1)
+    jcols[0].metric("Read depth", jr["distance_mm"])
+    jcols[0].caption("quenched end: "
+                     + " · ".join(f"{k} {v}" for k, v in jr["quenched_end"].items()))
+    for col, (label, vals) in zip(jcols[1:], jr["steels"].items()):
+        col.metric(label, vals["HRC"])
+        col.caption(f"{vals['HV']} · {vals['martensite']} martensite")
+    try:
+        st.pyplot(jominy_overview_figure(j_curves))
+    except ImportError:
+        st.info(viz_hint)
 
     # ---- section 4: the quench-and-temper response (martensite-only) ------- #
     st.subheader(f"{grade}: quench-and-temper response ({temper_hours:g} h temper)")
@@ -960,6 +1215,140 @@ def main() -> None:
         "separation = the **cited differential** (the teeth); the bay *opening in CCT* is a "
         "demonstration bridged from the isothermal atlas (named). Carbon enrichment from ferrite "
         "lowers the effective Mₛ shown above."
+    )
+
+    # ---- section 6c: martempering — same hardness, far less distortion (Phase 6e) ---- #
+    st.subheader("Martempering — the same hardness as a direct quench, far less distortion")
+    st.caption(
+        "Austempering's short-hold sibling: quench into a bath just **above** Mₛ, hold only long "
+        "enough to **equalise** the section (well under the bainite clock), then slow-cool through Mₛ "
+        "near-uniformly. The microstructure and hardness match a direct quench **point-for-point** "
+        "(exact by construction — not a claim that a shallow steel through-hardens a thick part); "
+        "what changes is the *spatial* picture at the moment of transformation. The catch is "
+        "feasibility: the section must equalise **before** bainite nucleates (τ_eq < t_crit), which "
+        "thin / hardenable sections clear and thick ones do not — the textbook section-size limit."
+    )
+    mc = st.columns(2)
+    m_steel = mc[0].selectbox("Anchored steel", MARTEMPER_STEELS, index=0, key="martemper_steel")
+    m_mm = mc[1].slider("Plate thickness (mm)", 5, 60, 20, 5, key="martemper_mm")
+    m_dc = martemper_outcome(m_steel, m_mm)
+    mr = martemper_readout(m_steel, m_dc)
+    mm1, mm2, mm3 = st.columns(3)
+    mm1.metric("Martemper hardness", mr["HV"])
+    mm1.caption(f"{mr['HRC']} · = direct quench {mr['quench_HV']} / {mr['quench_HRC']} (equivalence)")
+    mm2.metric("Distortion driver cut", mr["reduction"])
+    mm2.caption(f"surface−centre ΔT at Mₛ: direct {mr['gradient_direct']} → "
+                f"martemper {mr['gradient_martemper']}")
+    mm3.metric("Feasible here?", "yes" if mr["feasible"] else "no — bainite first")
+    mm3.caption(f"τ_eq vs t_crit margin {mr['margin']} · Biot {mr['biot']}")
+    if not mr["feasible"]:
+        st.warning(
+            f"At {m_mm} mm, {m_steel} cannot equalise before bainite nucleates — the section is too "
+            "thick (or not hardenable enough) to martemper. This is the real limit, not a model "
+            "edge: try a thinner section, or the more hardenable steel."
+        )
+    try:
+        st.pyplot(martemper_overview_figure(m_dc))
+    except ImportError:
+        st.info(viz_hint)
+    st.caption(
+        "The martemper figure is idealised (a near-uniform slow cool, no transformation plasticity) "
+        f"— a best case; t_crit near Mₛ {mr['Ms']} is optimistic, so the feasibility margin is a best "
+        "case too. The hardness equivalence itself is exact by construction (a 0-D microstructure "
+        "claim), independent of the section size."
+    )
+
+    # ---- section 6d: residual stress & distortion on quench — solid mechanics (Phase 6f) ---- #
+    st.subheader("Residual stress on quench — why a through-hardened part can crack")
+    st.caption(
+        "The first **solid-mechanics** view: a plate quenched while it transforms locks in a "
+        "self-balancing stress field, read once it has cooled to room temperature. The headline is a "
+        "**sign reversal**. With transformation *off* (thermal contraction only) the hot core yields "
+        "and pulls the surface into **compression** — benign, even beneficial. Turn transformation "
+        "*on* and the austenite→martensite **dilatation** flips the surface to **tension** — the "
+        "quench-crack-prone state. **Martempering removes** that surface tension (§6c's distortion "
+        "benefit, now in stress). It needs a quench severe enough to yield the hot core (Biot ≳ 1); a "
+        "mild quench deforms nothing and leaves nothing."
+    )
+    rc = st.columns(3)
+    r_steel = rc[0].selectbox("Anchored steel", RESIDUAL_STEELS,
+                              index=RESIDUAL_STEELS.index("4340") if "4340" in RESIDUAL_STEELS else 0,
+                              key="residual_steel")
+    r_mm = rc[1].slider("Plate thickness (mm)", 10, 80, 50, 5, key="residual_mm")
+    r_medium = rc[2].selectbox("Quench medium", RESIDUAL_MEDIA, index=0, key="residual_medium")
+    # The app's one expensive compute (three slab + plasticity solves, ~3 s). Memoize on its own
+    # inputs in session_state so it recomputes only when these change — not on every unrelated rerun.
+    r_key = (r_steel, r_mm, r_medium)
+    if st.session_state.get("_residual_key") != r_key:
+        with st.spinner("Solving the quench mechanics (three slab + plasticity solves)…"):
+            st.session_state["_residual_val"] = residual_solves(r_steel, r_mm, r_medium)
+        st.session_state["_residual_key"] = r_key
+    r_on, r_off, r_marte = st.session_state["_residual_val"]
+    rr = residual_readout(r_on, r_off, r_marte)
+    rm1, rm2, rm3 = st.columns(3)
+    rm1.metric("Surface — thermal only", rr["surface_off"])
+    rm1.caption(rr["surface_off_kind"])
+    rm2.metric("Surface — with transform", rr["surface_on"])
+    rm2.caption(rr["surface_on_kind"])
+    rm3.metric("Surface — martemper", rr["surface_marte"])
+    rm3.caption("tension essentially removed")
+    if rr["surface_tension"]:
+        st.warning(
+            f"Direct quench here leaves the surface in **tension** ({rr['surface_on']}) over a "
+            f"compressive core ({rr['center_on']}) — the quench-crack-prone state. Peak |σ| ≈ "
+            f"{rr['peak']} (of order the yield base). Martempering removes the surface tension."
+        )
+    else:
+        st.info(
+            "This combination does not end with the surface in tension — the quench is too mild (or "
+            "the section too thin) to build the transformation stress that drives quench cracking. "
+            "Try water, or a thicker section."
+        )
+    try:
+        st.pyplot(residual_overview_figure(r_on, r_off, r_marte))
+    except ImportError:
+        st.info(viz_hint)
+    st.caption(
+        f"Self-equilibrium check: ∫σ dx ∝ mean = {rr['equilibrium']} (≈ 0). The teeth are the "
+        "**signs**, the equilibrium, and the route ratio — not the absolute MPa (no transformation "
+        "plasticity / TRIP; through-hardening only; a single representative yield base)."
+    )
+
+    # ---- section 6e: carburizing — case hardening, the mass-diffusion face (Phase 3c) ---- #
+    st.subheader("Carburizing — a hard case over a tough core, set by a carbon gradient")
+    st.caption(
+        "The other face of the same engine: the frozen diffusion solver that cooled the Jominy bar "
+        "in *heat* mode now runs in *mass* mode, diffusing carbon **into** the surface of a "
+        "low-carbon (≈8620, 0.2 %C) gear held in a carburizing atmosphere, then quenching. The "
+        "hardness gradient is set by the **carbon** gradient (one quench throughout, not a "
+        "cooling-rate gradient): a hard ~60–65 HRC martensite case over a softer, tougher core. "
+        "Surface hardness is read off the martensite **potential** (the case as designed); the "
+        "retained austenite the heavy case really carries is reported, not asserted."
+    )
+    cc = st.columns(4)
+    c_pot = cc[0].slider("Carbon potential (%C)", 0.6, 1.1, 0.8, 0.05, key="carb_pot")
+    c_hrs = cc[1].slider("Carburize time (h)", 2, 16, 8, 1, key="carb_hrs")
+    c_T = cc[2].slider("Temperature (°C)", 880, 960, 925, 5, key="carb_T")
+    c_medium = cc[3].selectbox("Quench", CARBURIZE_MEDIA, index=0, key="carb_medium")
+    c_profile, c_traverse = carburize_outcome(c_pot, c_hrs, c_T, c_medium)
+    cbr = carburize_readout(c_profile, c_traverse)
+    cm1, cm2, cm3, cm4 = st.columns(4)
+    cm1.metric("Case depth (to 50 HRC)", cbr["case_depth_HRC"])
+    cm1.caption(f"to 0.4 %C: {cbr['case_depth_C']}")
+    cm2.metric("Surface hardness", cbr["surface_HRC"])
+    cm2.caption(f"{cbr['surface_HV']} (martensite potential)")
+    cm3.metric("Core hardness", cbr["core_HRC"])
+    cm3.caption(f"{cbr['core_HV']} — softer, tougher")
+    cm4.metric("Surface retained γ", cbr["retained_surface"])
+    cm4.caption("the real heavy-case effect")
+    try:
+        st.pyplot(carburize_overview_figure(c_profile, c_traverse))
+    except ImportError:
+        st.info(viz_hint)
+    st.caption(
+        f"Carbon diffusivity D = {cbr['D']} at this temperature; case depth scales with √(D·t) — "
+        "double the time for ~1.4× the depth. Constant-D erfc (the validated analytic limit); the "
+        "opt-in concentration-dependent D(C) deepens the case toward the published ~1 mm (see the demo)."
     )
 
     # ---- section 7: inverse design — name a hardness, get a recipe (Phase 7) ---- #

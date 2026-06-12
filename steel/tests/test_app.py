@@ -404,3 +404,147 @@ def test_design_overview_figure_builds_when_viz_present():
     fig = app.design_overview_figure(app.design_outcome(45.0, 2.0, 10.0))
     assert len(fig.axes) >= 2                             # feasibility map + ranked recipes
     plt.pyplot.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# 10. The Jominy end-quench (Phase 2): hardness vs depth, shallow vs deep
+# --------------------------------------------------------------------------- #
+def test_jominy_read_distances_are_the_standard_points():
+    # The select_slider walks the standard ASTM-A255 read points, so a drag lands on a sampled
+    # cell (no interpolation). The quenched end is the first, ~25 mm the last of the 16.
+    assert app.JOMINY_READ_MM[0] == pytest.approx(1.6, abs=0.1)
+    assert app.JOMINY_READ_MM[-1] == pytest.approx(25.4, abs=0.2)
+    assert len(app.JOMINY_READ_MM) == 16
+
+
+def test_jominy_readout_shares_the_end_and_diverges_with_depth():
+    curves = app.jominy_traverses()
+    near = app.jominy_readout_at(curves, app.JOMINY_READ_MM[0])     # the quenched end
+    far = app.jominy_readout_at(curves, 19.0)                       # deep in the bar
+    # At the end both steels are ~fully martensitic → both report a hard HRC (the shared-end claim).
+    assert all(v["HRC"].endswith("HRC") for v in near["steels"].values())
+    assert float(near["steels"]["1045"]["martensite"].rstrip("%")) >= 90
+    assert float(near["steels"]["4140"]["martensite"].rstrip("%")) >= 90
+    # Deep in the bar 4140 holds its plateau while 1045 has collapsed (less martensite) — divergence.
+    f1045 = float(far["steels"]["1045"]["martensite"].rstrip("%"))
+    f4140 = float(far["steels"]["4140"]["martensite"].rstrip("%"))
+    assert f4140 > f1045
+    assert set(near) == {"distance_mm", "steels", "quenched_end"}
+
+
+def test_jominy_overview_figure_builds_when_viz_present():
+    plt = pytest.importorskip("matplotlib")
+    plt.use("Agg")
+    fig = app.jominy_overview_figure(app.jominy_traverses())
+    assert len(fig.axes) >= 1
+    plt.pyplot.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# 11. Martempering (Phase 6e): same hardness as a direct quench, less distortion
+# --------------------------------------------------------------------------- #
+def test_martemper_vocabulary_is_the_anchored_pair_only():
+    # Only the atlas-anchored steels are offered — the same per-steel wall austempering rides.
+    assert app.MARTEMPER_STEELS == list(app.aus.ATLAS_STEELS)
+
+
+def test_martemper_outcome_is_the_distortion_comparison():
+    # The headline case from the demo: 1080, a 20 mm plate. The thickness knob is in mm and halves
+    # to the model's metres (a 20 mm plate → 0.010 m half-thickness).
+    dc = app.martemper_outcome("1080", 20)
+    assert dc.half_thickness == pytest.approx(0.010)
+    assert dc.reduction > 1.0                             # martemper cuts the surface−centre gradient
+
+
+def test_martemper_readout_carries_equivalence_and_feasibility():
+    mr = app.martemper_readout("1080", app.martemper_outcome("1080", 20))
+    assert set(mr) == {"HV", "HRC", "quench_HV", "quench_HRC", "gradient_direct",
+                       "gradient_martemper", "reduction", "feasible", "margin", "biot", "Ms"}
+    # The equivalence: martemper HV equals the ideal nose-missing quench's HV (exact by construction).
+    assert mr["HV"] == mr["quench_HV"]
+    assert mr["reduction"].endswith("×") and mr["HV"].endswith("HV")
+    # A thin 1080 plate is comfortably feasible; a thick 4340 plate is the textbook limit (infeasible).
+    assert mr["feasible"] is True
+    thick = app.martemper_readout("4340", app.martemper_outcome("4340", 40))
+    assert thick["feasible"] is False                     # 4340's 40 mm plate forms bainite first
+
+
+def test_martemper_overview_figure_builds_when_viz_present():
+    plt = pytest.importorskip("matplotlib")
+    plt.use("Agg")
+    fig = app.martemper_overview_figure(app.martemper_outcome("1080", 20))
+    assert len(fig.axes) == 2                             # direct-quench vs martemper histories
+    plt.pyplot.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# 12. Residual stress (Phase 6f): the solid-mechanics surface-sign reversal
+# --------------------------------------------------------------------------- #
+def test_residual_vocabulary_is_the_anchored_pair_in_severe_media():
+    assert app.RESIDUAL_STEELS == list(app.aus.ATLAS_STEELS)
+    # Only severe quenches are offered — a mild one never yields the hot core, so there is no
+    # transformation residual to show (the Biot ≳ 1 gate the section's caption names).
+    assert app.RESIDUAL_MEDIA == ["water", "oil"]
+
+
+def test_residual_solves_show_the_surface_sign_reversal():
+    # The headline tooth through the app boundary: the SAME plate flips the surface from compression
+    # (thermal only) to tension (with the martensite dilatation). n_t kept coarse — the teeth (the
+    # signs, ∫σ=0) are resolution-robust, so the test stays fast.
+    on, off, marte = app.residual_solves("4340", 50, "water", n_t=800)
+    rr = app.residual_readout(on, off, marte)
+    assert set(rr) == {"surface_off", "surface_off_kind", "surface_on", "surface_on_kind",
+                       "surface_marte", "center_on", "peak", "equilibrium", "Ms", "surface_tension"}
+    assert off.surface_stress < 0 < on.surface_stress     # compression OFF → tension ON
+    assert rr["surface_tension"] is True
+    assert "compression" in rr["surface_off_kind"] and "tension" in rr["surface_on_kind"]
+    # Self-equilibrium: the profile integrates to ~0 (machine precision) — conservation, not a fit.
+    assert abs(on.mean_stress) < 1.0                      # Pa, vs ~1e8 Pa peak stresses
+
+
+def test_residual_mild_quench_leaves_no_surface_tension():
+    # A mild quench on a thin section never builds the gradient that yields the core → no tension
+    # (the section's honest "too mild" branch). This is physics, not a model edge.
+    on, off, marte = app.residual_solves("1080", 10, "oil", n_t=800)
+    assert app.residual_readout(on, off, marte)["surface_tension"] is False
+
+
+def test_residual_overview_figure_builds_when_viz_present():
+    plt = pytest.importorskip("matplotlib")
+    plt.use("Agg")
+    on, off, marte = app.residual_solves("4340", 50, "water", n_t=800)
+    fig = app.residual_overview_figure(on, off, marte)
+    assert len(fig.axes) == 2
+    plt.pyplot.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# 13. Carburizing (Phase 3c): a hard case over a tough core, set by carbon
+# --------------------------------------------------------------------------- #
+def test_carburize_outcome_runs_the_mass_mode_chain():
+    profile, traverse = app.carburize_outcome(0.8, 8, 925, "oil")
+    # Carbon diffused IN: the surface is at the potential, the core stays at the lean default.
+    assert profile.C[0] == pytest.approx(0.8, abs=0.05)
+    assert profile.C[-1] == pytest.approx(profile.C_core, abs=0.02)
+    # The case is harder than the core (the whole point — a carbon gradient, one quench throughout).
+    assert traverse.HV[0] > traverse.HV[-1]
+
+
+def test_carburize_readout_is_display_ready_and_splits_case_from_core():
+    cbr = app.carburize_readout(*app.carburize_outcome(0.8, 8, 925, "oil"))
+    assert set(cbr) == {"case_depth_C", "case_depth_HRC", "surface_HRC", "surface_HV",
+                        "core_HRC", "core_HV", "retained_surface", "D"}
+    assert cbr["case_depth_HRC"].endswith("mm") and cbr["surface_HV"].endswith("HV")
+    assert cbr["retained_surface"].endswith("%")          # the heavy-case effect, reported
+    # A longer cycle deepens the case (√(D·t) scaling) — a real, monotone what-if.
+    shallow = app.carburize_readout(*app.carburize_outcome(0.8, 4, 925, "oil"))
+    assert (float(cbr["case_depth_C"].rstrip(" mm"))
+            > float(shallow["case_depth_C"].rstrip(" mm")))
+
+
+def test_carburize_overview_figure_builds_when_viz_present():
+    plt = pytest.importorskip("matplotlib")
+    plt.use("Agg")
+    fig = app.carburize_overview_figure(*app.carburize_outcome(0.8, 8, 925, "oil"))
+    assert len(fig.axes) == 3                             # carbon + microstructure + hardness
+    plt.pyplot.close(fig)
