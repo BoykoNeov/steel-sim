@@ -106,6 +106,7 @@ the notebook (§) and the app.
 | **Inverse design** | `demo_design` | notebook §7 · app §7 | Name a target hardness, get a feasible recipe (grade + quench + temper). |
 | **Equilibrium** | `demo_calphad` | — | Real CALPHAD thermodynamics vs the parametrised Fe-C diagram (needs the `.[calphad]` extra). |
 | **Ironmaking** (front-end) | `demo_reduction` | — | The Ellingham diagram: which reductant reduces which oxide, above which temperature — the front-end "ore → iron" first slice (F1). |
+| **Front-end spine** | `demo_heat_state` | — | Failure propagation: a `Heat` record carries an upstream alloy mistake (under-dosed Cr/Mo) into a downstream soft-core defect — the spine that lets the front-end steps compose. |
 
 **Suggested first pass:** `demo_four_curves` → `demo_jominy` → `demo_sweep` →
 `demo_tempered_jominy`, then branch by interest. Or just open the notebook and read it top to

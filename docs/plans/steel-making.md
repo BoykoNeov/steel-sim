@@ -119,6 +119,37 @@ A lightweight **`Heat`** record is the object that flows through the chain and
   pressure, UI state. Those live in the game layer. `Heat` is physics only, so
   it remains a candidate steel-sim data type even if the game is later split out.
 
+> **As built — 2026-06-12 (build-order item 2).** `steel/heat_state.py` (+ `demo_heat_state.py`,
+> `plots.heat_state_figure`, `tests/test_heat_state.py` 15 + `test_demo_heat_state.py` 5; fast lane
+> 522 → **542 green**). No engine touch, no back-end touch, no ADR (this plan is the record). The
+> build, vs the plan:
+> - **The carrier.** `Heat` is a frozen, **immutable** dataclass: every orchestrator step returns a
+>   *new* `Heat` with one `ProcessStep` appended (the provenance trail), so history can't be rewritten.
+>   It **composes the existing back-end `Steel`** as its composition field (not a parallel type) — so
+>   `Heat.as_steel()` is a no-op unpack and the round trip `Steel → Heat → Steel` is exact. The §5
+>   fields a not-yet-built phase would fill (dissolved O/N/H from F2, inclusions from F3, residual from
+>   §18/F4) default to **`None` = "no engine has produced this yet"** — the honest "unmeasured".
+> - **The seam.** `heat_treat` **unpacks `Heat` → `Steel`, calls the public `sweep.evaluate`** (which
+>   wraps the frozen array engine one level down — the orchestrator does *not* reach into the diffusion
+>   core), and **repacks**: a spec miss raises the **soft-core** flag. This is the **general path** (any
+>   composition), which is why the failure-propagation proof rides here: a properly-dosed 4140 oil-quenches
+>   to 96 % martensite / 632 HV; under-dose its Cr/Mo and the *same* quench lands 40 % / 416 HV → flagged,
+>   carried downstream. No scripted failure — the back-end martensite fraction crossing the
+>   `MIN_MARTENSITE_SPEC` line (a *spec*, labelled, not a fitted constant).
+> - **Honest bound (advisor catch).** The §18 residual engine is **grade-keyed and atlas-anchored**
+>   (`ATLAS_STEELS` = {1080, 4340}), so an *off-spec composition → quench-crack* chain **cannot run
+>   today** — it is **deferred**. `quench_crack_check` demonstrates the *same repack pattern* over §18
+>   for a *fixed* atlas grade (4340: +386 MPa surface tension → quench-crack-risk), clearly labelled as
+>   the stand-in, so the spine is shown composing across two engines without overclaiming.
+> - **No new physics, no triad.** The spine computes no material behaviour; its "teeth" are
+>   **structural** — round-trip identity, immutability, deterministic flag propagation (same posture as
+>   inverse design). The §6 defect catalogue stays as-engines-land; this builds the carrier + the
+>   pattern + one general propagation flag (+ the bounded atlas illustration), nothing more.
+> - **Surfacing.** Demo (text trail) + banked figure (`docs/figures/steel-heat-state.png`: the
+>   propagation bars + the atlas residual panel) + gallery card (new **"Front-end spine"** section) +
+>   root-README tour row + `steel/README.md` module-map row. **Notebook & app deferred** (same reasoning
+>   as F1 — both surfaces are heat-treatment-framed).
+
 ---
 
 ## 6. Failure propagation — emergent from physics, not scripted RNG
@@ -325,19 +356,21 @@ copied as datasets. No export-control dimension. (Same posture as
 **Build order (when we start):**
 1. **F1 — Ellingham. ✅ BUILT 2026-06-12** (as-built record under §7). Cleanest
    standalone classic; cleared the triad; zero integration risk. The front end's
-   "dramatic early win." **← next: item 2.**
-2. **`heat_state.py` — the `Heat` record + orchestrator seam.** The spine that
-   lets steps compose and failures propagate.
+   "dramatic early win."
+2. **`heat_state.py` — the `Heat` record + orchestrator seam. ✅ BUILT 2026-06-12**
+   (as-built record under §5). The spine that lets steps compose and failures
+   propagate. **← next: item 3 (F4).**
 3. **F4 — casting link.** Reuses the frozen heat engine + existing Scheil; proves
    the chain runs **front-to-back inside steel-sim** before any game scaffolding.
 4. **F2 / F3 — refining + ladle.** Fill in the middle of the chain.
 5. **`game/`.** The loop/economy/UI on a *proven verified spine* — last, by
    design, never first.
 
-**Immediate next step.** ~~Plan only — this document.~~ **F1 (Ellingham) is built**
-(2026-06-12; as-built record under §7). The next slice is **`heat_state.py`** — the
-`Heat` record + thin orchestrator seam (build-order item 2), the spine that lets the
-front-end steps compose and failures propagate.
+**Immediate next step.** ~~Plan only — this document.~~ **F1 (Ellingham) and the
+`heat_state.py` spine are built** (2026-06-12; as-built records under §7 and §5). The
+next slice is **F4 — the casting link** (build-order item 3): reuse the frozen heat
+engine in heat mode + the existing Scheil, proving the chain runs **front-to-back
+inside steel-sim** before any game scaffolding.
 
 ---
 

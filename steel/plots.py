@@ -1944,3 +1944,89 @@ def _ellingham_label(key: str) -> str:
         "Mn->MnO": "MnO", "Cr->Cr2O3": "Cr₂O₃",
     }
     return tags.get(key, key)
+
+
+def heat_state_figure(d):
+    """The F-spine artifact: an upstream alloy mistake *propagates* to a downstream defect.
+
+    ``d`` is a :class:`~steel.demo_heat_state.HeatStateDemo` (already-computed scalars — this layer
+    only draws them, ADR 0002). The spine adds no physics; the figure draws the *propagation*, which
+    is the spine's whole point. Two panels, deliberately separated:
+
+    * **left — the general propagation proof (any composition).** Two 4140 heats take the *same* oil
+      quench through :func:`~steel.heat_state.heat_treat`; only the composition differs (Cr/Mo
+      under-dosed upstream). The core-martensite bars straddle the
+      :data:`~steel.heat_state.MIN_MARTENSITE_SPEC` line: the well-dosed heat clears it (martensitic,
+      hard); the under-dosed heat falls under it → the **soft-core** flag. The failure is not scripted
+      — it is the back-end martensite fraction crossing a spec line, carried on the ``Heat``.
+    * **right — the fixed atlas-steel illustration (a *different* engine, honestly bounded).** The §18
+      residual solve repacked onto an atlas 4340 heat: the surface locks into **tension** → the
+      **quench-crack-risk** flag. Drawn in its own panel and labelled as the fixed-grade stand-in,
+      because the §18 engine is atlas-anchored — the off-spec-composition → crack chain is **deferred**
+      (``steel-making.md`` §6), and this figure must not imply it runs.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_bars, ax_res) = plt.subplots(1, 2, figsize=(13.0, 5.4),
+                                          gridspec_kw={"width_ratios": [1.5, 1.0]})
+
+    # --- left: same quench, composition decides — the soft-core spec line ----- #
+    fracs = [d.well_martensite, d.under_martensite]
+    hvs = [d.well_HV, d.under_HV]
+    labels = ["properly dosed\n(4140: Cr 1.0, Mo 0.2)", "under-dosed\n(Cr 0.1, Mo 0)"]
+    # Pass = martensite blue; fail = the warning red used for the atlas crossover elsewhere.
+    colors = [PHASE_COLORS["martensite"], "#c0392b"]
+    x = np.arange(2)
+    ax_bars.bar(x, fracs, width=0.58, color=colors, edgecolor="0.25", zorder=3)
+    ax_bars.axhline(d.spec, color="0.35", ls="--", lw=1.6, zorder=2)
+    ax_bars.annotate(f"soft-core spec  (≥ {d.spec:.0%} martensite)", (1.0, d.spec),
+                     xycoords=("axes fraction", "data"), ha="right", va="bottom",
+                     fontsize=8.6, color="0.3")
+    for xi, frac, hv in zip(x, fracs, hvs):
+        ax_bars.annotate(f"{frac:.0%}\n{hv:.0f} HV", (xi, frac), textcoords="offset points",
+                         xytext=(0, 5), ha="center", va="bottom", fontsize=10, fontweight="bold",
+                         color="0.15")
+    ax_bars.annotate("SOFT CORE\n(ferrite-dominant)", (1, d.under_martensite),
+                     textcoords="offset points", xytext=(0, 34), ha="center", fontsize=9,
+                     color="#c0392b", fontweight="bold",
+                     bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#c0392b", lw=1.0))
+    ax_bars.set_xticks(x)
+    ax_bars.set_xticklabels(labels, fontsize=9)
+    ax_bars.set_ylabel("core martensite fraction")
+    ax_bars.set_ylim(0.0, 1.12)
+    ax_bars.set_title("Same oil quench, Ø10 mm — the composition decides\n"
+                      "(under-dose Cr/Mo upstream → soft core downstream)", fontsize=10.2)
+    ax_bars.grid(True, axis="y", alpha=0.25)
+
+    # --- right: the atlas residual illustration (a separate engine, bounded) -- #
+    sigma = d.atlas_surface_MPa
+    crack = d.cracked.has_defect("quench-crack-risk")
+    ax_res.bar([0], [sigma], width=0.5, color=("#c0392b" if sigma > 0 else PHASE_COLORS["martensite"]),
+               edgecolor="0.25", zorder=3)
+    ax_res.axhline(0.0, color="0.4", lw=1.2, zorder=2)
+    state = "TENSION → quench-crack-risk" if crack else "compression (safe)"
+    ax_res.annotate(f"{sigma:+.0f} MPa\n{state}", (0, sigma), textcoords="offset points",
+                    xytext=(0, 8 if sigma > 0 else -28), ha="center",
+                    va="bottom" if sigma > 0 else "top", fontsize=9.5, fontweight="bold",
+                    color=("#c0392b" if sigma > 0 else PHASE_COLORS["martensite"]))
+    ax_res.set_xticks([0])
+    ax_res.set_xticklabels(["4340, 50 mm,\nwater quench"], fontsize=9)
+    ax_res.set_ylabel("surface residual stress  (MPa, tensile +)")
+    ax_res.set_xlim(-0.7, 0.7)
+    # Headroom above the bar so the annotation clears the panel title (works either sign).
+    lo, hi = min(0.0, sigma * 1.3), max(0.0, sigma * 1.5)
+    if hi - lo < 80.0:
+        hi = lo + 80.0
+    ax_res.set_ylim(lo, hi)
+    ax_res.set_title("Fixed atlas-steel illustration (§18)\n— the same seam, a second engine",
+                     fontsize=10.2)
+    ax_res.grid(True, axis="y", alpha=0.25)
+    ax_res.annotate("atlas-anchored to a *grade*, not a composition:\n"
+                    "the off-spec → crack chain is deferred (§6)",
+                    (0.5, 0.02), xycoords="axes fraction", ha="center", va="bottom",
+                    fontsize=7.4, color="0.45", style="italic")
+
+    fig.suptitle("Front-end spine — the Heat carries an upstream mistake into a downstream defect",
+                 fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.86, bottom=0.13, wspace=0.26)
+    return fig

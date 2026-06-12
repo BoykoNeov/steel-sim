@@ -180,6 +180,15 @@ CATALOG: tuple[Entry, ...] = (
         "ironmaking begins — and the oxygen-potential ladder shows why Al and Ca deoxidize a "
         "steel bath that Fe, Mn, Si cannot.",
     ),
+    Entry(
+        "Front-end spine", "demo_heat_state", "steel-heat-state.png",
+        "Failure propagation — a mistake travels down the chain",
+        "The spine that lets steps compose: a Heat record threads through the back end, and an "
+        "upstream alloy mistake (under-dosed Cr/Mo) propagates into a downstream defect — the same "
+        "oil quench that through-hardens a proper 4140 leaves a soft, ferrite-dominant core, "
+        "flagged on the Heat. Not a scripted failure — the back-end martensite fraction crossing a "
+        "spec line.",
+    ),
 )
 
 
