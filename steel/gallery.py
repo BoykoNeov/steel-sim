@@ -135,6 +135,13 @@ CATALOG: tuple[Entry, ...] = (
         "cool — the negative-result companion to the unified model.",
     ),
     Entry(
+        "Validation", "demo_cct_validation", "steel-cct-validation.png",
+        "Cross-composition bainite wall, measured",
+        "Does any cited composition factor predict bainite kinetics *across* steels? Eight atlas "
+        "steels say no — the per-steel-only wall, measured and quantified (not just asserted), and "
+        "the alloy-vs-carbon diagnosis behind it.",
+    ),
+    Entry(
         "Stress", "demo_residual", "steel-residual-stress.png",
         "Residual stress & distortion",
         "The residual stress and distortion a quench locks into a section — the "

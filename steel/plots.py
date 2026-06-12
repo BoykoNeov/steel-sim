@@ -1743,3 +1743,92 @@ def residual_stress_figure(on, off, marte):
     )
     fig.subplots_adjust(left=0.07, right=0.985, top=0.88, bottom=0.12, wspace=0.06)
     return fig
+
+
+def cct_validation_figure(d):
+    """The §20 artifact: cross-composition bainite validation vs the IT atlas, in two panels.
+
+    ``d`` is a :class:`~steel.demo_cct_validation.CctValidationDemo` (validated arrays only — this
+    layer draws, ADR 0002). Each cited factor is drawn in **its own reaction's colour** (bainite
+    green ``BC``, ferrite tan ``FC``, pearlite orange ``PC``) — the mnemonic that the alloy-weighted
+    diffusional factors order bainite better than bainite's own carbon-dominated one.
+
+    * **left — predicted vs measured 50 %-time (log-log):** the magnitude story. ``FC`` hugs the
+      ±factor-2 band (the read uncertainty); the carbon-dominated ``BC`` sits low (predicts too fast)
+      and inverts 1080; ``PC`` ranks but sits high. The dashed 1:1 line + shaded band is the target.
+    * **right — the scorecard + verdict:** Spearman rank skill per factor (``BC`` ≈ 0, the wall), the
+      out-of-sample refit lift (arrow), and the bias-immune cited-anchor headline — none wins both,
+      so per-steel anchoring stands.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_sc, ax_bar) = plt.subplots(1, 2, figsize=(13.5, 5.6))
+    factor_color = {"bainite": PHASE_COLORS["bainite"], "ferrite": "#c79a4a",
+                    "pearlite": PHASE_COLORS["pearlite"]}
+    factor_label = {"bainite": "BC  (bainite, cited)", "ferrite": "FC  (ferrite, cited)",
+                    "pearlite": "PC  (pearlite, cited)"}
+
+    # --- left: predicted vs measured t50 @ 700 °F (log-log) ------------------- #
+    lo, hi = 30.0, 3e5
+    ax_sc.fill_between([lo, hi], [lo / 2, hi / 2], [lo * 2, hi * 2], color="0.85", alpha=0.6,
+                       zorder=0, label="±factor-2 (read uncertainty)")
+    ax_sc.plot([lo, hi], [lo, hi], color="0.4", ls="--", lw=1.2, zorder=1, label="perfect (1:1)")
+    for which in ("ferrite", "pearlite", "bainite"):
+        g = d.grades[which]
+        pred = np.array([g.predicted[n] for n in d.names])
+        inrange = (pred >= lo) & (pred <= hi)
+        ax_sc.scatter(d.measured[inrange], pred[inrange], s=46, color=factor_color[which],
+                      edgecolor="0.2", lw=0.5, zorder=3,
+                      label=f"{factor_label[which]}  (ρ={g.spearman:.2f})")
+        # points below the frame (BC predicts ×10–40 too fast) — mark at the floor as ▽
+        below = pred < lo
+        if below.any():
+            ax_sc.scatter(d.measured[below], np.full(below.sum(), lo * 1.03), s=44,
+                          marker="v", color=factor_color[which], edgecolor="0.2", lw=0.5, zorder=3)
+    # name the two cited anchors (the bias-immune pair)
+    for i, n in enumerate(d.names):
+        if d.cited_mask[i]:
+            ax_sc.annotate(n, (d.measured[i], d.grades["ferrite"].predicted[n]),
+                           textcoords="offset points", xytext=(6, -10), fontsize=8.5, color="0.2")
+    ax_sc.set_xscale("log"); ax_sc.set_yscale("log")
+    ax_sc.set_xlim(lo, hi); ax_sc.set_ylim(lo, hi)
+    ax_sc.set_xlabel("measured bainite t₅₀ @ 700 °F  (s, atlas)")
+    ax_sc.set_ylabel("predicted t₅₀  (s, anchored on 1080)")
+    ax_sc.set_title("anchored on 1080: FC tracks the band, BC predicts too fast (inverts 1080)",
+                    fontsize=10.0)
+    ax_sc.legend(loc="upper left", fontsize=7.8, framealpha=0.92)
+
+    # --- right: Spearman scorecard + refit lift + cited-anchor headline -------- #
+    order = ["bainite", "ferrite", "pearlite"]
+    xs = np.arange(len(order))
+    rhos = [d.grades[w].spearman for w in order]
+    ax_bar.bar(xs, rhos, color=[factor_color[w] for w in order], edgecolor="0.2", width=0.6, zorder=3)
+    ax_bar.axhline(0.0, color="0.3", lw=1.0)
+    for x, w in zip(xs, order):
+        g = d.grades[w]
+        ax_bar.annotate(f"×{10 ** g.log_resid_spread:.1f}\nspread", (x, max(g.spearman, 0) + 0.03),
+                        ha="center", va="bottom", fontsize=8, color="0.3")
+    # the out-of-sample refit lift on BC (bainite bar)
+    h = d.holdout
+    ax_bar.annotate("", xy=(0.0, h.test_spearman_refit), xytext=(0.0, h.test_spearman_bc),
+                    arrowprops=dict(arrowstyle="->", color="#c0392b", lw=1.8), zorder=5)
+    ax_bar.annotate(f"1-knob refit\n(λ→0): TEST\nρ {h.test_spearman_bc:.1f}→{h.test_spearman_refit:.1f}",
+                    (0.0, h.test_spearman_refit), textcoords="offset points", xytext=(10, -2),
+                    fontsize=7.6, color="#c0392b", va="center")
+    ax_bar.set_xticks(xs)
+    ax_bar.set_xticklabels(["BC\n(bainite)", "FC\n(ferrite)", "PC\n(pearlite)"], fontsize=9)
+    ax_bar.set_ylabel("cross-steel rank skill  (Spearman ρ)")
+    ax_bar.set_ylim(-0.15, 1.05)
+    ax_bar.set_title("none wins both → per-steel anchoring vindicated", fontsize=10.5)
+    w = d.wall
+    ax_bar.annotate(
+        f"headline (2 cited anchors only):\ncited BC inverts 1080↔4340 by ×{w.miss:.0f}\n"
+        f"(reproduces austemper's scale gap)",
+        (0.97, 0.04), xycoords="axes fraction", ha="right", va="bottom", fontsize=8,
+        bbox=dict(boxstyle="round,pad=0.4", fc="#fbeee6", ec="#c0392b", alpha=0.9))
+
+    fig.suptitle("§20 — cross-composition bainite kinetics vs the US Steel IT atlas: "
+                 "the wall measured on 8 steels, per-steel anchoring strengthened",
+                 fontsize=11.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.985, top=0.9, bottom=0.12, wspace=0.2)
+    return fig

@@ -2071,3 +2071,72 @@ benchmarks (four-curves, 1045/4140 Jominy) **byte-identical**; README (intro + m
 `[[unified-kv-rebuild]]` added; commit + push. **The §11 menu is now empty** — grain (§5✓), residual-stress
 (§18✓), inverse-design (§7✓), and the unified-KV rebuild (§19✓) are all built; the named deepenings are
 spent.
+
+---
+
+## 20 — Cross-composition bainite validation: the "per-steel only" wall, measured on 8 steels (BUILT ✓ 2026-06-12)
+
+**Not a new demonstrator — a validation-hardening pass on the project's own named edge.** Every recent
+phase (§17/§18/§19) closes with the same caveat: bainite kinetics are **per-steel only** (the "8620 wall"),
+established as a *two-steel* negative by the austempering probe ([[bainite-anchoring-probe]]: 1080 vs 4340).
+The direction (user) was the most in-character validation-first move available — **widen that to N steels
+and actively attempt to break the wall** — using the **same already-cited public-domain source** (US Steel
+1951 IT atlas, archive.org `atlas_of_isothermal_transformation_diagrams`; zero new provenance risk) rather
+than chasing a copyrighted measured-CCT atlas (the *other* named gap, deliberately left where §19 put it —
+isothermal anchors do not benchmark a CCT bay).
+
+**The extraction probe decided the branch (advisor: feasibility is the binding constraint).** 8620 *is* in
+the atlas (p.113, composition matching the registry) and reads calibrated against the **known** 4340 anchor
+(t50 @ 700 °F = 391 s, reproduced to ~factor-1.3 off native-resolution IIIF crops) → **factor-2 reads, fine
+for ranking, marginal for magnitude.** Eight steels with a bainite bay separable at 700 °F (`Mₛ < 371.1 °C
+< Bs`, all verified) span carbon 0.36→0.79 and alloy plain→Ni 1.8: 1080, 4340 (the two cited anchors,
+verbatim) + 4360, 8660, 4150, 4640, 6150, 6145 (six new ~factor-2 reads of the faint 50 %-line).
+
+**The harness (`steel/cct_validation.py`, no engine touch).** The observable is the bainite **50 %-time at
+700 °F** (commensurable with the existing anchors). The model-faithful prediction anchors the rate on ONE
+steel and predicts the rest via the real `BainiteReaction.rate` — carrying the per-steel grain `2^(0.41·G)`
+and ceiling `(Bs − T)` (both cross-steel confounds the advisor flagged, both folded in) — **swapping only
+the composition factor** (`BC`→`PC`→`FC`): a controlled experiment, same undercooling shape, different
+composition weighting.
+
+**The result (`test_cct_validation.py` 9 + `test_demo_cct_validation.py` 2).**
+* **The headline is bias-immune — two CITED anchors only.** Anchored on 1080, cited `BC` predicts 4340
+  *faster* than 1080; the atlas measures it ×5.5 *slower* → ratio missed **×41, sign-inverted** — and that
+  ×41 *reproduces* austemper's independently-derived 1080/4340 scale gap (the harness checks out). No
+  factor-2 read is needed for the wall to be real.
+* **Quantified across 8 (the reads corroborate, they don't carry).** Cited `BC` ranks the measured 50 %-line
+  at Spearman ρ ≈ 0.1 — no cross-steel order skill; its carbon coefficient (10.18) dwarfs its alloy
+  coefficients, so it calls plain-carbon 1080 (the **fastest** measured) the most retarded. The six new reads
+  were taken **hypothesis-aware** at ~factor-2 (confirmation-bias exposure, named; 4640 most marginal, not
+  rested on).
+* **No single cited factor combines ranking with magnitude → per-steel anchoring vindicated** (both metrics
+  **anchor-invariant** — a hostile-reviewer fix: a single anchor only shifts every log-residual by a
+  constant, so it can't change the order or the spread; an anchor-referenced "median miss" *flips* which
+  factor looks best on re-anchoring and was dropped). On rank skill: `PC` 0.81 > `FC` 0.48 > `BC` 0.10. On
+  magnitude spread (std of log-residual): `FC` ~×3.1 tightest, `BC` ~×4.6 (small only because `BC` is nearly
+  *flat* — the no-skill mode), `PC` ~×6.7 widest. So `PC` ranks best but scatters widest, `FC` is most
+  balanced (still ρ ≈ 0.48 / ~×3), none is both. Mechanistic finding: **bainite retardation is alloy-driven**,
+  which `BC` under-weights vs carbon. (Spotlighting `PC` as "the winner" on rank alone = a metric cherry-pick.)
+* **The one-knob refit is a diagnosis, not a law.** Fit a SINGLE parameter (carbon weight λ) on a train
+  split, predict a disjoint split (the minimal-DOF bound — a 5-coefficient fit on 8 factor-2 points memorises
+  noise): λ→floor (carbon removed) lifts TEST ρ 0.4→0.8, and a decomposition shows the gain is carried by the
+  residual **cited alloy** coefficients (alloy-only ρ ≈ 0.67 ≫ Bs+grain-only ρ ≈ 0.26), not the confounds.
+  Reported as a diagnosis (carbon/alloy under-identified — 1080 the lone no-alloy steel; `Bs` absorbs some
+  carbon), grafted into **nothing**.
+
+**Decision: per-steel anchoring stays; the refit is a diagnosis (ADR 0005).** The user direction was "attempt
+the refit"; the attempt was made and the honest verdict — no cited single factor predicts cross-steel bainite
+magnitude better than ~×3 on this evidence — is recorded in `docs/decisions/0005`. The wall is **measured and
+explained**, not broken; this *strengthens* the per-steel discipline (it is principled, not a shortcut).
+
+**Surfaces.** `cct_validation.py` (the study), `demo_cct_validation.py` + `plots.cct_validation_figure` →
+banked `docs/figures/steel-cct-validation.png` (left: predicted-vs-measured magnitude with the ±factor-2
+band, `BC` falling off the bottom; right: the rank-skill scorecard + refit lift + the cited-anchor headline),
+gallery entry ("Validation" topic) + README guided-tour row + memory `[[cross-composition-validation]]`.
+
+**Named edges.** (1) The atlas is **isothermal** — this validates cross-*composition* kinetics, NOT a
+measured-CCT bay (the §19 gap is untouched). (2) Six reads are **~factor-2 and hypothesis-aware** — claims are
+ranking + order-of-magnitude, never number-matching; the headline rests on the two cited anchors. (3) The
+carbon/alloy axis is **under-identified** (low-carbon grades excluded by `Mₛ > 700 °F`). (4) **No engine
+touch** — `kinetics`/`austemper`/`unified_kv`/`pathint` byte-identical; the study only *reads* the cited
+factors.

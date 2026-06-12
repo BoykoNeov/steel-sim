@@ -100,6 +100,7 @@ the notebook (§) and the app.
 | **Process routes** | `demo_martemper` | — | Martempering: the same hardness as a direct quench, far less distortion. |
 | **Process routes** | `demo_unified_kv` | notebook §6b · app §6b | The bainite bay *opened* in continuous cooling — three competing reactions raced on one austenite pool. |
 | **Process routes** | `demo_bainite` | — | The cited bainite reaction, and why its bay can't form in a plain continuous cool (the negative-result companion). |
+| **Validation** | `demo_cct_validation` | — | Does any cited composition factor predict bainite kinetics *across* steels? Eight atlas steels say no — the per-steel-only wall, measured and quantified. |
 | **Stress** | `demo_residual` | — | The residual stress and distortion a quench locks into a section (the solid-mechanics axis). |
 | **Case hardening** | `demo_carburize` | — | A carburized gear tooth: carbon diffused in at the surface, case hardness out. |
 | **Inverse design** | `demo_design` | notebook §7 · app §7 | Name a target hardness, get a feasible recipe (grade + quench + temper). |
