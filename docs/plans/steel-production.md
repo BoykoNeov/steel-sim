@@ -1874,3 +1874,103 @@ nose-missing quench (a real water quench may clip a little nose).
 benchmarks byte-identical; README (load pointer + module map + a Phase-6e section) and memory
 `[[martemper]]` added; commit + push. The remaining §11 menu is now just residual-stress/distortion
 (the solid-mechanics Option-#2) and the unified-KV rebuild (the 6b deepening) — both `[available]`.
+
+---
+
+## 18. Residual stress & distortion on quench — the solid-mechanics axis (BUILT ✓ 2026-06-12)
+
+The **§11 Option-#2** axis, the biggest genuinely-new modelling left and the first to introduce **solid
+mechanics**. Every phase before this answered *what the steel becomes*; this answers *what the quench
+does to the part* — the **residual stress** locked into a section, and the quench-crack / distortion
+verdict that follows. It makes the §17 martempering distortion story **quantitative in stress** instead
+of the thermal-gradient proxy it shipped as. `steel/residual.py`, reusing the §17 planar-slab thermal
+field on the **frozen heat engine** (no engine touch).
+
+**The fork that defined it (advisor, the crux — not a close call).** The instinct was a pure-elastic
+eigenstrain misfit (thermal + transformation dilatation → a stress profile). The advisor disqualified it:
+pure-elastic gives **zero** residual on a through-hardened part (uniform final eigenstrain → σ=0), which
+**inverts the headline risk ranking** — it would call the deep through-hardening quench (the *most*
+crack-prone) the safest. Residual stress is **path-dependent**: it is locked in by *plastic yielding while
+the steel is hot and soft*, and *which* fibres yield while soft is the whole mechanism — so an
+elastic+yield-clip middle path fails too. The model is therefore **incremental elastic–perfectly-plastic
+with temperature-dependent yield**, marched step-by-step over the quench. (This is the genuine "solid
+mechanics" the §11 menu named — not an elastic calculation.)
+
+**The mechanical model (1-D plate, equibiaxial, perfectly plastic).** A planar slab cooled symmetrically
+— exactly `martemper.slab_thermal_history`'s geometry (advisor's geometry steer: the Jominy bar is an
+axial *fin* with lateral loss, awkward for plate mechanics; the slab maps **exactly** onto the
+equibiaxial plate, and gives the direct-vs-martemper comparison for free). For an infinite plate with
+traction-free faces the through-thickness stress is zero, the in-plane stress is **equibiaxial**
+`σ = σ_yy = σ_zz`, every fibre shares one membrane strain `ε*` (the plate stays flat; symmetric ⇒ no
+bending), and equilibrium is the single condition **∫σ dx = 0**. Each step is a standard **return-map**:
+form the elastic-trial stress `σ = E(T)/(1−ν)·(ε* − ε_free − ε_pl)`, clip to `±σ_Y(T)` (von Mises for
+equibiaxial is `|σ| ≤ σ_Y`, the clipped excess → plastic strain), and bisect `ε*` for `∫σ dx = 0` (the
+clipped stress is monotone in `ε*`). The eigenstrain `ε_free` is **thermal contraction** `α·(T−T_ref)`
+plus the **Koistinen–Marburger martensite dilatation** `ε_tr·f_M` (`f_M` from the running-min
+undercooling per cell). The residual is the stress at the final uniform-T state — non-zero because the
+locked-in **plastic strain** is non-uniform, and self-equilibrated (`∫σ dx = 0`) by construction.
+
+**Cited vs representative (no number fitted to a stress measurement, like §14/§16/§17).** CITED — the
+martensite/austenite **lattice parameters** (Roberts / Kurdjumov–Lyssak) that set the transformation
+dilatation `ε_tr = ⅓·ΔV/V` (~0.9–1.3 % for the anchored steels); the **Eurocode 3** elevated-temperature
+reduction factors for `E(T)` and `σ_Y(T)` (the standard cited elevated-T property curves); Andrews `Mₛ`,
+Koistinen–Marburger and the frozen solver (inherited). REPRESENTATIVE — `ν = 0.30`, `E₂₀ = 210 GPa`, the
+yield base `σ_Y,20 = 400 MPa`, the mean `α = 1.5e-5` (same status as `ρ, c_p, k`). NOT FITTED — the
+**absolute** magnitude scales with `σ_Y,20`/`α`/the dilatation; the **teeth are structural** (signs,
+equilibrium, ratios), independent of the exact values — "read the shape, not the absolute number".
+
+**The teeth (the advisor's "verify both signs before declaring" — done before any test was written).**
+* **Sign reversal (headline).** Thermal contraction alone → surface **compression** (the hot core yields,
+  then the equalising part pulls the surface in); the martensite dilatation **flips it to tension** (the
+  surface transforms first and is then stretched by the late-expanding core) — the quench-crack-prone
+  state. Shown with the **transformation ON vs OFF** toggle on the same steel (advisor: both anchored
+  atlas steels are through-hardeners, so neither gives surface *compression* with transformation — the
+  thermal-only run is the reference that exhibits the other sign). 4340, 50 mm plate, still water:
+  **OFF −141 MPa (compression) → ON +386 MPa (tension)**; core −391 MPa (balances the surface).
+* **The severity gate (a real physical finding from the probe).** A *mild* quench leaves **no** residual
+  — the gradient must be severe enough (Biot ≳ 1) to **plastically yield the hot core**; a 20 mm/`H_WATER`
+  section (Biot ≈ 0.5) deforms nothing. So the thermal-compression sign only appears once the quench
+  actually yields the steel (physically correct, and why 4340 in a 50 mm plate is the demo).
+* **Self-equilibrium (conservation).** `∫σ dx = 0` to ~1e-8 Pa (machine precision) — the free
+  conservation leg, the residual-stress analogue of Jominy's energy balance.
+* **Magnitude order.** Peak `|σ|` ≈ 396 MPa, of order the 400 MPa yield base (a severe quench reaches
+  yield-level residuals) — the only magnitude claim made.
+* **Martemper < direct quench (the §17 tie-in, now in stress).** Direct +386 MPa surface tension →
+  martemper ≈ 0 (the near-uniform slow cool through `Mₛ` transforms the section almost in step). The
+  stress-quantitative statement of §17's distortion proxy. (Near-*complete* removal because the
+  thermally-thin air-cool is near-uniform and TRIP is unmodelled — an idealised best case, named.)
+  **Resolution-converged** (advisor check — the martemper run marches a ~10-h air cool, so a coarse
+  linspace grid could *starve* the early bath-quench transient and report a spurious zero): ≈ 0 holds
+  across `n_t` 4000→16000→**64000** (where the bath quench is resolved by ~340 steps), with
+  transformation **off** too — so the elimination is physical (martempering replaces the deep-cooling-
+  under-gradient phase, which builds the *direct* quench's thermal residual, with a uniform slow cool),
+  not an artifact. Pinned by `test_martemper_near_zero_is_resolution_converged`.
+
+**Named scope edges (each a real limit).** (1) **No transformation plasticity (TRIP / Greenwood–Johnson)**
+— the dominant *secondary* mechanism (Leblond), a whole second model; would raise the locked-in stresses,
+not change the signs/rankings — the **#1 deferred refinement**. (2) **Through-hardening (martensitic)
+only** — every cell is taken to martensite by KM; the hardenability-limited case (a slow core forming
+pearlite/bainite with a *different*, smaller dilatation) is not modelled (so the route comparison is
+honest: both routes through-harden, the difference is *timing*). (3) **One-way coupling, no latent-heat
+feedback** on the frozen thermal solve. (4) **Single, non-phase-split `σ_Y(T)`** (the harder martensite
+is not given a separate high yield) — caps the surface tension at `σ_Y,20`. (5) **Absolute magnitude is
+property-sensitive** — the named fitting trap (a specific published stress *profile* is geometry/HTC-
+specific) is avoided by targeting signs/rankings/orders, not the MPa.
+
+**Triad (structural teeth + conservation + consistency — no new calibrated number, like §14/§16/§17).**
+`test_residual.py` (16) + `test_demo_residual.py` (2): the surface-sign reversal (OFF compression / ON
+tension, the headline) and its core-compression complement; self-equilibrium to machine precision (both
+ON and OFF); peak `|σ|` of yield order and the perfectly-plastic cap; martemper ≪ direct surface tension
+**and its resolution-converged near-zero**; the cited-property monotonicities (`E(T)`, `σ_Y(T)` decreasing)
+and the dilatation carbon trend; the resolution-robustness of the direct teeth; and the input guards
+(atlas steel, `route`). New surfaces: `residual`,
+`demo_residual`, `plots.residual_stress_figure` + the banked
+`docs/figures/steel-residual-stress.png` (two panels — the sign reversal, and direct-vs-martemper).
+
+**Close-out.** Suite **465 green** (+2 env-skips; 467 collected); **no ADR** (no engine touch — the frozen
+heat solver is *reused* via `martemper.slab_thermal_history`, not modified; no new scope ceiling beyond the
+named edges);
+`engines/diffusion`, `martemper`/`austemper`/`pathint`/`properties` and all frozen benchmarks byte-
+identical (the module only *imports* them); README (intro + module map) and memory `[[residual-stress]]`
+added; commit + push. The remaining §11 menu is now just the unified-KV-pearlite rebuild (the 6b
+deepening, `[available]`) — the residual-stress / distortion axis is **built**.

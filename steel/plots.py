@@ -1563,3 +1563,86 @@ def martemper_distortion_figure(dc):
     )
     fig.subplots_adjust(left=0.06, right=0.985, top=0.88, bottom=0.12, wspace=0.06)
     return fig
+
+
+# Residual-stress sign palette: tension (crack-prone) warm, compression (benign) cool.
+TENSION_COLOR = "#c0392b"        # red — surface tension (the quench-crack driver)
+COMPRESSION_COLOR = "#2471a3"    # blue — surface compression (benign / beneficial)
+
+
+def residual_stress_figure(on, off, marte):
+    """The Phase-6f artifact: the residual-stress profile a quench locks into a plate.
+
+    Three already-computed :class:`~steel.residual.ResidualStressField` solves on the *same* slab
+    (this layer only draws them, ADR 0002): ``on`` = direct quench with the transformation active,
+    ``off`` = the same quench with transformation suppressed (thermal-only), ``marte`` = the martemper
+    route. The depth axis runs **centre → surface** (0 to the half-thickness); the residual stress is
+    plotted signed (tension +, compression −) with the zero line marked.
+
+    * **left — the sign reversal (the headline tooth).** Thermal contraction alone leaves the surface
+      in **compression** (the hot core yields, then the equalising part pulls the surface in); the
+      martensite **dilatation flips it to tension** — the surface transforms first and is then stretched
+      by the late-expanding core. The same steel and quench, opposite surface signs: the mechanism that
+      makes a through-hardening quench crack-prone, and why a pure-elastic model (which gives *zero*
+      residual on a through-hardened part) was rejected.
+    * **right — the martemper benefit (the §17 tie-in, now in stress).** The direct quench's surface
+      tension vs the martemper's: the near-uniform slow cool through ``Mₛ`` collapses it — the
+      stress-quantitative statement of §17's distortion proxy. The reduction is near-complete in this
+      idealised (thermally-thin slow cool, no transformation plasticity) model — a best case.
+
+    The magnitude is property-sensitive (it scales with the representative yield base); the **teeth are
+    the signs, the self-equilibrium, and the route ratio**, not the absolute MPa (ADR 0002 — the render
+    layer draws validated numbers; the triad tests carry the validity).
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_sign, ax_route) = plt.subplots(1, 2, figsize=(14.5, 5.6), sharey=True)
+    depth_mm = on.x * 1000.0
+
+    def _profile(ax, field, color, label, ls="-"):
+        ax.plot(depth_mm, field.sigma_MPa(), ls, color=color, lw=2.4, label=label)
+        ax.plot([depth_mm[-1]], [field.surface_MPa], "o", color=color, ms=7, zorder=6)
+
+    for ax in (ax_sign, ax_route):
+        ax.axhline(0.0, color="0.45", ls=":", lw=1.2)
+        ax.set_xlabel("depth from centreline  (mm)   →  surface")
+
+    # -- left: the sign reversal (transformation ON vs OFF) ----------------------- #
+    _profile(ax_sign, off, COMPRESSION_COLOR, "thermal only (transformation OFF)", ls="--")
+    _profile(ax_sign, on, TENSION_COLOR, "with transformation (ON)")
+    ax_sign.set_ylabel("residual stress  (MPa)     tension +  /  compression −")
+    ax_sign.annotate(f"surface TENSION\n{on.surface_MPa:+.0f} MPa  (crack-prone)",
+                     (depth_mm[-1], on.surface_MPa), textcoords="offset points",
+                     xytext=(-8, -4), ha="right", va="top", fontsize=8.6,
+                     color=TENSION_COLOR, fontweight="bold")
+    ax_sign.annotate(f"surface compression\n{off.surface_MPa:+.0f} MPa  (benign)",
+                     (depth_mm[-1], off.surface_MPa), textcoords="offset points",
+                     xytext=(-8, 6), ha="right", va="bottom", fontsize=8.6,
+                     color=COMPRESSION_COLOR)
+    ax_sign.set_title("the transformation flips the surface sign: compression → tension",
+                      fontsize=10.5)
+    ax_sign.legend(loc="upper left", fontsize=8.5, framealpha=0.9)
+
+    # -- right: direct quench vs martemper (the stress benefit) ------------------- #
+    _profile(ax_route, on, TENSION_COLOR, "direct quench")
+    _profile(ax_route, marte, MEDIUM_COLORS["oil"], "martemper", ls="-.")
+    ax_route.annotate(f"direct: {on.surface_MPa:+.0f} MPa",
+                      (depth_mm[-1], on.surface_MPa), textcoords="offset points",
+                      xytext=(-8, -4), ha="right", va="top", fontsize=8.6,
+                      color=TENSION_COLOR, fontweight="bold")
+    ax_route.annotate(f"martemper: {marte.surface_MPa:+.0f} MPa",
+                      (depth_mm[-1], marte.surface_MPa), textcoords="offset points",
+                      xytext=(-8, 10), ha="right", va="bottom", fontsize=8.6,
+                      color=MEDIUM_COLORS["oil"])
+    ax_route.set_title("martempering collapses the surface tension (the distortion benefit, in stress)",
+                       fontsize=10.5)
+    ax_route.legend(loc="upper left", fontsize=8.5, framealpha=0.9)
+
+    plate_mm = 2_000.0 * on.half_thickness
+    fig.suptitle(
+        f"Phase 6f — residual stress on quench, {on.steel} ({plate_mm:.0f} mm plate): "
+        f"transformation → surface tension; martempering removes it",
+        fontsize=11.0, fontweight="bold",
+    )
+    fig.subplots_adjust(left=0.07, right=0.985, top=0.88, bottom=0.12, wspace=0.06)
+    return fig
