@@ -172,6 +172,14 @@ CATALOG: tuple[Entry, ...] = (
         "Real CALPHAD thermodynamics against the parametrised Fe-C diagram the rest of the sim "
         "uses (needs the optional `.[calphad]` extra).",
     ),
+    Entry(
+        "Ironmaking (front-end)", "demo_reduction", "steel-ellingham.png",
+        "Ellingham diagram — ore → iron",
+        "The front end begins: which reductant pulls the oxygen off which oxide, above which "
+        "temperature. The carbon→CO line dives under the iron-oxide lines at ~750 °C — where "
+        "ironmaking begins — and the oxygen-potential ladder shows why Al and Ca deoxidize a "
+        "steel bath that Fe, Mn, Si cannot.",
+    ),
 )
 
 

@@ -105,6 +105,7 @@ the notebook (§) and the app.
 | **Case hardening** | `demo_carburize` | notebook §8 · app *carburizing* | A carburized gear tooth: carbon diffused in at the surface, case hardness out. |
 | **Inverse design** | `demo_design` | notebook §7 · app §7 | Name a target hardness, get a feasible recipe (grade + quench + temper). |
 | **Equilibrium** | `demo_calphad` | — | Real CALPHAD thermodynamics vs the parametrised Fe-C diagram (needs the `.[calphad]` extra). |
+| **Ironmaking** (front-end) | `demo_reduction` | — | The Ellingham diagram: which reductant reduces which oxide, above which temperature — the front-end "ore → iron" first slice (F1). |
 
 **Suggested first pass:** `demo_four_curves` → `demo_jominy` → `demo_sweep` →
 `demo_tempered_jominy`, then branch by interest. Or just open the notebook and read it top to

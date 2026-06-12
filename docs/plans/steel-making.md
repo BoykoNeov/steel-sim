@@ -175,6 +175,33 @@ artifact, and the cleanest possible triad clear.
 - **Banked artifact.** An Ellingham diagram with the *reduction window*
   highlighted — which reductant reduces which oxide above which temperature.
 
+> **As built — 2026-06-12.** `steel/reduction.py` (+ `demo_reduction.py`,
+> `plots.ellingham_figure`, `tests/test_reduction.py` 17 + `test_demo_reduction.py` 3;
+> fast lane 526 → **546 green**). Standalone — touches no engine and no back-end module;
+> no ADR (this plan is the record). The build, vs the plan:
+> - **Physics.** Per-species standard ΔHf,298 / S°298 (Fe, FeO, Fe₃O₄, Fe₂O₃, C(gr), CO,
+>   CO₂, H₂, H₂O(g), + Al/Si/Mn/Cr/Ca oxides for the hierarchy) → reaction ΔG°(T) =
+>   ΔH° − T·ΔS° **per mole O₂**. The crossover-driving values were **verified against
+>   NIST/CODATA before pinning** (the `di-crosscheck-source` discipline — the crossover is a
+>   ratio of differences of large numbers, hypersensitive). **No fitted constant.**
+> - **Triad — what cleared, honestly.** *Teeth* (un-tuned data, could have missed): the
+>   carbon/wüstite crossover lands **746 °C** (window 650–800; wüstite non-stoichiometry
+>   would slide it to ~710), the Fe₂O₃→Fe₃O₄→FeO→Fe stack orders right (the stepwise
+>   inter-oxide reactions), the Ca<Al<Si<Mn<Cr<Fe hierarchy orders right, and the linear
+>   model hits the famous JANAF ΔfG°(CO,1000 K) ≈ −200 kJ/mol anchor to <1 kJ (bounds the
+>   omitted-kink error). *By construction* (not teeth): element/O balance, the ΔG°(298)≡ΔH−298ΔS
+>   identity, Hess path-independence.
+> - **Scope ceiling (named).** Straight lines, **ΔCp ≈ 0** — melting/boiling kinks omitted;
+>   the reduction sequence is the high-T one (wüstite disproportionates below ≈ 570 °C, not
+>   encoded); wüstite is non-stoichiometric (ΔHf −266…−272 kJ/mol — why the window is generous).
+> - **Surfacing.** Demo + banked figure (`docs/figures/steel-ellingham.png`) + gallery card
+>   (new "Ironmaking" section) + README tour row. **Notebook & app deferred** (both are
+>   heat-treatment-framed; an ironmaking section is a narrative call for when there's >1
+>   front-end phase to anchor it — advisor).
+> - **pO₂ in, nomographic scales out** (the CO/CO₂ & H₂/H₂O margin nomographs are a viz
+>   flourish, deferred). The equilibrium oxygen potential `equilibrium_oxygen_pressure` *is*
+>   built — the bridge to F2.
+
 ### F2 — Primary refining (BOF/EAF): decarburize, deoxidize, partition, degas
 Carbon–oxygen equilibrium for decarburization (C + ½O₂ → CO); deoxidation of
 killed steel (equilibrium [Al]·[O], [Si]·[O] products); desulfurization /
@@ -296,8 +323,9 @@ copied as datasets. No export-control dimension. (Same posture as
 ## 13. Sequencing & immediate next step
 
 **Build order (when we start):**
-1. **F1 — Ellingham.** Cleanest standalone classic; clears the triad trivially;
-   zero integration risk. The front end's "dramatic early win."
+1. **F1 — Ellingham. ✅ BUILT 2026-06-12** (as-built record under §7). Cleanest
+   standalone classic; cleared the triad; zero integration risk. The front end's
+   "dramatic early win." **← next: item 2.**
 2. **`heat_state.py` — the `Heat` record + orchestrator seam.** The spine that
    lets steps compose and failures propagate.
 3. **F4 — casting link.** Reuses the frozen heat engine + existing Scheil; proves
@@ -306,8 +334,10 @@ copied as datasets. No export-control dimension. (Same posture as
 5. **`game/`.** The loop/economy/UI on a *proven verified spine* — last, by
    design, never first.
 
-**Immediate next step (this session): plan only — this document. No code.** The
-recommended first build slice, on the user's go, is **F1 (Ellingham)**.
+**Immediate next step.** ~~Plan only — this document.~~ **F1 (Ellingham) is built**
+(2026-06-12; as-built record under §7). The next slice is **`heat_state.py`** — the
+`Heat` record + thin orchestrator seam (build-order item 2), the spine that lets the
+front-end steps compose and failures propagate.
 
 ---
 

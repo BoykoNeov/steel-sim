@@ -1832,3 +1832,115 @@ def cct_validation_figure(d):
                  fontsize=11.0, fontweight="bold")
     fig.subplots_adjust(left=0.07, right=0.985, top=0.9, bottom=0.12, wspace=0.2)
     return fig
+
+
+# Colour families for the Ellingham diagram (F1). Reductants warm/bold, iron-oxide chain a brown
+# ladder, reference alloy/slag oxides muted grey-blues.
+ELLINGHAM_COLORS = {
+    "C->CO":        "#c0392b",   # the reductant star — bold red, the down-sloping line
+    "H2->H2O":      "#2471a3",   # hydrogen reductant
+    "CO->CO2":      "#7f8c8d",   # the CO/CO₂ line
+    "Fe->FeO":      "#7a4a1e",   # iron-oxide chain, darkest = most reduced
+    "FeO->Fe3O4":   "#a9712f",
+    "Fe3O4->Fe2O3": "#cda06a",
+    "Ca->CaO":      "#34495e",   # the hierarchy (muted)
+    "Al->Al2O3":    "#566573",
+    "Si->SiO2":     "#707b7c",
+    "Mn->MnO":      "#85929e",
+    "Cr->Cr2O3":    "#99a3a4",
+}
+
+
+def ellingham_figure(d):
+    """The F1 artifact: the Ellingham diagram + the equilibrium oxygen-potential ladder.
+
+    ``d`` is a :class:`~steel.demo_reduction.EllinghamDemo` (already-validated arrays — this layer
+    only draws them, ADR 0002). Two panels:
+
+    * **left — the Ellingham diagram.** ΔG° of oxide formation per mole O₂ vs temperature. The
+      metal-oxide lines slope *up* (forming an oxide consumes O₂ gas, ΔS° < 0); the lone
+      **2C + O₂ → 2CO** line slopes *down* (it makes gas) and dives under them. Where it crosses the
+      Fe → FeO line (~746 °C, marked) carbon begins to reduce wüstite — the shaded **reduction
+      window** to its right is where ironmaking happens. The iron-oxide chain (Fe → FeO → Fe₃O₄ →
+      Fe₂O₃) is the brown ladder; the muted lines are the alloy/slag-oxide hierarchy (CaO/Al₂O₃ at
+      the bottom — the strong deoxidizers).
+    * **right — the oxygen potential.** The same numbers as equilibrium p_O₂(T): the O₂ pressure at
+      which each metal and its oxide coexist. Al₂O₃/CaO survive down to 10⁻³⁵–10⁻⁴² bar — *why* Al
+      and Ca deoxidize a bath that Fe, Mn, Si cannot (the bridge to F2).
+
+    Straight lines with the melting/boiling kinks omitted (ΔCp ≈ 0) — the named module ceiling.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_ell, ax_po2) = plt.subplots(1, 2, figsize=(14.5, 6.2))
+    T = np.array(d.temps_C)
+    Tmax = float(T[-1])
+
+    def _draw(ax, keys, *, lw, ls="-", alpha=1.0, label_right=True, label_fs=8.0):
+        for k in keys:
+            y = np.array(d.lines[k])
+            color = ELLINGHAM_COLORS.get(k, "0.4")
+            ax.plot(T, y, color=color, lw=lw, ls=ls, alpha=alpha)
+            if label_right:
+                ax.annotate(f" {_ellingham_label(k)}", (Tmax, y[-1]), va="center", ha="left",
+                            fontsize=label_fs, color=color)
+
+    # --- left: the Ellingham diagram ----------------------------------------- #
+    iron_keys = ("Fe->FeO", "FeO->Fe3O4", "Fe3O4->Fe2O3")
+    muted_keys = tuple(k for k in d.lines if k not in iron_keys and k != "C->CO")
+    _draw(ax_ell, muted_keys, lw=1.3, alpha=0.85)         # hierarchy + H2/CO lines (muted)
+    _draw(ax_ell, iron_keys, lw=2.0, alpha=0.95)          # the iron-oxide chain (the ore)
+    _draw(ax_ell, ("C->CO",), lw=2.8)                     # the reductant star
+
+    # The headline crossover: carbon reduces wüstite above it. Mark the point + shade the window.
+    Tc = d.carbon_wustite_crossover_C
+    g_at = float(np.interp(Tc, T, np.array(d.lines["Fe->FeO"])))
+    ax_ell.plot([Tc], [g_at], "o", mfc="none", mec="#c0392b", ms=14, mew=2.2, zorder=6)
+    ax_ell.axvspan(Tc, Tmax, color="#fdecea", alpha=0.55, zorder=0)
+    ax_ell.annotate(f"carbon reduces FeO →\n(above ~{Tc:.0f} °C)", (Tc, g_at),
+                    textcoords="offset points", xytext=(12, 26), fontsize=8.6, color="#c0392b",
+                    bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#c0392b", lw=1.0))
+    ax_ell.set_xlim(float(T[0]), Tmax + (Tmax - T[0]) * 0.22)   # room for right-edge labels
+    ax_ell.set_xlabel("temperature  (°C)")
+    ax_ell.set_ylabel("ΔG° of oxidation  (kJ per mole O₂)")
+    ax_ell.set_title("Ellingham diagram — the C→CO line dives under the oxides; "
+                     "where it crosses Fe→FeO, ironmaking begins", fontsize=9.8)
+    ax_ell.grid(True, alpha=0.25)
+
+    # --- right: the equilibrium oxygen-potential ladder ----------------------- #
+    for k in d.pO2:
+        y = np.array(d.pO2[k])
+        color = ELLINGHAM_COLORS.get(k, "0.4")
+        ax_po2.plot(T, y, color=color, lw=2.0)
+        ax_po2.annotate(f" {_ellingham_label(k)}", (Tmax, y[-1]), va="center", ha="left",
+                        fontsize=8.0, color=color)
+    ax_po2.set_xlim(float(T[0]), Tmax + (Tmax - T[0]) * 0.20)
+    ax_po2.set_xlabel("temperature  (°C)")
+    ax_po2.set_ylabel("equilibrium oxygen potential  log₁₀(p_O₂ / bar)")
+    ax_po2.set_title("oxygen potential — Al/Ca oxides survive to 10⁻³⁵–10⁻⁴² bar "
+                     "(why they deoxidize)", fontsize=9.8)
+    ax_po2.grid(True, alpha=0.25)
+    # Honesty caveat (the named ΔCp=0 ceiling): absolute values past a metal's melting/boiling
+    # point carry the omitted-kink error — the ladder's *ordering* is the robust read, not the
+    # last-digit pressure (e.g. Ca boils at 1484 °C, inside this range).
+    ax_po2.annotate("straight-line ΔCp=0 model: absolute p_O₂ past each metal's melting/boiling\n"
+                    "point carries the omitted-kink error — read the ladder's order, not last digits",
+                    (0.5, 0.015), xycoords="axes fraction", ha="center", va="bottom",
+                    fontsize=7.2, color="0.45", style="italic")
+
+    fig.suptitle("F1 — reduction thermodynamics: which reductant reduces which oxide, "
+                 "above which temperature  (ore → iron)",
+                 fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.06, right=0.97, top=0.9, bottom=0.1, wspace=0.22)
+    return fig
+
+
+def _ellingham_label(key: str) -> str:
+    """Short legend tag for an Ellingham line — the product oxide (or reductant) name."""
+    tags = {
+        "C->CO": "2C→2CO", "H2->H2O": "H₂→H₂O", "CO->CO2": "2CO→2CO₂",
+        "Fe->FeO": "FeO", "FeO->Fe3O4": "Fe₃O₄", "Fe3O4->Fe2O3": "Fe₂O₃",
+        "Ca->CaO": "CaO", "Al->Al2O3": "Al₂O₃", "Si->SiO2": "SiO₂",
+        "Mn->MnO": "MnO", "Cr->Cr2O3": "Cr₂O₃",
+    }
+    return tags.get(key, key)
