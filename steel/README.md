@@ -90,6 +90,14 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   from one cited US-Steel-1951-atlas point each), `kinetics`' Mₛ/KM, and `properties`'
   hardness blend. The module docstring is its contract — including the named edges (claims
   stop at the 50 % line; bainite hardness = the carbon-only placeholder, now load-bearing).
+- **To work on martempering (Phase 6e):** `martemper.py` + `tests/test_martemper.py` (the
+  hold-time boundary + feasibility + the slab distortion solve) and `demo_martemper.py` +
+  `tests/test_demo_martemper.py` (the two-panel distortion artifact). It is austempering's
+  **short-hold sibling** — same `Mₛ < T_bath < Bs` window, read for martensite — so it *reuses*
+  6d's anchored bainite kinetics (`critical_hold_time`/`ideal_quench` over `austemper`) and the
+  **frozen heat engine** for the planar two-stage slab (`slab_thermal_history`). No new physics,
+  no new constant. The module docstring is its contract (per-steel only; `t_crit` near `Mₛ`
+  optimistic; the gradient is a distortion *proxy*, not stress).
 - **To work on the D_I cross-check (Phase 6c):** `ideal_diameter.py` + `tests/test_ideal_diameter.py`
   (the validation leg) and `demo_ideal_diameter.py` + `tests/test_demo_ideal_diameter.py` (the
   two-panel artifact). **Pure re-composition** of the validated Jominy chain (`solve_thermal_field` →
@@ -145,6 +153,7 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | viz | `plots.grain_voronoi_swatch` / `grain_morphology_figure`, `demo_grain_morphology.py`, `app.py` §5 | **grain-morphology swatch** — size-accurate Voronoi *illustration* of the scalar grain size `d` (grains/area ∝ ASTM `N_A = 1/d²`; shapes decorative, scale bar). Reach not physics (ADR 0002); **alongside** `microstructure_schematic`, not replacing it (plan §12) | **built ✓** (2026-06-10) |
 | v1.1 | `engines/diffusion/` (unfreeze), `carburize.py` (`carbon_diffusivity_tibbetts`, `solve_carburize(D_of_C=…)`) | **engine unfrozen for native nonlinear `D(u)`** (Picard-in-step, cached D-field, re-sealed v1.1 — ADR 0004 / `test_nonlinear_d.py`) → carburizing's opt-in concentration-dependent **Tibbetts `D(C)`** deepens the case ~0.66→~0.97 mm (published band). Linear path byte-identical (plan §15) | **built ✓** (2026-06-11) |
 | §16 | `properties.py` (`tempered_hardness_HV` / `tempered_jominy_hardness`), `demo_tempered_jominy.py`, `plots.tempered_jominy_figure` | **mixed-structure tempering** — per-constituent temper of a *mixture* (the 3b deferral): rule of mixtures over tempered constituents (martensite softens, diffusional products temper-inert). Three exact seams + the differential tempered-Jominy teeth (bracketed, not extracted). New function → frozen benchmarks byte-identical; no engine touch, no new constant (plan §16). **Steps 1–3 of 6** — steps 4+ (`design.py` RA-guarded unlock) planned | **built ✓** (2026-06-11, steps 1–3) |
+| 6e | `martemper.py`, `demo_martemper.py`, `plots.martemper_distortion_figure` | **post-v1 — martempering**: austempering's **short-hold sibling** (same `Mₛ<T_bath<Bs` window, read for martensite). One hold-time axis with austemper (`t_crit` = bainite-onset = the boundary); equivalence to an ideal quench *exact by construction*; the **distortion payoff** = surface−centre gradient at `Mₛ` on the frozen heat engine (62× smaller for 1080); feasibility = `τ_equalize < t_crit` (4340's 40 mm plate fails — the textbook limit). No new physics, no new constant (plan §17) | **built ✓** (2026-06-11) |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
 
@@ -849,6 +858,60 @@ HRC, because the soft "far end barely moves" region is below the Rockwell-C floo
 (both already the least-anchored placeholders; holding them fixed is conservative). RA-inert is safe
 here because the Jominy traverse only *reports*; the **steps 4+** `design.py` unlock (which
 *recommends*) is **gated on an RA cap** and remains **planned**.
+
+## Phase 6e — martempering (`martemper.py`, `demo_martemper.py`)
+
+Austempering's **short-hold sibling**, and the seam 6d named ("at/below `Mₛ` … martempering, the
+same hold machinery"). Martempering and austempering hold in the *same* window `Mₛ < T_bath < Bs`;
+they differ only in **hold time** — austemper holds *past* the bainite reaction (→ bainite),
+martemper holds *short*, only long enough to **thermally equalise** the section, then slow-cools to
+martensite. So martempering adds **no new physics and no new constant**: it reuses 6d's
+atlas-anchored bainite kinetics, Andrews `Mₛ`, Koistinen–Marburger, the rule-of-mixtures hardness
+and the frozen heat engine (the same "composed process, not modelling" stance as inverse design).
+
+```python
+from steel import martemper as mt
+mt.critical_hold_time("4340", 314.0)             # t_crit ≈ 221 s — the martemper↔austemper boundary
+mt.martemper("1080", 202.0, t_hold=30.0)         # 0 bainite, ~82 % martensite, 61 HRC — a true martemper
+mt.ideal_quench("4340").HRC                       # 57.3 — the equivalence reference (exact for a deep-hardener)
+mt.feasibility("4340", 0.020)                     # 40 mm plate: τ_eq > t_crit → INFEASIBLE (forms bainite first)
+mt.distortion_comparison("1080", 0.010).reduction # 62× smaller surface−centre gradient at Mₛ
+```
+
+The one unified quantity is `critical_hold_time` — the bath-temperature bainite-onset time. Below
+it the hold forms negligible bainite and the surviving austenite shears to martensite **exactly as
+an ideal nose-missing quench would** (`ideal_quench`), so the hardness is a direct quench's; above
+it the route drifts into austempering. The **discriminating** guard is the load-bearing
+architecture point (advisor): it uses 6d's *anchored* bainite kinetics, so `t_crit` is finite at a
+martempering bath — not the `∞` a toothless single-pearlite-curve guard would give near `Mₛ`.
+
+The reason the process exists is the **distortion payoff**, which is inherently spatial:
+`slab_thermal_history` marches a planar slab on the **frozen `engines/diffusion`** (heat mode,
+symmetry centreline `Neumann(0)`, a **two-stage Robin surface** — bath, then air, swapped at
+`t_hold`, the Jominy stepping pattern, no Strang splitting needed). In a direct quench the surface
+reaches `Mₛ` while the centre is still tens of degrees hotter (a 40 °C through-section gradient at
+the onset of transformation — the distortion driver). Martempering shrinks it by **two steps, both
+essential**: the bath hold equalises the section *below the nose*, and the **slow final cool** then
+takes surface and centre through `Mₛ` slowly and near-uniformly (the `Mₛ` crossing falls deep in the
+slow cool, ~0.6 °C apart) — a **62× smaller gradient** (resolution-converged), at *the same hardness
+a direct quench would give point-for-point* (not a claim 1080 through-hardens a 20 mm section). The
+gradient is a *thermal proxy* for distortion risk; **no solid mechanics** is modelled (true residual
+stress is the deferred Option-#2 axis).
+
+**Validated** (`test_martemper.py`) — consistency + conservation + structural teeth (no new
+calibrated number, like inverse design): the short-hold ≡ ideal-quench equivalence (exact),
+martemper/austemper as one hold-time axis (delegation → byte-identical fractions), `Σ = 1`, the
+**discriminating guard** (`t_crit` finite), and the **feasibility contrast** — thin sections clear,
+4340's thick plate fails (`τ_equalize > t_crit`), illustrating the textbook *needs hardenability AND
+a thin section* limit (the verdicts survive a fuller hold-plus-slow-cool-dwell accounting) — plus the
+spatial distortion reduction. Artifact (two panels, the same slab quenched two ways):
+[`docs/figures/steel-martemper-distortion.png`](../../docs/figures/steel-martemper-distortion.png)
+via `python -m steel.demo_martemper`. **Named edges:** per-steel only (anchored 1080/4340); `t_crit`
+near `Mₛ` is optimistic (the unmodelled near-`Mₛ` bainite acceleration, a 6d edge); the feasibility
+criterion is a **conservative hold-side proxy** (the dominant real constraint — outrunning the nose
+on the descent *to* the bath — is idealised away with the instant quench-in); the slow cool is
+0-D-immaterial for the fractions *only near `Mₛ`* (a higher bath would form bainite the instant-KM
+idealisation misses) — but always matters for the spatial gradient, the payoff.
 
 ## Run the tests
 

@@ -1492,3 +1492,74 @@ def austemper_figure(d):
     )
     fig.subplots_adjust(left=0.055, right=0.985, top=0.87, bottom=0.12, wspace=0.24)
     return fig
+
+
+def martemper_distortion_figure(dc):
+    """The Phase-6e artifact: why martempering exists — the through-section gradient at ``Mₛ``.
+
+    ``dc`` is a :class:`~steel.martemper.DistortionComparison` (already-computed slab histories on
+    the frozen heat engine — this layer only draws them, ADR 0002). Two panels, the *same* slab
+    quenched two ways, each showing the **surface** (solid) and **centre** (dashed) temperature
+    histories with the steel's ``Mₛ`` marked:
+
+    * **left — direct quench:** the surface dives through ``Mₛ`` while the centre is still tens of
+      degrees hotter and untransformed. The shaded bar at the surface-``Mₛ`` instant is the
+      through-section temperature gradient *at the onset of transformation* — the driver of
+      differential transformation strain, distortion and quench cracking.
+    * **right — martemper:** the bath hold (the plateau just above ``Mₛ``) lets the section
+      **equalise**; the slow final cool then takes surface and centre through ``Mₛ`` almost
+      together, so the gradient at transformation nearly vanishes.
+
+    The headline is the **reduction factor** — *the same hardness a direct quench would give*
+    (point-for-point; the equivalence is exact by construction — not a claim the thick section fully
+    through-hardens), at a fraction of the transformation gradient. The gradient is a *thermal proxy*
+    for distortion risk; no stress is modelled (solid mechanics is the deferred residual-stress axis).
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_d, ax_m) = plt.subplots(1, 2, figsize=(14.5, 5.4), sharey=True)
+    surf_c = MEDIUM_COLORS["water"]
+    cent_c = PHASE_COLORS["pearlite"]
+
+    def _crossing(hist, T):
+        below = np.flatnonzero(hist.surface <= T)
+        if below.size == 0 or below[0] == 0:
+            return float("nan")
+        return float(np.interp(T, hist.surface[::-1], hist.t[::-1]))
+
+    def _panel(ax, hist, gradient, title):
+        ax.plot(hist.t, hist.surface, "-", color=surf_c, lw=2.2, label="surface")
+        ax.plot(hist.t, hist.center, "--", color=cent_c, lw=2.2, label="centre")
+        ax.axhline(dc.Ms, color="0.45", ls=":", lw=1.2)
+        ax.annotate(f"  Mₛ = {dc.Ms:.0f} °C", (1.0, dc.Ms), xycoords=("axes fraction", "data"),
+                    ha="right", va="bottom", fontsize=8.5, color="0.35")
+        t_s = _crossing(hist, dc.Ms)
+        if np.isfinite(t_s):
+            T_c = float(np.interp(t_s, hist.t, hist.center))
+            # The gradient bar: surface (at Mₛ) up to the still-hotter centre, at the crossing instant.
+            ax.plot([t_s, t_s], [dc.Ms, T_c], color="0.2", lw=3.0, solid_capstyle="butt", zorder=5)
+            ax.plot([t_s], [dc.Ms], "o", color=surf_c, ms=6, zorder=6)
+            ax.plot([t_s], [T_c], "o", color=cent_c, ms=6, zorder=6)
+            ax.annotate(f"ΔT = {abs(gradient):.0f} °C\nat surface-Mₛ",
+                        (t_s, 0.5 * (dc.Ms + T_c)), textcoords="offset points", xytext=(10, 0),
+                        va="center", fontsize=9, color="0.2",
+                        fontweight="bold" if abs(gradient) > 5 else "normal")
+            ax.set_xlim(0.0, min(hist.t[-1], 1.7 * t_s))
+        ax.set_xlabel("time  (s)")
+        ax.set_title(title, fontsize=10.5)
+        ax.legend(loc="upper right", fontsize=8.5, framealpha=0.9)
+
+    ax_d.set_ylabel("temperature  (°C)")
+    _panel(ax_d, dc.direct, dc.gradient_direct, "direct quench: surface transforms first")
+    _panel(ax_m, dc.martemper, dc.gradient_martemper,
+           f"martemper: hold at {dc.T_bath:.0f} °C → equalise → slow cool")
+    ax_d.set_ylim(dc.Ms - 60.0, None)
+
+    plate_mm = 2_000.0 * dc.half_thickness
+    fig.suptitle(
+        f"Phase 6e — martempering {dc.steel} ({plate_mm:.0f} mm plate): direct-quench hardness, "
+        f"{dc.reduction:.0f}× smaller transformation gradient (proxy, not stress)",
+        fontsize=11.0, fontweight="bold",
+    )
+    fig.subplots_adjust(left=0.06, right=0.985, top=0.88, bottom=0.12, wspace=0.06)
+    return fig

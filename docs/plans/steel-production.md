@@ -805,8 +805,9 @@ mostly harder to validate honestly): the **full Charpy curve** — absolute shel
 the **tempering-axis** non-monotonicity (tempered-martensite / temper embrittlement troughs),
 3b's named ceiling — stays deferred (Phase 5 option (b) models only the **grain-size→DBTT
 *transition temperature***, a monotone Cottrell–Petch law on a different axis; see §12);
-**mixed-structure tempering** (per-constituent, vs 3b's martensite-only); **welding/HAZ**
-thermal cycles; **fatigue**. *(The **concentration-dependent diffusivity `D(C)`** in carburizing,
+~~**mixed-structure tempering** (per-constituent, vs 3b's martensite-only)~~ — **built §16**;
+~~**martempering**~~ — **built §17** (austempering's short-hold sibling, the distortion-reduction
+route); **welding/HAZ** thermal cycles; **fatigue**. *(The **concentration-dependent diffusivity `D(C)`** in carburizing,
 once deferred here, is **built** as of 2026-06-11 — the engine was unfrozen for native nonlinear
 `D(u)` and `carburize` gained the opt-in Tibbetts `D(C)`; §15 / ADR 0004.)*
 
@@ -1559,9 +1560,10 @@ load-bearing static figure — plus the `interact` slider sugar, the slice-1 dis
 
 **This completes Phase 7.** All of Steel's planned phases (1–6) + both post-v1 phases (5 grain, 7
 inverse design) + the full §9 experimentation surface are built. The remaining §11 menu items
-(residual-stress/distortion, the unified KV-pearlite rebuild from 6b, and the smaller deferrals —
-mixed-structure tempering, martempering) stay `[available]`, appetite-driven, blocking nothing.
-*(The smaller deferral **`D(C)` carburising** is **built** as of 2026-06-11 — §15.)*
+(residual-stress/distortion, the unified KV-pearlite rebuild from 6b) stay `[available]`,
+appetite-driven, blocking nothing. *(The smaller deferrals are since **built**: **`D(C)`
+carburising** 2026-06-11 — §15; **mixed-structure tempering** 2026-06-11 — §16; **martempering**
+2026-06-11 — §17.)*
 
 ---
 
@@ -1788,3 +1790,87 @@ faithful reading of §14's own "cheapest *lumped-valid*" headline (advisor-confi
   byte-identical). No app-table change needed — the `label()` cue already surfaces the partial-M fraction.
 * **Close-out (step 6).** Suite **425 green** (+2 env-skips); no ADR (no engine touch, no new scope
   ceiling beyond the named inert assumptions); memory `[[mixed-temper-next]]` updated; commit + push.
+
+---
+
+## 17. Martempering — austempering's short-hold sibling (BUILT ✓ 2026-06-11)
+
+The smaller §11 deferral, chosen at the user's direction. Martempering (marquenching): austenitize,
+quench into a hot bath **just above `Mₛ`**, hold only long enough for the section to **thermally
+equalise**, then slow-cool through `Mₛ→Mf` to martensite — the same hardness as a direct quench but
+with a far smaller through-section gradient *during* transformation (less distortion / quench-crack
+risk). **No new physics, no new constant** — the same "composed process over validated pieces" stance
+as Phase 7 inverse design.
+
+**The redirect that set the foundation (advisor, the crux).** The pre-build instinct was to compose a
+two-stage path from the `cooling.py`/`pathint.py` primitives. The advisor redirected: martempering is
+**austempering's sibling** — the *same* two-stage path (quench into a bath `Mₛ < T_bath < Bs`, hold),
+differing only in **hold-time regime** (austemper holds *past* the bainite reaction → bainite;
+martemper holds *short* → martensite on the slow cool). So `martemper.py` is built on 6d's
+atlas-anchored bainite kinetics, not re-derived. 6d's own docstring had named this exact seam ("at/below
+`Mₛ` … martempering, the same hold machinery is the seam, deliberately not built").
+
+**The architecture-gating check, run before writing (advisor).** `transform_along_path` advances the
+*single pearlite-calibrated* curve and labels sub-`Bs` product "bainite" — the descoped/unfaithful one
+(§13/6b); near `Mₛ` its `τ` can be ~∞ → a **toothless** nose-avoidance guard, which would make the whole
+prediction vacuous. Empirical probe **before** committing: the guard must use 6d's **anchored** bainite
+kinetics (`hold_time_to_fraction`), which give a **finite, discriminating** onset (1080 `t_crit` ≈ 7767 s
+at `Mₛ+20`, 4340 ≈ 221 s) — confirmed, and pinned by `test_guard_is_discriminating_not_toothless`.
+
+**The unification (advisor).** Equivalence and nose-avoidance are **one quantity**: the critical hold
+time `critical_hold_time(steel, T_bath)` = the bath bainite-onset time = the martemper↔austemper
+boundary. Below it, martemper ≡ an **ideal nose-missing quench** (`ideal_quench`, full austenite → KM),
+**exact by construction conditional on nose-avoidance** (a *consistency* leg, not an independent
+benchmark — sharpened from "exact-by-construction"); above it, bainite appears and the route drifts to
+austempering. The empirical reading: **4340** (deep-hardener) martemper ≡ real water quench *exactly*
+(both miss the nose); **1080** martemper reads marginally *harder* than real water (61.3 vs 60.8 HRC) —
+the instant-quench-to-bath idealisation is a cleaner nose-miss than the real water path (which clips
+~5 % bainite). Reported, not hidden.
+
+**The spatial payoff (advisor: don't ship 0-D-only — that's hollow).** Martempering's whole reason is
+distortion reduction, which is inherently spatial. `slab_thermal_history` marches a planar slab on the
+**frozen `engines/diffusion`** (heat mode; symmetry centreline `Neumann(0)`; a **two-stage Robin
+surface** — bath, then air, swapped at `t_hold` by re-instantiating the solver mid-march, the Jominy
+stepping pattern; **no Strang splitting** — a uniformly surface-cooled section has no lateral sink).
+The reduction comes from **two steps, both essential** (advisor): the hold equalises the section
+*below the nose*, and the **slow final cool** then takes it through `Mₛ` slowly and near-uniformly
+(the `Mₛ` crossing falls deep in the slow cool, not during the hold). `distortion_comparison` reads
+the surface−centre gradient at the `Mₛ` crossing: **direct quench −40 °C** (surface transforms with
+the centre 40 °C hotter) vs **martemper −0.6 °C** → a **62× reduction** (resolution-converged: 62.1×
+→ 62.2× under 4× cells × 4× time-steps), at **the hardness a direct quench would give point-for-point**
+(not a claim shallow 1080 through-hardens a 20 mm section). The gradient is a **thermal proxy** for
+distortion risk; **no solid mechanics** (true residual stress = the deferred Option-#2 axis,
+untouched). Banked artifact: `docs/figures/steel-martemper-distortion.png` (two panels, same slab,
+two routes).
+
+**The feasibility teeth (advisor's cheap-teeth criterion).** `feasibility` = `τ_equalize < t_crit`,
+with `τ_equalize` read from the *actual* slab solve (the centre's approach to the bath), not a lumped
+formula. It is a **conservative hold-side proxy** — it asks whether even the hold needed to *fully*
+equalise fits inside the bath bainite budget; the *dominant* real constraint (outrunning the
+pearlite/upper-bainite nose during the descent *to* the bath) is idealised away with the instant
+quench-in. **Illustrates the textbook limit**: thin sections clear both steels, but **4340's 40 mm
+plate fails** (`τ_equalize` 342 s > `t_crit` 221 s) — martempering needs hardenability **and** a thin
+enough section; 1080's huge near-`Mₛ` `t_crit` keeps even a thick plate feasible. **The verdicts are
+robust** (advisor's verify-don't-assume): under a fuller hold-plus-slow-cool-dwell accounting,
+4340-40 mm fails *harder* (613 s vs 221 s) and 1080-40 mm still passes (795 s vs 7767 s).
+
+**Triad (consistency + conservation + structural teeth — no new calibrated number, like §14).**
+`test_martemper.py` (20) + `test_demo_martemper.py` (2): short-hold ≡ ideal quench (exact); martemper ==
+austemper on one hold-time axis (delegation → byte-identical fractions); `Σ = 1`; the discriminating
+guard; the `Mₛ < T_bath < Bs` window guards; the feasibility boundary (thin clears, thick-4340 fails,
+margin shrinks with thickness); the spatial distortion reduction; austemper byte-identical (martemper
+only *reads* it).
+
+**Named edges (each a real limit).** Per-steel only (anchored 1080/4340 — the 6d cross-composition `BC`
+failure); `t_crit` near `Mₛ` is **optimistic** (the unmodelled near-`Mₛ` bainite acceleration, a 6d
+edge — feasibility margins are a best case); the slow final cool is **0-D-immaterial *near* `Mₛ`** (the
+default bath; a *higher* bath would form bainite during the slow cool that the delegated instant-KM
+idealisation misses — so the lumped outcome is faithful near `Mₛ`, not for a high bath; the slow cool
+always matters for the spatial gradient, the payoff); the equivalence reference is the *ideal*
+nose-missing quench (a real water quench may clip a little nose).
+
+**Close-out.** Suite **447 green** (+2 env-skips); no ADR (no engine touch — the frozen heat solver is
+*reused*, not modified; no new scope ceiling); `austemper`/`pathint`/`properties` and all frozen
+benchmarks byte-identical; README (load pointer + module map + a Phase-6e section) and memory
+`[[martemper]]` added; commit + push. The remaining §11 menu is now just residual-stress/distortion
+(the solid-mechanics Option-#2) and the unified-KV rebuild (the 6b deepening) — both `[available]`.
