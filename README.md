@@ -36,6 +36,9 @@ streamlit run steel/app.py              # the what-if app (needs .[viz,app])
 jupyter lab steel/steel.ipynb           # the teaching notebook (needs .[viz,notebook])
 ```
 
+→ **New here, or not sure which to run?** See [**What you can run**](#what-you-can-run--a-guided-tour)
+below — a map of every demo, notebook section, and app view, with a suggested order.
+
 **Run the tests** (the tiered gate — [ADR 0003](docs/decisions/0003-test-execution-policy.md)):
 
 ```powershell
@@ -58,6 +61,48 @@ The suite is **467 tests**, all green (2 env-skips). The **live-CALPHAD** cross-
 `pyproject.toml`). The frozen-table Phase-4 validation runs pycalphad-free. Optional stacks
 are importorskip-gated, so a headless checkout skips rather than errors. The ODbL steel TDB is
 never committed — it is fetched at CI time by `steel.calphad_backend.download_mc_fe()`.
+
+## What you can run — a guided tour
+
+Three ways into the same validated core (install + launch commands are in
+[Quickstart](#quickstart) above):
+
+- **Demos** — `python -m steel.<name>` — each prints its validation table and banks a figure
+  under `docs/figures/`. The fastest way to see a result; needs only `.[viz]`.
+- **Notebook** (`steel/steel.ipynb`) — the narrative teaching path with sliders. New to heat
+  treatment? Open it and read the **"Start here — the 30-second mental model"** cell, then go
+  top to bottom.
+- **App** (`steel/app.py`) — the interactive what-if: pick a grade, quench medium, and section
+  size and watch the microstructure and hardness move.
+
+The table is ordered as a suggested path — top rows first. Every demo is its own
+`python -m steel.<name>`; the *Also interactive* column points to where the same idea lives in
+the notebook (§) and the app.
+
+| Topic | Demo (`python -m steel.…`) | Also interactive | What it shows |
+|---|---|---|---|
+| **Core** | `demo_four_curves` | notebook §1–2 · app *four fates* | One 1080 steel, four quench rates → pearlite → bainite → martensite — the C-curve mechanism beside the resulting microstructure. |
+| **Core** | `demo_sweep` | notebook §3 · app *grid / build-your-own* | Composition × cooling rate, side by side — the hardenability axis the four-curves view can't show. |
+| **Hardenability** | `demo_jominy` | notebook §3 | One end-quench bar: shallow 1045 vs deep-hardening 4140, hardness vs depth. |
+| **Hardenability** | `demo_ideal_diameter` | — | Critical diameter read *from* the model vs measured H-band data — does it rank hardenability right? |
+| **Tempering** | `demo_tempered_jominy` | notebook §4 · app *quench-and-temper* | A *tempered* Jominy traverse — per-constituent temper of a mixed structure. |
+| **Grain size** | `demo_grain` | notebook §5 · app §5 | Grain refinement — the lone lever that raises strength *and* toughness at once. |
+| **Grain size** | `demo_grain_morphology` | app §5 | Those two grains drawn to scale — a size-accurate microstructure swatch. |
+| **Process routes** | `demo_austemper` | notebook §6 · app §6 | Austempering: quench past the nose, hold inside the diagram, grow bainite. |
+| **Process routes** | `demo_martemper` | — | Martempering: the same hardness as a direct quench, far less distortion. |
+| **Process routes** | `demo_unified_kv` | notebook §6b · app §6b | The bainite bay *opened* in continuous cooling — three competing reactions raced on one austenite pool. |
+| **Process routes** | `demo_bainite` | — | The cited bainite reaction, and why its bay can't form in a plain continuous cool (the negative-result companion). |
+| **Stress** | `demo_residual` | — | The residual stress and distortion a quench locks into a section (the solid-mechanics axis). |
+| **Case hardening** | `demo_carburize` | — | A carburized gear tooth: carbon diffused in at the surface, case hardness out. |
+| **Inverse design** | `demo_design` | notebook §7 · app §7 | Name a target hardness, get a feasible recipe (grade + quench + temper). |
+| **Equilibrium** | `demo_calphad` | — | Real CALPHAD thermodynamics vs the parametrised Fe-C diagram (needs the `.[calphad]` extra). |
+
+**Suggested first pass:** `demo_four_curves` → `demo_jominy` → `demo_sweep` →
+`demo_tempered_jominy`, then branch by interest. Or just open the notebook and read it top to
+bottom.
+
+For the physics behind each demo, the validation discipline, and per-module deep dives, see
+**[`steel/README.md`](steel/README.md)** — its "Status & module map" is the full file-by-file index.
 
 ## Provenance
 
