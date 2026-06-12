@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>steel-sim — visual gallery &amp; guided tour</title>
+  <style>
+:root {
+  --bg: #0f1115; --panel: #171a21; --panel2: #1d2129; --ink: #e7e9ee; --muted: #9aa3b2;
+  --line: #2a2f3a; --accent: #ff8a3d; --accent2: #5ab0ff; --code: #0b0d11;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+a { color: var(--accent2); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 64px; }
+header h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.01em; }
+header .tag { color: var(--muted); margin: 0 0 22px; font-size: 16px; }
+.ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;
+        margin: 0 0 14px; }
+.way { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.way h3 { margin: 0 0 4px; font-size: 15px; }
+.way p { margin: 0; color: var(--muted); font-size: 13.5px; }
+code, .cmd { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+.cmd { display: block; background: var(--code); border: 1px solid var(--line); border-radius: 8px;
+       padding: 7px 10px; font-size: 13px; color: #cfe3ff; overflow-x: auto; }
+.note { color: var(--muted); font-size: 13.5px; margin: 6px 0 26px; }
+h2.section { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent);
+             border-bottom: 1px solid var(--line); padding-bottom: 6px; margin: 34px 0 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 18px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+        display: flex; flex-direction: column; transition: border-color .15s, transform .15s; }
+.card:hover { border-color: #3a4150; transform: translateY(-2px); }
+.card .shot { display: block; background: var(--panel2); border-bottom: 1px solid var(--line); }
+.card .shot img { display: block; width: 100%; height: 188px; object-fit: contain; background: #fff; }
+.card .body { padding: 13px 15px 15px; display: flex; flex-direction: column; gap: 9px; flex: 1; }
+.card h3 { margin: 0; font-size: 17px; }
+.card .blurb { margin: 0; color: var(--muted); font-size: 13.5px; flex: 1; }
+.card .links { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 13px; padding-top: 2px;
+               border-top: 1px solid var(--line); margin-top: 2px; }
+.card .links .sep { color: var(--line); }
+.chip { display: inline-block; font-size: 11px; color: var(--muted); border: 1px solid var(--line);
+        border-radius: 999px; padding: 1px 8px; }
+footer { color: var(--muted); font-size: 13px; margin-top: 44px; border-top: 1px solid var(--line);
+         padding-top: 18px; }
+em { color: #c8cee0; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+  <header>
+    <h1>steel-sim — visual gallery &amp; guided tour</h1>
+    <p class="tag">Composition + cooling in, microstructure and properties out. Click any card to open its figure full-size, or copy its run command. Every surface of the simulator — visualizations, demos, experiments, and the notebook — in one place.</p>
+  </header>
+  <div class="ways">
+    <div class="way"><h3>▶ Demos &amp; visualizations</h3><p>Each card runs one <code>python -m steel.&lt;name&gt;</code> demo, prints its validation table, and banks the figure shown. Needs only <code>.[viz]</code>.</p></div>
+    <div class="way"><h3>🧪 Experiments</h3><p>The <strong>composition × cooling sweep</strong> below, and the interactive <strong>what-if app</strong> (<code>streamlit run steel/app.py</code>) — pick a grade, quench, and section size and watch the microstructure move.</p></div>
+    <div class="way"><h3>📓 Notebook</h3><p>The narrative teaching path with sliders. New here? Open the <a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook</a> and read "Start here — the 30-second mental model", then go top to bottom.</p></div>
+  </div>
+  <p class="note">Suggested first pass: <code>demo_four_curves</code> → <code>demo_jominy</code> → <code>demo_sweep</code> → <code>demo_tempered_jominy</code>, then branch by interest. Install &amp; launch commands are in the <a href="https://github.com/BoykoNeov/steel-sim/blob/main/README.md" target="_blank" rel="noopener">README</a>; the physics and validation behind each demo are in <a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/README.md" target="_blank" rel="noopener">steel/README.md</a>.</p>
+  <h2 class="section">Core</h2>
+  <div class="grid">
+    <article class="card">
+      <a class="shot" href="figures/steel-four-curves.png" target="_blank" rel="noopener"><img src="figures/steel-four-curves.png" alt="Four fates of one steel" loading="lazy"></a>
+      <div class="body">
+        <h3>Four fates of one steel</h3>
+        <p class="blurb">One 1080 steel, four quench rates → pearlite → bainite → martensite — the C-curve mechanism beside the microstructure it produces.</p>
+        <code class="cmd">python -m steel.demo_four_curves</code>
+        <div class="links"><a href="figures/steel-four-curves.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_four_curves.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §1-2 ↗</a><span class="sep">|</span><span class="chip">app: four fates</span></div>
+      </div>
+    </article>
+    <article class="card">
+      <a class="shot" href="figures/steel-sweep.png" target="_blank" rel="noopener"><img src="figures/steel-sweep.png" alt="Composition × cooling sweep  —  the experiment surface" loading="lazy"></a>
+      <div class="body">
+        <h3>Composition × cooling sweep  —  the experiment surface</h3>
+        <p class="blurb">Every composition against every cooling rate, side by side — the hardenability axis the four-curves view can&#x27;t show. This is the experimentation surface; the app makes it interactive.</p>
+        <code class="cmd">python -m steel.demo_sweep</code>
+        <div class="links"><a href="figures/steel-sweep.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_sweep.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §3 ↗</a><span class="sep">|</span><span class="chip">app: grid / build-your-own</span></div>
+      </div>
+    </article>
+  </div>
+  <h2 class="section">Hardenability</h2>
+  <div class="grid">
+    <article class="card">
+      <a class="shot" href="figures/steel-jominy-hardness.png" target="_blank" rel="noopener"><img src="figures/steel-jominy-hardness.png" alt="Jominy end-quench" loading="lazy"></a>
+      <div class="body">
+        <h3>Jominy end-quench</h3>
+        <p class="blurb">One end-quench bar: shallow-hardening 1045 against deep-hardening 4140, hardness versus depth from the quenched end.</p>
+        <code class="cmd">python -m steel.demo_jominy</code>
+        <div class="links"><a href="figures/steel-jominy-hardness.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_jominy.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §3 ↗</a></div>
+      </div>
+    </article>
+    <article class="card">
+      <a class="shot" href="figures/steel-ideal-diameter.png" target="_blank" rel="noopener"><img src="figures/steel-ideal-diameter.png" alt="Ideal critical diameter" loading="lazy"></a>
+      <div class="body">
+        <h3>Ideal critical diameter</h3>
+        <p class="blurb">Critical diameter read *from* the model against measured H-band data — does it rank the steels&#x27; hardenability in the right order?</p>
+        <code class="cmd">python -m steel.demo_ideal_diameter</code>
+        <div class="links"><a href="figures/steel-ideal-diameter.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_ideal_diameter.py" target="_blank" rel="noopener">source ↗</a></div>
+      </div>
+    </article>
+  </div>
+  <h2 class="section">Tempering</h2>
+  <div class="grid">
+    <article class="card">
+      <a class="shot" href="figures/steel-tempered-jominy.png" target="_blank" rel="noopener"><img src="figures/steel-tempered-jominy.png" alt="Tempered Jominy traverse" loading="lazy"></a>
+      <div class="body">
+        <h3>Tempered Jominy traverse</h3>
+        <p class="blurb">A *tempered* Jominy traverse — per-constituent temper of a mixed structure, not a single hardness knocked down by one number.</p>
+        <code class="cmd">python -m steel.demo_tempered_jominy</code>
+        <div class="links"><a href="figures/steel-tempered-jominy.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_tempered_jominy.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §4 ↗</a><span class="sep">|</span><span class="chip">app: quench-and-temper</span></div>
+      </div>
+    </article>
+  </div>
+  <h2 class="section">Grain size</h2>
+  <div class="grid">
+    <article class="card">
+      <a class="shot" href="figures/steel-grain.png" target="_blank" rel="noopener"><img src="figures/steel-grain.png" alt="Grain refinement" loading="lazy"></a>
+      <div class="body">
+        <h3>Grain refinement</h3>
+        <p class="blurb">Grain refinement — the lone lever that raises strength *and* toughness at once (same Hall–Petch form, opposite grain-size signs).</p>
+        <code class="cmd">python -m steel.demo_grain</code>
+        <div class="links"><a href="figures/steel-grain.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_grain.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §5 ↗</a><span class="sep">|</span><span class="chip">app: §5</span></div>
+      </div>
+    </article>
+    <article class="card">
+      <a class="shot" href="figures/steel-grain-morphology.png" target="_blank" rel="noopener"><img src="figures/steel-grain-morphology.png" alt="Grain morphology swatch" loading="lazy"></a>
+      <div class="body">
+        <h3>Grain morphology swatch</h3>
+        <p class="blurb">Those two grains drawn to scale — a size-accurate microstructure swatch beside the schematic.</p>
+        <code class="cmd">python -m steel.demo_grain_morphology</code>
+        <div class="links"><a href="figures/steel-grain-morphology.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_grain_morphology.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><span class="chip">app: §5</span></div>
+      </div>
+    </article>
+  </div>
+  <h2 class="section">Process routes</h2>
+  <div class="grid">
+    <article class="card">
+      <a class="shot" href="figures/steel-austemper.png" target="_blank" rel="noopener"><img src="figures/steel-austemper.png" alt="Austempering" loading="lazy"></a>
+      <div class="body">
+        <h3>Austempering</h3>
+        <p class="blurb">Quench past the nose, hold isothermally inside the diagram, grow bainite — the atlas-anchored isothermal hold.</p>
+        <code class="cmd">python -m steel.demo_austemper</code>
+        <div class="links"><a href="figures/steel-austemper.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_austemper.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §6 ↗</a><span class="sep">|</span><span class="chip">app: §6</span></div>
+      </div>
+    </article>
+    <article class="card">
+      <a class="shot" href="figures/steel-martemper-distortion.png" target="_blank" rel="noopener"><img src="figures/steel-martemper-distortion.png" alt="Martempering" loading="lazy"></a>
+      <div class="body">
+        <h3>Martempering</h3>
+        <p class="blurb">The same hardness as a direct quench, far less distortion — the surface−centre temperature gap closed before the martensite forms.</p>
+        <code class="cmd">python -m steel.demo_martemper</code>
+        <div class="links"><a href="figures/steel-martemper-distortion.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_martemper.py" target="_blank" rel="noopener">source ↗</a></div>
+      </div>
+    </article>
+    <article class="card">
+      <a class="shot" href="figures/steel-unified-kv-bay.png" target="_blank" rel="noopener"><img src="figures/steel-unified-kv-bay.png" alt="Bainite bay, opened in continuous cooling" loading="lazy"></a>
+      <div class="body">
+        <h3>Bainite bay, opened in continuous cooling</h3>
+        <p class="blurb">The bainite bay *opened* in continuous cooling — three competing reactions (ferrite / pearlite / bainite) raced on one shared austenite pool.</p>
+        <code class="cmd">python -m steel.demo_unified_kv</code>
+        <div class="links"><a href="figures/steel-unified-kv-bay.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_unified_kv.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §6b ↗</a><span class="sep">|</span><span class="chip">app: §6b</span></div>
+      </div>
+    </article>
+    <article class="card">
+      <a class="shot" href="figures/steel-bainite.png" target="_blank" rel="noopener"><img src="figures/steel-bainite.png" alt="Bainite reaction (the negative result)" loading="lazy"></a>
+      <div class="body">
+        <h3>Bainite reaction (the negative result)</h3>
+        <p class="blurb">The cited bainite reaction on its own, and why its bay *can&#x27;t* form in a plain continuous cool — the negative-result companion to the unified model.</p>
+        <code class="cmd">python -m steel.demo_bainite</code>
+        <div class="links"><a href="figures/steel-bainite.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_bainite.py" target="_blank" rel="noopener">source ↗</a></div>
+      </div>
+    </article>
+  </div>
+  <h2 class="section">Stress</h2>
+  <div class="grid">
+    <article class="card">
+      <a class="shot" href="figures/steel-residual-stress.png" target="_blank" rel="noopener"><img src="figures/steel-residual-stress.png" alt="Residual stress &amp; distortion" loading="lazy"></a>
+      <div class="body">
+        <h3>Residual stress &amp; distortion</h3>
+        <p class="blurb">The residual stress and distortion a quench locks into a section — the solid-mechanics axis (incremental elastic–perfectly-plastic, transform dilatation and all).</p>
+        <code class="cmd">python -m steel.demo_residual</code>
+        <div class="links"><a href="figures/steel-residual-stress.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_residual.py" target="_blank" rel="noopener">source ↗</a></div>
+      </div>
+    </article>
+  </div>
+  <h2 class="section">Case hardening</h2>
+  <div class="grid">
+    <article class="card">
+      <a class="shot" href="figures/steel-carburize-gradient.png" target="_blank" rel="noopener"><img src="figures/steel-carburize-gradient.png" alt="Carburizing" loading="lazy"></a>
+      <div class="body">
+        <h3>Carburizing</h3>
+        <p class="blurb">A carburized gear tooth: carbon diffused in at the surface, case hardness profiled out — the same sealed engine as Jominy, a mass-diffusion face.</p>
+        <code class="cmd">python -m steel.demo_carburize</code>
+        <div class="links"><a href="figures/steel-carburize-gradient.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_carburize.py" target="_blank" rel="noopener">source ↗</a></div>
+      </div>
+    </article>
+  </div>
+  <h2 class="section">Inverse design</h2>
+  <div class="grid">
+    <article class="card">
+      <a class="shot" href="figures/steel-design.png" target="_blank" rel="noopener"><img src="figures/steel-design.png" alt="Inverse design" loading="lazy"></a>
+      <div class="body">
+        <h3>Inverse design</h3>
+        <p class="blurb">Run the simulator backwards: name a target hardness, get a feasible recipe — grade, quench medium, and temper.</p>
+        <code class="cmd">python -m steel.demo_design</code>
+        <div class="links"><a href="figures/steel-design.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_design.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §7 ↗</a><span class="sep">|</span><span class="chip">app: §7</span></div>
+      </div>
+    </article>
+  </div>
+  <h2 class="section">Equilibrium</h2>
+  <div class="grid">
+    <article class="card">
+      <a class="shot" href="figures/steel-calphad.png" target="_blank" rel="noopener"><img src="figures/steel-calphad.png" alt="CALPHAD equilibrium" loading="lazy"></a>
+      <div class="body">
+        <h3>CALPHAD equilibrium</h3>
+        <p class="blurb">Real CALPHAD thermodynamics against the parametrised Fe-C diagram the rest of the sim uses (needs the optional `.[calphad]` extra).</p>
+        <code class="cmd">python -m steel.demo_calphad</code>
+        <div class="links"><a href="figures/steel-calphad.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_calphad.py" target="_blank" rel="noopener">source ↗</a></div>
+      </div>
+    </article>
+  </div>
+  <footer>
+    This page is generated by <code>python -m steel.gallery</code> from a single catalog in <code>steel/gallery.py</code>, and a test (<code>test_gallery.py</code>) fails the build if it drifts — add a demo and its figure, regenerate, and it appears here automatically. &nbsp;·&nbsp; <a href="https://github.com/BoykoNeov/steel-sim/blob/main/README.md" target="_blank" rel="noopener">README</a> &nbsp;·&nbsp; <a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook</a> &nbsp;·&nbsp; <a href="https://github.com/BoykoNeov/steel-sim" target="_blank" rel="noopener">repository</a>
+  </footer>
+  </div>
+</body>
+</html>

@@ -22,6 +22,7 @@ engines/diffusion/   # the sealed 1-D diffusion/heat solver (v1.1, + opt-in nonl
 steel/               # the simulator: jominy, kinetics, pathint, cooling, properties,
                      #   carburize, grain, ferrite/bainite, austemper, martemper, residual,
                      #   ideal_diameter, fe_c + calphad_backend, sweep, plots, app.py, demos, steel.ipynb
+docs/index.html      # generated clickable gallery — every demo/figure/notebook in one page (python -m steel.gallery)
 docs/decisions/      # ADRs 0001–0004 (language/perf, visualization/UX, test policy, engine unfreeze)
 docs/plans/          # steel-production.md — the full build plan
 docs/figures/        # banked figures (steel-*.png)
@@ -63,6 +64,13 @@ are importorskip-gated, so a headless checkout skips rather than errors. The ODb
 never committed — it is fetched at CI time by `steel.calphad_backend.download_mc_fe()`.
 
 ## What you can run — a guided tour
+
+**Prefer a clickable page?** Open **[`docs/index.html`](docs/index.html)** — a generated visual
+gallery of every demo, its banked figure, and where the same idea lives in the notebook and app.
+It's produced by `python -m steel.gallery` from a single catalog, and a test fails the build if it
+drifts, so it stays current. Once [GitHub Pages](https://docs.github.com/pages) is enabled for the
+`/docs` folder it is served at `https://boykoneov.github.io/steel-sim/`. The table below is the
+same map in Markdown.
 
 Three ways into the same validated core (install + launch commands are in
 [Quickstart](#quickstart) above):
