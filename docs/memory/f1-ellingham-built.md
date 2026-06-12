@@ -47,3 +47,6 @@ framed; an ironmaking section is a narrative call for when there's >1 front-end 
 **Next front-end slice = build-order item 2: `heat_state.py`** — the `Heat` physical-state record
 + thin orchestrator seam (unpacks Heat→arrays→frozen engine→repacks; engines stay array-in/out).
 Then F4 casting (reuses frozen heat engine + Scheil), then F2/F3, then `game/`.
+
+**UPDATE 2026-06-12: item 2 (`heat_state.py`) now BUILT → [[heat-state-spine-built]].** Next is
+build-order item 3 = **F4 casting** (frozen heat engine in heat mode + the existing Scheil).
