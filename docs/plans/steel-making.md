@@ -308,3 +308,133 @@ copied as datasets. No export-control dimension. (Same posture as
 
 **Immediate next step (this session): plan only — this document. No code.** The
 recommended first build slice, on the user's go, is **F1 (Ellingham)**.
+
+---
+
+## 14. Historical impure steel — the pedagogical surface & the failure-propagation grounding (folded 2026-06-12, plan-only)
+
+> **Why this lives here, in the game/front-end plan.** "Bad steel" is mostly
+> game-domain (impurity → defect → failure), but it carries a genuine
+> *pedagogical* surface **and** it grounds the §6 failure-propagation catalogue
+> in **cited archaeometallurgy data** — published measurements on genuinely
+> impure historical iron (P, S, slag inclusions). Recorded here as a research
+> fold, **not** a build; the *back-end* engine candidates it implies are pointed
+> to from `steel-production.md` §11. "Just plan, don't build yet" stands.
+
+**The reframe that makes it useful.** The originally-named tramp axes
+(hardenability/Jominy, CCT kinetics, residual stress) are the *weakest* for our
+verified engines. A two-turn scan of the archaeometallurgy literature showed the
+measured data actually clusters on **ferritic bloomery / phosphoric / wrought
+iron** — i.e. the **toughness, embrittlement, and inclusion-cracking** axes,
+exactly where tramps bite and exactly the failure-propagation payoff. The
+history *corroborates* the verified/plausible split rather than overturning it.
+
+### 14.1 What "bad steel" teaches about metallurgy
+
+- **A — Phosphorus is the signed-impurity *foil* to grain refinement (§5b).**
+  The single best teaching beat, and it is *repo-native*: back-end §5b already
+  teaches that grain refinement is the **lone** lever that raises strength **and**
+  improves toughness, because it acts on **one** variable (boundary area) that
+  helps both. Phosphorus is the clean inverse — strength **↑** by solid-solution
+  lattice strengthening, toughness **↓** by grain-boundary *segregation
+  chemistry* — **two different mechanisms pulling opposite ways.** That contrast
+  is *why* refinement is special, and historical phosphoric iron (bog-ore,
+  0.1–0.7 wt% P, used deliberately because it was hard) is the cleanest
+  illustration. **The two axes are NOT equally pinned (the load-bearing honesty):**
+  - *Strength:* one clean cited number — **+237 MPa proof strength per 1 at% P**
+    (Thiele–Hošek; ferrite ≈142 HV). Triad-candidate (a property correlation,
+    same class as Maynier/Pickering).
+  - *Toughness:* a strong, well-attested effect but an **unpinned slope** —
+    published ≈ **+40 to +70 °C of DBTT per 0.1 wt% P** (7 °C/0.01% extrapolates
+    to 70; another source says 40 — ~1.75× apart). **Real effect, NOT a
+    calibrated coefficient.** (Symmetry with the prior turn: then "don't let the
+    strengthening number masquerade as the DBTT term"; now "don't let *having* a
+    DBTT number imply it's calibrated.")
+  - *Unit-basis trap (before comparing or pinning either number):* the strength
+    number is quoted **per at% P**, the toughness slope **per wt% P** — and
+    **1 at% P ≈ 0.56 wt% P**, so the two are ~5.6× apart in their P basis.
+    Convert to a common basis first; their proximity above is *not*
+    comparability.
+
+- **B — Red-short vs cold-short = a *closing* working-temperature window** (echoes
+  the window-thinking already in back-end §17 martempering, Mₛ < T_bath < Bs).
+  **Sulfur → red-shortness:** FeS melts ~988 °C, wets grain boundaries, the
+  piece hot-tears → pushes the hot ceiling **down**. **Phosphorus →
+  cold-shortness:** GB embrittlement raises DBTT → pushes the cold floor **up**.
+  Clean steel = wide forging window; bad steel = the window closes from both
+  ends. **Historical fix (a history-of-technology beat):** add Mn so S forms
+  benign higher-melting MnS not FeS — target **Mn:S ≳ 2** — which *is* Mushet's
+  manganese addition that made the **Bessemer** process work. The stoichiometry
+  S + Mn → MnS is **conservation-clean** → the strongest *new* triad candidate of
+  the set.
+
+- **C — The metallurgy timeline is a purity-control ramp = the motivation for F2.**
+  Bloomery (high P) → Bessemer (acid: can't remove P, retains embrittling N) →
+  **Thomas basic lining** (removes P) → BOF (removes N) → ladle metallurgy
+  (removes S). Each generation conquers one tramp — and that arc **is the
+  L_P-vs-basicity slag-partition curve F2 (§7) is planned to compute.** "Why does
+  basicity matter?" answers as "because acid Bessemer made rails that cracked from
+  phosphorus." History → the front-end engine's reason to exist.
+
+### 14.2 What archaeometallurgy's *methods* teach (the bridge to the archaeology framing)
+
+Both **reuse engines the repo already has** — pedagogically lovely, *not* new
+physics:
+
+- **D — Hardness as an *inverse* proxy.** Maynier/Jominy run hardness *forward*
+  (composition → HV). Thiele runs it *backward* — measure an artifact's hardness,
+  back out its P content. The teaching inversion ("given a number on an ancient
+  blade, what compositions are consistent?") is the existing forward engine run
+  in reverse.
+- **E — Scheil → P banding → ghost lines → provenance.** The **existing** Scheil
+  microsegregation (F4) produces P banding (low solubility → micro-segregates);
+  Stead's/Klemm etchant reveals it as "ghost lines"; archaeologists read those to
+  fingerprint provenance. One built engine → a metallography phenomenon → a real
+  archaeological method, zero new physics.
+
+### 14.3 The triad-readiness gradient (depth ≠ overselling)
+
+| Theme | Pedagogical value | Triad status |
+|---|---|---|
+| A-strength — P solid-solution strengthening | High (the §5b foil) | **Cleanest new clearer** — property correlation, single cited number |
+| B-Mn:S — S → MnS stoichiometry | High (+ Mushet/Bessemer history free) | **Passes the conservation leg cleanly** |
+| A-toughness — P → DBTT slope | High | **Real effect, slope unpinned** — not calibrated |
+| C — history / L_P-vs-basicity | High (motivates F2) | = the planned F2 engine |
+| D, E — inverse hardness, Scheil ghost lines | High (the archaeology bridge) | **Reuse existing engines** — not new physics |
+
+### 14.4 Where it would surface (placement, not a build)
+
+The natural pedagogy home is a notebook cell **adjacent to back-end §5b** (the
+foil only lands in context), an `app.py` "P slider → yield ↑, DBTT ↑, *workable
+cold?* verdict flips" what-if, and a gallery figure. Game-side it slots into the
+§6 catalogue: **S under-desulfurized → MnS/FeS → hot-tear** and **P off-spec →
+cold-short / quench-crack-via-inclusion** (the inclusion is the stress
+concentrator that turns §18's sub-critical residual field into a crack — the
+fracture-side coupling).
+
+### 14.5 Side note — future research (only if a build is ever authorized)
+
+The one piece that would need *new* sourcing before it could clear the triad is
+the **P → DBTT slope** (unpinned above). Candidate cited benchmarks already
+located, for whoever picks this up:
+- **Thiele–Hošek 2015** — P-from-hardness; the +237 MPa/at%, 142 HV numbers.
+  Open-access PDF `acta.uni-obuda.hu/Thiele_Hosek_60.pdf`. *Numbers are
+  search-snippet level — verify against the PDF before pinning any constant.*
+  **Unit-basis trap:** this strength number is **per at% P**, the §14.1 DBTT
+  slope is **per wt% P** (1 at% P ≈ 0.56 wt% P) — convert before comparing or
+  pinning.
+- **Medieval-bloomery Charpy + tensile vs. a modern S235JRG2 control** — the most
+  triad-relevant hit (measured properties on genuinely impure steel **with a
+  modern reference**): `bucavasgyuro.net/.../2015PP_Mech_props.pdf` (PDF did not
+  parse on fetch — needs a mirror / manual read for exact figures).
+- **"Iron–phosphorus–carbon system"** (Stewart / Charles / Wallach) —
+  controlled-lab composition → property data + the Stead's/ghost-line
+  metallography for theme E.
+- **The inverse "good impurity" caveat (wootz / Damascus):** trace **V > ~0.03%**
+  and **Mo < ~100 ppm** are *necessary-good* impurities (carbide banding) — so
+  "bad steel" is really "**off-spec composition**," signed either way. Keep this
+  as the honest framing nuance.
+
+**Status: folded as a research record, assess-only.** No engine, no notebook
+cell, no F-phase started. Sources are listed in the session and in the
+[[historical-impurity-pedagogy]] memory.

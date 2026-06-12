@@ -811,6 +811,22 @@ route); **welding/HAZ** thermal cycles; **fatigue**. *(The **concentration-depen
 once deferred here, is **built** as of 2026-06-11 — the engine was unfrozen for native nonlinear
 `D(u)` and `carburize` gained the opt-in Tibbetts `D(C)`; §15 / ADR 0004.)*
 
+**Tramp-element & historical-impurity axis — `[deferred, folded 2026-06-12]`.** A
+two-turn archaeometallurgy scan grounded the tramp-element story (P, S, slag
+inclusions) in cited measurements on impure historical iron; the **full research
+fold lives in `steel-making.md` §14** (it is mostly game-/front-end-domain). The
+**back-end** pieces it implies, recorded here so the engine roadmap doesn't lose
+them: (i) **P solid-solution strengthening** — a property correlation in the
+Maynier/Pickering class (cited **+237 MPa per 1 at% P**, Thiele–Hošek), the
+cleanest *new* triad candidate; (ii) a **P → DBTT term** that would graft onto
+`grain.py` §5b's Cottrell–Petch ITT (which today carries **no P term**) — but its
+**slope is unpinned** (~40–70 °C per 0.1 wt% P across sources), *real effect, not
+a calibrated coefficient*, so it needs proper sourcing before any build;
+(iii) the **pedagogy placement** — a teaching cell **adjacent to §5b**, where P
+is the signed-impurity *foil* to grain refinement (refine = one variable helps
+both; P = two mechanisms pull opposite). Assess-only; nothing built. See
+[[historical-impurity-pedagogy]].
+
 ---
 
 ## 12. Phase 5 — Grain size, Hall–Petch & the DBTT co-benefit (option b)
