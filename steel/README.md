@@ -114,6 +114,18 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   triad of its own** — tests are *harness correctness*, led by the *no-recipe-re-evaluates-out-of-band*
   invariant. The module docstring is its contract (hardness-only v1; the cost sort is labelled
   convenience, not validation; `diameter` is 0-D bulk hardness, not a radial profile). Plan §14.
+- **To work on the unified-KV competing-reaction rebuild (§19, the "6b deepening"):** `unified_kv.py`
+  + `tests/test_unified_kv.py` (the integrator) and `demo_unified_kv.py` +
+  `tests/test_demo_unified_kv.py` (the bay artifact), plus `kinetics.py` **§7 `PearliteReaction`** (the
+  one additive new reaction object) and the §6b surfaces in `app.py` / `steel.ipynb`. It races **three**
+  cited Li/KV reactions (ferrite/pearlite/bainite) on one shared austenite pool so the **bainite bay
+  opens in continuous cooling** — a **per-steel-anchored *demonstrator***, opt-in and **parallel** to
+  the validated single-curve pipeline (which stays byte-identical). Scales: ferrite **global** (6a's
+  8.0), pearlite **global** (derived at import vs the frozen 1080 nose), bainite **per-steel atlas
+  anchor** (`austemper.anchored_reaction` — the cross-steel `BC` is wrong-signed, the wall). The
+  module docstring is its contract (the teeth = cited `PC`/`FC`≫`BC` differential; the bay *in CCT* is
+  a demonstration — **no measured-CCT validation**; carbon enrichment is first-order; 1080/4340 only).
+  Plan §19.
 - The Fe-C boundaries in `fe_c.py` are **parametrized approximations** (linear between
   pinned invariant points). Phase 4 (`calphad_backend.py`) computes them from real
   thermodynamics instead — `CalphadBackend().phase_fractions(C0, T)` is a drop-in for
@@ -154,6 +166,8 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
 | v1.1 | `engines/diffusion/` (unfreeze), `carburize.py` (`carbon_diffusivity_tibbetts`, `solve_carburize(D_of_C=…)`) | **engine unfrozen for native nonlinear `D(u)`** (Picard-in-step, cached D-field, re-sealed v1.1 — ADR 0004 / `test_nonlinear_d.py`) → carburizing's opt-in concentration-dependent **Tibbetts `D(C)`** deepens the case ~0.66→~0.97 mm (published band). Linear path byte-identical (plan §15) | **built ✓** (2026-06-11) |
 | §16 | `properties.py` (`tempered_hardness_HV` / `tempered_jominy_hardness`), `demo_tempered_jominy.py`, `plots.tempered_jominy_figure` | **mixed-structure tempering** — per-constituent temper of a *mixture* (the 3b deferral): rule of mixtures over tempered constituents (martensite softens, diffusional products temper-inert). Three exact seams + the differential tempered-Jominy teeth (bracketed, not extracted). New function → frozen benchmarks byte-identical; no engine touch, no new constant (plan §16). **Steps 1–3 of 6** — steps 4+ (`design.py` RA-guarded unlock) planned | **built ✓** (2026-06-11, steps 1–3) |
 | 6e | `martemper.py`, `demo_martemper.py`, `plots.martemper_distortion_figure` | **post-v1 — martempering**: austempering's **short-hold sibling** (same `Mₛ<T_bath<Bs` window, read for martensite). One hold-time axis with austemper (`t_crit` = bainite-onset = the boundary); equivalence to an ideal quench *exact by construction*; the **distortion payoff** = surface−centre gradient at `Mₛ` on the frozen heat engine (62× smaller for 1080); feasibility = `τ_equalize < t_crit` (4340's 40 mm plate fails — the textbook limit). No new physics, no new constant (plan §17) | **built ✓** (2026-06-11) |
+| §18 | `residual.py`, `demo_residual.py`, `plots.residual_stress_figure` | **post-v1 — residual stress & distortion on quench** (the first **solid mechanics**): incremental **elastic–perfectly-plastic** 1-D equibiaxial plate on the §17 slab + frozen heat engine. Transform ON/OFF toggle flips surface compression→tension (the quench-crack state); ∫σ=0 to machine precision; martemper≪direct. Cited Eurocode-3 `E(T)`/`σ_Y(T)` + lattice dilatation; teeth structural, no fitted number; through-hardening-only, no TRIP (plan §18) | **built ✓** (2026-06-12) |
+| §19 | `unified_kv.py`, `demo_unified_kv.py`, `plots.unified_kv_figure`, `kinetics.py` §7 (`PearliteReaction`), `steel.ipynb`/`app.py` §6b | **post-v1 — the unified-KV competing-reaction rebuild** (the "6b deepening"): three cited Li/KV reactions (ferrite/pearlite/bainite) raced on one shared austenite pool so the **bainite bay opens in continuous cooling** — a **per-steel-anchored demonstrator**, opt-in & parallel (single-curve pipeline byte-identical). Teeth = cited `PC`/`FC`≫`BC` differential (bay opens for 4340, not 1080); bay-in-CCT = demonstration (**no measured-CCT validation**); bainite per-steel atlas-anchored (the `BC` wall). No engine touch, no ADR (plan §19) | **built ✓** (2026-06-12) |
 
 ## `fe_c.py` — metastable Fe–Fe₃C equilibrium (Phase 1b)
 

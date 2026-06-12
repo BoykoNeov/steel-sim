@@ -779,6 +779,147 @@ def bainite_reaction_for_steel(
     return BainiteReaction(Bs=Bs, BC=BC, G=G)
 
 
+# --------------------------------------------------------------------------- #
+# 7. The pearlite reaction — the cited KV pearlite C-curve (the unified-KV §19 third reaction)
+# --------------------------------------------------------------------------- #
+# WHAT THIS COMPLETES. Sections 5 (ferrite) and 6 (bainite) gave two of the three diffusional
+# C-curves their *own* Li/KV reaction object; pearlite was still only the section-2 **single
+# curve** (:meth:`CCurve.tau`, Grossmann-shifted, the 540-split). This is the **third and last**
+# member of the Li (1998) / Kirkaldy–Venugopalan (1983) family (see [[ferrite-bay-source]]) — the
+# one needed to race ferrite + pearlite + bainite as a *self-consistent competing-reaction system*
+# so the **bainite bay opens in continuous cooling** (:mod:`unified_kv`, the §19 deepening). Adding
+# it is **purely additive**: nothing in sections 1–6 changes value or signature, so the frozen
+# single-curve pipeline (:meth:`CCurve.tau`, :mod:`pathint`, the four-curves/Jominy benchmarks)
+# stays **byte-identical** — exactly the 6a/6b precedent (each *added* a section without disturbing
+# the frozen surfaces).
+#
+# THE MODEL — same site-saturation rate form ``dU/dt = K(T)·g(U)`` and shape ``g`` (:func:`_kv_shape_g`)
+# as ferrite/bainite; only three reaction-specific pieces differ:
+#   * the **ceiling** is the eutectoid **Ae1** (= :func:`~steel.fe_c.A1`, 727 °C — pearlite is the
+#     eutectoid product and cannot form above A1, the corrected-diagnosis point of §5);
+#   * the **undercooling exponent is n = 3** (``ΔT³``, like ferrite — *not* bainite's ``ΔT¹``);
+#   * the **composition factor** is ``PC`` (:func:`pearlite_PC`), whose Mo enters as **√Mo** (the one
+#     functional-form difference from FC/BC's linear Mo — cited, Li 1998 / KV 1983).
+# Unlike ferrite there is no equilibrium cap (pearlite consumes whatever austenite the competition
+# leaves it — the pool sharing lives in :mod:`unified_kv`, not here).
+#
+# CITED vs CALIBRATED (the §5/§6 discipline): CITED — the PC coefficients, the ΔT³ form, the Ae1
+# ceiling, Q, the grain factor; so the scale-free retardation **ratio** PC(4340)/PC(1080) ≈ 1.4e3
+# (≈ the atlas-measured ~10³× pearlite retardation — the unified-KV teeth) is not ours to choose.
+# CALIBRATED — exactly ONE global knob, :data:`PEARLITE_KINETIC_SCALE`, reconciling KV's absolute
+# time base to *this project's* pearlite-curve base, the ferrite-§5 analogue. It is **not free**: it
+# is set so the 1080 pearlite-reaction nose reproduces the frozen single-curve ~550 °C / ~1 s nose
+# (the four-curves anchor → consistency), after which **4340's deep pearlite nose is *predicted***
+# from the cited PC ratio with no 4340 tuning. PC's direction is *correct* (alloy retards pearlite),
+# so — unlike bainite's wrong-signed BC — one global scale is honest here (the same reason 6a's
+# ferrite uses one global scale).
+PEARLITE_PC_COEFFS = {                      # KV pearlite composition-factor exponent coefficients (per wt%)
+    "const": -4.25, "C": 4.12, "Mn": 4.36, "Si": 0.44, "Ni": 1.71, "Cr": 3.33, "sqrtMo": 5.19,
+}
+PEARLITE_UNDERCOOLING_EXP = 3.0             # ΔT³ for pearlite (Li 1998) — like ferrite, NOT bainite's ΔT¹
+# The ONE calibrated global knob (see above): KV→project pearlite time-base reconciliation, set so the
+# 1080 pearlite-reaction nose lands on the frozen single-curve ~1 s nose (consistency with the
+# four-curves anchor). PC's right-direction alloy dependence makes a single global scale honest (cf.
+# 6a's ferrite). This module-level value is the **standalone default** (≈ the calibrated number);
+# :mod:`unified_kv` *derives* the authoritative scale at import from the frozen ``CCurve().nose()``
+# target (the "no stored magic number" discipline, like :data:`~steel.austemper.ANCHORED_SCALES`), so
+# the two never drift — exactly the 6b ``BAINITE_KINETIC_SCALE`` default + austemper-derived pattern.
+PEARLITE_KINETIC_SCALE = 0.50              # ≈ 1080-nose-calibrated (unified_kv derives the exact value)
+
+
+def pearlite_PC(C: float, Mn: float = 0.0, Si: float = 0.0, Ni: float = 0.0,
+                Cr: float = 0.0, Mo: float = 0.0) -> float:
+    """Li/KV pearlite composition factor ``PC = exp(Σ bᵢ·wtᵢ)`` (wt%) — larger ⇒ slower pearlite.
+
+    The cited coefficients (:data:`PEARLITE_PC_COEFFS`): Mn (4.36), C (4.12) and Cr (3.33) are
+    strong pearlite retarders, and — the one functional-form quirk — **Mo enters as √Mo** (5.19·√Mo),
+    not linearly. Like ferrite ``FC`` the direction is *correct* (every alloying addition slows
+    pearlite), which is why the unified-KV bay opens: ``PC`` pushes the pearlite nose ~10³× right for
+    4340 while the weak-and-wrong-signed bainite ``BC`` barely moves it (the cited, scale-free teeth).
+    """
+    comp = {"C": C, "Mn": Mn, "Si": Si, "Ni": Ni, "Cr": Cr}
+    expo = (PEARLITE_PC_COEFFS["const"]
+            + sum(PEARLITE_PC_COEFFS[el] * comp[el] for el in comp)
+            + PEARLITE_PC_COEFFS["sqrtMo"] * math.sqrt(max(0.0, Mo)))
+    return math.exp(expo)
+
+
+@dataclass(frozen=True)
+class PearliteReaction:
+    """The cited Li/KV pearlite reaction — the third diffusional C-curve (unified-KV §19).
+
+    Mirrors :class:`FerriteReaction` / :class:`BainiteReaction` (same Li/KV site-saturation family,
+    same shape ``g``) but with the pearlite-specific ceiling **Ae1** (eutectoid A1, °C), undercooling
+    exponent **n = 3** (:data:`PEARLITE_UNDERCOOLING_EXP`, like ferrite) and composition factor ``PC``
+    (:func:`pearlite_PC`). Like bainite there is no equilibrium cap (pearlite consumes whatever
+    austenite the competition leaves). :meth:`rate` is ``K(T)``; :meth:`completion_step` advances an
+    isothermal step; :meth:`nose` is the C-curve nose. The pool sharing / carbon enrichment that race
+    it against ferrite and bainite lives in :mod:`unified_kv`, **not** here — so this object is a pure
+    additive citation, leaving the frozen single-curve pipeline byte-identical.
+    """
+
+    Ae1: float
+    PC: float
+    G: float = FERRITE_ASTM_GRAIN
+    scale: float = PEARLITE_KINETIC_SCALE
+
+    def rate(self, T: float) -> float:
+        """Site-saturation rate coefficient ``K(T)`` (per s) — 0 at/above ``Ae1``.
+
+        ``K = scale·2^(0.41·G)·(Ae1 − T)³·exp(−Q/RT)/PC`` with ``T`` in kelvin and ``Q`` in cal/mol
+        (gas constant :data:`R_CAL`) — the same form as :meth:`FerriteReaction.rate` but with the
+        ``Ae1`` (eutectoid) ceiling and the pearlite ``PC`` factor.
+        """
+        if T >= self.Ae1:
+            return 0.0
+        T_K = T + ABS_ZERO
+        dTu = self.Ae1 - T
+        return (self.scale * 2.0 ** (0.41 * self.G) * dTu ** PEARLITE_UNDERCOOLING_EXP
+                * math.exp(-KV_Q / (R_CAL * T_K)) / self.PC)
+
+    def completion_step(self, U: float, T: float, dt: float) -> float:
+        """Advance the pearlite completion ``U ∈ [0, 1]`` one isothermal step ``dt`` (s) at ``T`` (°C).
+
+        The shared KV site-saturation step (:func:`_kv_site_saturation_step`) — identical to
+        ferrite's but driven by the pearlite ``rate``. Returns ``U`` unchanged at/above ``Ae1``.
+        """
+        return _kv_site_saturation_step(U, self.rate(T), dt)
+
+    def nose(self, X: float = 0.01, T_low: float = 100.0, n_scan: int = 4000) -> tuple[float, float]:
+        """The pearlite C-curve nose ``(T_nose °C, t_nose s)`` — the fastest time to fraction ``X``.
+
+        Scans ``K(T)`` over ``(T_low, Ae1)`` for its maximum (the rate peak), then converts to a time
+        ``t_nose = S(X)/K_max`` with the shape integral :func:`_kv_shape_integral`. The same nose
+        metric :meth:`BainiteReaction.nose` uses — comparable seconds at the same fraction ``X``, so
+        the pearlite-vs-bainite bay separation is read directly.
+        """
+        temps = np.linspace(T_low, self.Ae1 - 1.0, n_scan)
+        rates = np.array([self.rate(float(T)) for T in temps])
+        i = int(np.argmax(rates))
+        K_max = float(rates[i])
+        t_nose = math.inf if K_max <= 0.0 else _kv_shape_integral(X) / K_max
+        return float(temps[i]), t_nose
+
+
+def pearlite_reaction_for_steel(
+    C: float, Mn: float = 0.0, Ni: float = 0.0, Cr: float = 0.0, Mo: float = 0.0,
+    Si: float = 0.0, Ae1: float | None = None, G: float = FERRITE_ASTM_GRAIN,
+    scale: float = PEARLITE_KINETIC_SCALE,
+) -> PearliteReaction:
+    """Build the :class:`PearliteReaction` for a steel composition (wt%) — unified-KV §19.
+
+    Computes the cited composition factor ``PC`` (:func:`pearlite_PC`) and takes the ceiling ``Ae1``
+    from the eutectoid :func:`~steel.fe_c.A1` (727 °C) by default. ``scale`` defaults to the calibrated
+    global :data:`PEARLITE_KINETIC_SCALE`; :mod:`unified_kv` overrides it with the 1080-anchored value.
+    Like :func:`bainite_reaction_for_steel` there is no equilibrium cap (pearlite is consumed by the
+    competition, not capped at an equilibrium fraction).
+    """
+    if Ae1 is None:
+        Ae1 = fe_c.A1()
+    PC = pearlite_PC(C, Mn=Mn, Si=Si, Ni=Ni, Cr=Cr, Mo=Mo)
+    return PearliteReaction(Ae1=Ae1, PC=PC, G=G, scale=scale)
+
+
 def ccurve_for_steel(
     C: float, Mn: float = 0.0, Ni: float = 0.0, Cr: float = 0.0, Mo: float = 0.0,
     Si: float = 0.0, T_eq: float | None = None, add_ferrite: bool = True,

@@ -315,6 +315,52 @@ def test_austemper_overview_figure_builds_when_viz_present():
 
 
 # --------------------------------------------------------------------------- #
+# 9b. The unified-KV bay (§19): the competing-reaction what-if + its readout
+# --------------------------------------------------------------------------- #
+def test_unified_vocabulary_is_the_atlas_pair_only():
+    # The selectbox offers ONLY the atlas-anchored steels — unified_system raises on anything else
+    # (the BC / 8620 cross-steel wall), so a dropdown with a third grade would crash the render.
+    assert app.UNIFIED_STEELS == list(app.aus.ATLAS_STEELS)
+    assert set(app.UNIFIED_STEELS) == {"1080", "4340"}
+
+
+def test_unified_outcome_threads_the_bay_for_4340():
+    # The headline through the app boundary: an intermediate cool lands 4340 bainite-dominant (the
+    # bay), a fast quench lands martensite, a very slow cool lands ferrite/pearlite — one helper.
+    fast = app.unified_outcome("4340", app.UNIFIED_COOLING["very fast — thin water quench"])
+    mid = app.unified_outcome("4340", app.UNIFIED_COOLING["intermediate — air cool"])
+    slow = app.unified_outcome("4340", app.UNIFIED_COOLING["very slow — furnace anneal"])
+    assert fast.dominant() == "martensite"
+    assert mid.dominant() == "bainite" and mid.bainite > 0.5
+    assert slow.ferrite > 0.3                              # proeutectoid ferrite fills in
+    assert sum(mid.fractions().values()) == pytest.approx(1.0, abs=1e-12)
+
+
+def test_unified_outcome_opens_no_bay_for_1080():
+    # The consistency contrast at the app boundary: 1080 never reaches bainite-dominant on any
+    # offered cooling rate (no bay) — the only bulk-bainite route is the austempering hold above.
+    doms = {app.unified_outcome("1080", tau).dominant() for tau in app.UNIFIED_COOLING.values()}
+    assert "bainite" not in doms
+
+
+def test_unified_readout_is_display_ready_and_flags_the_bay():
+    ur = app.unified_readout(app.unified_outcome("4340", app.UNIFIED_COOLING["intermediate — air cool"]))
+    assert set(ur) == {"dominant", "ferrite", "pearlite", "bainite", "martensite",
+                       "retained", "C_gamma", "Ms_eff", "bay_hit"}
+    assert ur["bainite"].endswith("%") and ur["C_gamma"].endswith("%C")
+    assert ur["Ms_eff"].endswith("°C")
+    assert ur["bay_hit"] is True and ur["dominant"] == "bainite"
+
+
+def test_unified_overview_figure_builds_when_viz_present():
+    plt = pytest.importorskip("matplotlib")
+    plt.use("Agg")
+    fig = app.unified_overview_figure()
+    assert len(fig.axes) == 2                             # the 4340 bay + the 1080 no-bay panels
+    plt.pyplot.close(fig)
+
+
+# --------------------------------------------------------------------------- #
 # 10. Inverse design (Phase 7): the hardness-spec → recipe what-if + its readout
 # --------------------------------------------------------------------------- #
 def test_design_outcome_inverts_to_recipes_in_band():

@@ -68,6 +68,8 @@ from steel import sweep
 from steel import grain
 from steel import design
 from steel import properties as prop
+from steel import unified_kv as ukv
+from steel import pathint
 
 
 # The dropdown vocabularies — the real-composition grades and the slow→fast media. The preset
@@ -101,6 +103,20 @@ AUSTEMPER_T_MARGIN = 10.0     # °C inside the (Ms, Bs) window
 # exercise needs fine steps where the action is (minutes), coarse ones in the long tail.
 AUSTEMPER_HOLD_OPTIONS = [1, 2, 5, 10, 20, 30, 60, 90, 120, 180, 240, 300, 360, 450, 600,
                           900, 1200, 1800, 2700, 3600]
+
+# §19 unified-KV competing-reaction demonstrator — the two atlas-anchored steels ONLY
+# (``unified_system`` raises on anything else: the BC / 8620 cross-composition wall, §6b).
+UNIFIED_STEELS = list(aus.ATLAS_STEELS)        # ["1080", "4340"]
+# Cooling-rate presets (Newton time constant τ_th, s) spanning the ladder fast → slow, labelled by
+# the section/medium they evoke. A select_slider so a drag can't land on a pathological τ; the
+# 4340 bay shows up as bainite-dominant at the intermediate steps, 1080 never reaches it.
+UNIFIED_COOLING = {
+    "very fast — thin water quench": 12.0,
+    "fast — oil quench":             150.0,
+    "intermediate — air cool":       1200.0,
+    "slow — heavy section air cool": 8000.0,
+    "very slow — furnace anneal":    60000.0,
+}
 
 # The grain / Phase-5 section's carbon cap. Phase 5's Pickering laws describe a ferrite-pearlite
 # structure; above the eutectoid (~0.8 %C) a pro-eutectoid cementite network appears and that
@@ -347,6 +363,36 @@ def austemper_readout(r: aus.AustemperResult) -> dict:
     }
 
 
+def unified_outcome(steel: str, tau_thermal: float) -> ukv.UnifiedResult:
+    """Race the three competing KV reactions down a Newton cool of time-constant ``τ`` (§19).
+
+    One :func:`unified_kv.transform_competing` over a single Newton-cooling path — light (one path
+    integration, the [[notebook-kernel-wedge-rootcause]]/advisor discipline: no rate-sweep in a
+    live surface). ``steel`` is one of :data:`UNIFIED_STEELS` (the atlas-anchored pair); anything
+    else raises in :func:`unified_kv.unified_system` (the cross-steel wall), which the selectbox
+    makes unreachable.
+    """
+    t = pathint.log_time_grid(14.0 * tau_thermal)
+    T = pathint.newton_cooling(t, 850.0, 25.0, tau_thermal)
+    return ukv.transform_competing(t, T, ukv.unified_system(steel))
+
+
+def unified_readout(result: ukv.UnifiedResult) -> dict:
+    """Display strings for the unified-KV panel — the products, the dominant, the enriched Mₛ."""
+    f = result.fractions()
+    return {
+        "dominant": result.dominant().replace("_", " "),
+        "ferrite": f"{f['ferrite']:.0%}",
+        "pearlite": f"{f['pearlite']:.0%}",
+        "bainite": f"{f['bainite']:.0%}",
+        "martensite": f"{f['martensite']:.0%}",
+        "retained": f"{f['retained_austenite']:.0%}",
+        "C_gamma": f"{result.C_gamma:.2f} %C",
+        "Ms_eff": f"{result.Ms_effective:.0f} °C",
+        "bay_hit": result.dominant() == "bainite",
+    }
+
+
 def design_outcome(target_HRC: float, tol_HRC: float, diameter_mm: float, t_hours: float = 1.0):
     """The inverse-design what-if: a hardness spec + section size → the feasible recipe set (Phase 7).
 
@@ -501,6 +547,21 @@ def austemper_overview_figure(steel: str, T_hold: float, t_hold: float):
     with _warnings.catch_warnings():
         _warnings.filterwarnings("ignore", message="high hold", category=UserWarning)
         return austemper_figure(compute(steel, float(T_hold), float(t_hold)))
+
+
+def unified_overview_figure():
+    """The §19 two-panel bay figure — the banked artifact (4340 bay vs 1080 no-bay).
+
+    A thin wrapper over :func:`steel.demo_unified_kv.compute` + :func:`steel.plots.unified_kv_figure`
+    (the demo's compute pipeline *is* the validated arrays; the render layer owns the drawing — the
+    app invents no figure of its own). Static context for the slider readout: the three competing
+    C-curves with the bay open for 4340 and merged for 1080. Raises ``ImportError`` without
+    matplotlib — caught in :func:`main`.
+    """
+    from steel.demo_unified_kv import compute
+    from steel.plots import unified_kv_figure
+
+    return unified_kv_figure(compute())
 
 
 def design_overview_figure(result):
@@ -846,6 +907,60 @@ def main() -> None:
         st.pyplot(austemper_overview_figure(a_steel, a_T, a_t))
     except ImportError:
         st.info(viz_hint)
+
+    # ---- section 6b: the unified-KV bay — the competing reactions in CCT (§19) ---- #
+    st.subheader("The bainite bay — three competing reactions, opened in continuous cooling (§19)")
+    st.caption(
+        "Every section above models the diffusional transformation as **one** C-curve (pearlite "
+        "above Bₛ, bainite below — the *taught, validated* pipeline that carries the four-curves and "
+        "Jominy benchmarks, and works for any composition). This view does something different: it "
+        "races **three separate** cited Kirkaldy–Venugopalan reactions — ferrite, pearlite and "
+        "bainite — for one austenite pool, so the real **bainite bay** can open. Alloying pushes "
+        "the reconstructive ferrite/pearlite noses ~10³× to the right (cited FC/PC factors — the "
+        "teeth) while the displacive bainite nose barely moves, leaving a gap an intermediate cool "
+        "threads into bainite. **Why it's a separate view, not a replacement:** it is a *per-steel "
+        "demonstrator* anchored to the two US-Steel-atlas steels only — the cited cross-composition "
+        "bainite arithmetic is wrong-signed (the 8620 wall), it bridges the *isothermal* atlas to "
+        "continuous cooling by Scheil additivity with **no measured-CCT validation**, and bainite "
+        "hardness is the carbon-only placeholder. Mechanism lens, not a workhorse."
+    )
+    uc = st.columns(2)
+    u_steel = uc[0].selectbox("Atlas-anchored steel", UNIFIED_STEELS,
+                              index=UNIFIED_STEELS.index("4340") if "4340" in UNIFIED_STEELS else 0,
+                              key="unified_steel")
+    u_label = uc[1].select_slider("Cooling rate", options=list(UNIFIED_COOLING),
+                                  value="intermediate — air cool", key="unified_cool")
+    u_out = unified_outcome(u_steel, UNIFIED_COOLING[u_label])
+    ur = unified_readout(u_out)
+    u1, u2, u3 = st.columns(3)
+    u1.metric("Dominant product", ur["dominant"].title())
+    u1.caption(f"ferrite {ur['ferrite']} · pearlite {ur['pearlite']} · bainite {ur['bainite']}")
+    u2.metric("Bainite", ur["bainite"])
+    u2.caption(f"martensite {ur['martensite']} · retained γ {ur['retained']}")
+    u3.metric("Austenite at Mₛ", ur["C_gamma"])
+    u3.caption(f"enriched by ferrite → Mₛ {ur['Ms_eff']}")
+    if ur["bay_hit"]:
+        st.success(
+            f"**The bay.** At this cooling rate {u_steel} threads between the pushed-right "
+            "ferrite/pearlite noses and the martensite floor → **bainite-dominant** — the "
+            "microstructure the single-curve pipeline cannot produce."
+        )
+    elif u_steel == "1080":
+        st.info(
+            "1080 (eutectoid, plain carbon) opens **no** bay: its pearlite and bainite noses nearly "
+            "coincide, so no continuous cool reaches bainite-dominant. The only route to bulk bainite "
+            "here is an isothermal **hold** — which is exactly why austempering (above) exists."
+        )
+    try:
+        st.pyplot(unified_overview_figure())
+    except ImportError:
+        st.info(viz_hint)
+    st.caption(
+        "Bainite time base = the per-steel **atlas anchor** (cited absolute time); ferrite/pearlite "
+        "separation = the **cited differential** (the teeth); the bay *opening in CCT* is a "
+        "demonstration bridged from the isothermal atlas (named). Carbon enrichment from ferrite "
+        "lowers the effective Mₛ shown above."
+    )
 
     # ---- section 7: inverse design — name a hardness, get a recipe (Phase 7) ---- #
     st.subheader("Inverse design — name a hardness, get the recipe (Phase 7)")

@@ -1365,6 +1365,10 @@ Jominy curve industrially.
 **This completes Phase 6** (6a ferrite bay ✓ / 6b bainite mechanism ✓-descoped / 6d austempering ✓ /
 6c D_I cross-check ✓). The two human forward-options from 6b — (a) the full unified KV-pearlite
 rebuild, (b) proceed — are now both spent; the remaining named deepening is (a), unattempted.
+*(**(a) BUILT 2026-06-12 as §19** — as a per-steel-anchored CCT **demonstrator** in a new opt-in
+`unified_kv.py`, **not** by discarding the calibrated pearlite curve: the frozen single-curve pipeline
+stays byte-identical. The bay opens for 4340 in continuous cooling; the bainite cross-composition wall
+this note's 6b descoping established is honoured by per-steel atlas anchoring. See §19.)*
 
 ### Phase 6d — Austempering: the bainite reaction's valid home (BUILT ✓ 2026-06-10)
 
@@ -1974,3 +1978,96 @@ named edges);
 identical (the module only *imports* them); README (intro + module map) and memory `[[residual-stress]]`
 added; commit + push. The remaining §11 menu is now just the unified-KV-pearlite rebuild (the 6b
 deepening, `[available]`) — the residual-stress / distortion axis is **built**.
+
+---
+
+## 19 — The unified-KV competing-reaction rebuild: the bainite bay, opened in CCT (BUILT ✓ 2026-06-12)
+
+The **last** named §11 deepening (the "6b deepening", the only menu item still `[available]`), and the
+biggest physics lift left because it sits adjacent to the **frozen kinetics core**. The single-curve
+pipeline models the diffusional transformation as **one** TTT C-curve (`kinetics.CCurve.tau`,
+Grossmann-shifted `M`) with pearlite/bainite split by temperature at `Bs` (the "540-split"); Phase 6b
+*proved* the real **bainite bay** cannot be wired into that curve (Jominy-pinned `M` ≈ 8× vs the ~100× a
+bay needs; carbon-flat 550 °C nose; the 8620 carbon-spread ceiling). §19 opens the bay anyway — by racing
+**three separate** cited Li/Kirkaldy–Venugopalan reactions (ferrite/pearlite/bainite) as one
+**competing-reaction system** on a shared austenite pool — in a new, **opt-in, parallel** module
+(`steel/unified_kv.py`) that leaves the validated single-curve pipeline **byte-identical**.
+
+**The decisive constraint (settled before any code, advisor + the bainite-anchoring probe).** This can only
+be a **per-steel-anchored CCT *demonstrator*, not a cross-steel *predictor***. The cited coefficients
+confirm it arithmetically: the **ferrite/pearlite differentials are cited-and-RIGHT** — `PC(4340)/PC(1080)
+≈ 1.4e3` (≈ the atlas-measured ~10³× pearlite retardation) and `FC(4340)/FC(1045) ≈ 2.1e2` — so they open
+the bay and they are the **teeth**; but the **bainite differential is cited-and-WRONG** — `BC(4340)/BC(1080)
+≈ 0.146` says 4340 bainite is ~7× *faster* than 1080 where the atlas measures it ~4–5× *slower*. BC's carbon
+coefficient (10.18) is **directionally** wrong, and no global scale fixes a wrong-direction prediction — so
+bainite carries a **per-steel atlas-anchored scale** (reused verbatim from `austemper.anchored_reaction`),
+and `BC` is never used for absolute cross-steel times. A unified-KV with cited factors + one global scale
+would just reproduce 6b's negative result.
+
+**The architecture (parallel, opt-in, frozen core byte-identical — the 6a/6b/6d/§17/§18 discipline).** The
+plan's "discard the calibrated pearlite curve" option is **rejected outright** (the four-curves + 1045/4140
+Jominy benchmarks are the project's entire validated value). `CCurve.tau` / `pathint.transform_along_path` /
+`HARDENABILITY_SCALE` / the 540-split are **untouched**. The one **additive** edit to the frozen-core *file*
+is `kinetics.py` **§7 `PearliteReaction`** (`pearlite_PC`, `pearlite_reaction_for_steel`) — the one missing
+reaction object, mirroring 6a's §5 ferrite / 6b's §6 bainite (those phases also *added* a section without
+disturbing the frozen surfaces — the precedent). Everything else is the new `unified_kv.py`.
+
+**The new physics.** `PearliteReaction` = the cited KV pearlite member (`PC = exp(−4.25 + 4.12C + 4.36Mn +
+0.44Si + 1.71Ni + 3.33Cr + 5.19√Mo)` — note the **√Mo**, the one form difference from FC/BC's linear Mo;
+ΔT³, ceiling Ae1). The **competing integrator** (`transform_competing`) races the three reactions on one
+shared austenite pool along a cooling path: ferrite forms first/hottest (capped at the equilibrium
+proeutectoid `f_pro`) and **enriches the remaining austenite** (lever-rule carbon balance → the eutectoid as
+`f_pro` fills); pearlite (ceiling Ae1) and bainite (ceiling Bs) then **compete** for the shrinking pool, each
+drawing a slice by its instantaneous rate (clipped so the pool never goes negative — the genuine parallel
+competition, **not** 6a's sequential ferrite-then-pearlite); the survivor shears to martensite per KM at the
+**carbon-enriched** Mₛ. Product fractions sum to 1 by construction.
+
+**The per-steel time-base assembly (the honest scale split).** Ferrite = 6a's one **global**
+`FERRITE_KINETIC_SCALE = 8.0` (validated, FC right-direction, keeps 8620 in band). Pearlite = one **global**
+`PEARLITE_SCALE`, **derived at import** (the austemper "no magic number" rule) so the 1080 pearlite-reaction
+nose reproduces the frozen single-curve ~550 °C / ~1 s nose (consistency with the four-curves anchor, ≈ 0.50)
+— then **4340's deep pearlite nose is *predicted*** from the cited PC ratio, no 4340 tuning (the teeth).
+Bainite = the **per-steel atlas-anchored** scale (`austemper.ANCHORED_SCALES`; the ×~40 gap *is* the wall).
+
+**The teeth / the demonstration / the guards.**
+* **Teeth (cited, scale-free, atlas-confirmed):** `PC`/`FC`-vs-`BC` ratios reproduce 4340's measured bay
+  separation (ferrite/pearlite ~10³× slower than 1080, bainite ~4–5×) — pinned on the reaction objects, no
+  integrator needed. The per-steel bainite holdout (austemper's) carries over.
+* **The demonstration (the NEW capability):** a 4340 intermediate-rate path lands **bainite-dominant**
+  (≈ 0.62) — the microstructure the single-curve `pathint` cannot produce — bracketed by fast → martensite
+  and slow → ferrite+pearlite, the full ladder. Resolution-converged. Labelled *demonstration*, not teeth.
+* **Consistency guards:** 1080 (eutectoid, ferrite inert, coincident pearlite/bainite noses) opens **no** bay
+  — bainite never dominates on any continuous cool (max ≈ 0.34 vs 4340's 0.63). The deep consistency with
+  Phase 6d: for 1080 the *only* route to bulk bainite is an isothermal **hold** — which is exactly why
+  austempering exists.
+
+**Named scope edges (the CCT-source gap is the headline).** (1) **No measured-CCT validation** — the US
+Steel atlas is *isothermal*; "realised in CCT" = emergent from the per-steel-anchored IT curves bridged by
+the frozen Scheil additivity, **not** a measured CCT benchmark (we have none). The bay opening is a
+*demonstration*. (2) **Carbon enrichment is first-order** — it feeds the **final Mₛ** (lever-rule, the right
+direction: more ferrite ⇒ lower Mₛ ⇒ more retained γ), but the diffusional **kinetics use bulk-composition**
+cited factors and ceilings: in the slow-cool regime where much ferrite forms, bainite still races against the
+**bulk `Bs ≈ 497 °C`** though the enriched austenite's `Bs ≈ 405 °C` — re-deriving the anchored reaction at
+the live carbon has no atlas support, and enrichment is small in the bay regime (a path fast enough to land
+bainite forms little ferrite). (3) **Per-steel only** (1080/4340) — the 8620 cross-composition wall. (4)
+Inherited austemper edges (claims at the 50 % line; near-Mₛ acceleration unmodeled; model nose a little high)
+and the **carbon-only bainite hardness** placeholder.
+
+**Triad (`test_unified_kv.py` 28 + `test_demo_unified_kv.py` 4 + 5 app-helper tests).** The cited
+ratio teeth; the bay-opens demonstration + its resolution convergence; the 1080 no-spurious-bay guard + the
+ladder direction; carbon enrichment lowers the effective Mₛ + the lever-rule eutectoid check; ∫fractions = 1
+to machine precision; the pearlite/bainite split order/resolution-insensitivity; the cross-steel/8620
+refusal + path-array guards; and the **frozen-core byte-identity** (the single-curve nose pinned, the legacy
+`pathint` route untouched). New surfaces: `kinetics.PearliteReaction` (§7), `unified_kv`, `demo_unified_kv`,
+`plots.unified_kv_figure` (+ the shared `_draw_competing_ccurves`) → the banked two-panel
+`docs/figures/steel-unified-kv-bay.png` (4340 bay vs 1080 no-bay), a notebook **§6b** (surgical single-cell
+insertion — the other 39 cells byte-identical) and an app **§6b** section, both carrying the two-model
+narrative (why the unified view exists; the limits of each model side by side).
+
+**Close-out.** Suite **502 green** (+2 env-skips; 504 collected); **no ADR** (no engine touch — the frozen
+`engines/diffusion` is not involved; `PearliteReaction` is purely additive; no new scope ceiling beyond the
+named edges); `engines/diffusion`, `kinetics.CCurve`/`pathint`/`austemper`/`properties` and all frozen
+benchmarks (four-curves, 1045/4140 Jominy) **byte-identical**; README (intro + module map) and memory
+`[[unified-kv-rebuild]]` added; commit + push. **The §11 menu is now empty** — grain (§5✓), residual-stress
+(§18✓), inverse-design (§7✓), and the unified-KV rebuild (§19✓) are all built; the named deepenings are
+spent.

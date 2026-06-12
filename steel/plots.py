@@ -1391,6 +1391,103 @@ def bainite_figure(d):
     return fig
 
 
+def _draw_competing_ccurves(ax, view, *, show_ferrite=True, t_lim=(0.1, 1e7)):
+    """Draw one steel's three competing KV C-curves (ferrite/pearlite/bainite) on a TTT axis.
+
+    Shared by both panels of :func:`unified_kv_figure`. ``view`` is a
+    :class:`~steel.demo_unified_kv.SteelView`. Plots each reaction's start line ``t(T)`` (nan-masked
+    above its ceiling), the ``Bs``/``Ms`` markers, and a nose dot per curve.
+    """
+    temps = view.temps
+    if show_ferrite and view.has_ferrite:
+        keep = np.isfinite(view.ferrite_tau) & (view.ferrite_tau < t_lim[1])
+        ax.plot(view.ferrite_tau[keep], temps[keep], color="#c8941f", lw=2.4,
+                label="ferrite start  (FC, ΔT³)")
+    keep = np.isfinite(view.pearlite_tau) & (view.pearlite_tau < t_lim[1])
+    ax.plot(view.pearlite_tau[keep], temps[keep], color=PHASE_COLORS["pearlite"], lw=2.4,
+            label="pearlite start  (PC, ΔT³)")
+    keep = np.isfinite(view.bainite_tau) & (view.bainite_tau < t_lim[1])
+    ax.plot(view.bainite_tau[keep], temps[keep], color=PHASE_COLORS["bainite"], lw=2.4,
+            label="bainite start  (BC, ΔT¹, atlas-anchored)")
+
+    noses = [(view.pearlite_nose, PHASE_COLORS["pearlite"]), (view.bainite_nose, PHASE_COLORS["bainite"])]
+    if show_ferrite and view.has_ferrite and view.ferrite_nose is not None:
+        noses.append((view.ferrite_nose, "#c8941f"))
+    for (Tn, tn), col in noses:
+        if np.isfinite(tn):
+            ax.plot([tn], [Tn], "o", color=col, ms=6, mec="0.2", zorder=5)
+
+    ax.axhline(view.Bs, color=PHASE_COLORS["bainite"], ls=":", lw=1.2)
+    ax.axhline(view.Ms, color=PHASE_COLORS["martensite"], ls=":", lw=1.2)
+    ax.text(t_lim[0] * 1.4, view.Bs + 6, "Bₛ", va="bottom", ha="left",
+            color=PHASE_COLORS["bainite"], fontsize=8.5)
+    ax.text(t_lim[0] * 1.4, view.Ms + 6, "Mₛ", va="bottom", ha="left",
+            color=PHASE_COLORS["martensite"], fontsize=8.5)
+    ax.set_xscale("log")
+    ax.set_xlim(*t_lim)
+    ax.set_ylim(0.0, view.Ae3 + 30.0)
+    ax.set_xlabel("time  (s)")
+    ax.set_ylabel("temperature  (°C)")
+    return ax
+
+
+def unified_kv_figure(d):
+    """The §19 artifact: the bainite bay **opened** in continuous cooling (the 6b deepening).
+
+    ``d`` is a :class:`~steel.demo_unified_kv.UnifiedDemo` (already-validated arrays — this layer
+    only draws them, ADR 0002). Two panels:
+
+    * **left — 4340: the bay opens.** The three competing Li/KV C-curves (ferrite/pearlite/bainite);
+      alloying pushes the reconstructive ferrite/pearlite noses ~10³× right (cited ``FC``/``PC``)
+      while the displacive bainite nose barely moves (per-steel atlas-anchored ``BC``). Three cooling
+      paths thread it: fast → **martensite**, intermediate → **bainite** (the bay), slow →
+      **ferrite + pearlite**.
+    * **right — 1080: no bay.** Eutectoid plain carbon: no proeutectoid ferrite, and the pearlite and
+      bainite noses nearly coincide (a merged C-curve) — the consistency contrast.
+
+    The bainite time base is the **per-steel atlas anchor** (cited, the validated absolute time); the
+    ferrite/pearlite separation is the **cited differential** (the teeth). The bay *opening in CCT*
+    is bridged from the isothermal atlas by Scheil additivity (no measured-CCT validation) — a
+    **demonstration**, named on the figure.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_bay, ax_nb) = plt.subplots(1, 2, figsize=(13.0, 5.6))
+
+    # --- left: 4340, the bay opens, with three cooling paths threading it ----- #
+    _draw_competing_ccurves(ax_bay, d.bay)
+    for p in d.paths:
+        m = p.t > 0.0
+        dom = p.dominant.replace("_", " ")
+        ax_bay.plot(p.t[m], p.T[m], color=PHASE_COLORS.get(p.dominant, "0.3"),
+                    lw=1.8, ls="--", alpha=0.9, label=f"{p.label} → {dom}")
+    # Annotate the bay: the temperature gap between the bainite nose and the pearlite nose.
+    t_mid = float(np.sqrt(d.bay.bainite_nose[1] * d.bay.pearlite_nose[1]))
+    ax_bay.annotate("the BAY\n(cool through here\n→ bainite)", (t_mid, d.bay.Bs - 70),
+                    ha="center", va="top", fontsize=8.5, color="0.25",
+                    bbox=dict(boxstyle="round,pad=0.3", fc="#eef6f0", ec=PHASE_COLORS["bainite"], lw=1.0))
+    ax_bay.set_title("4340: the bay opens — ferrite/pearlite pushed ~10³× right, bainite stays put",
+                     fontsize=10.0)
+    ax_bay.legend(loc="upper right", fontsize=7.6, framealpha=0.92)
+
+    # --- right: 1080, no bay (the consistency contrast) ---------------------- #
+    _draw_competing_ccurves(ax_nb, d.nobay, show_ferrite=False)
+    ax_nb.set_title("1080: no bay — pearlite & bainite noses coincide (eutectoid, no ferrite)",
+                    fontsize=10.0)
+    ax_nb.legend(loc="upper right", fontsize=8, framealpha=0.92)
+    ax_nb.annotate("the merged C-curve a fast quench\nmust outrun (the four-curves ladder)",
+                   (0.5, 0.02), xycoords="axes fraction", ha="center", va="bottom",
+                   fontsize=8, color="0.4", style="italic")
+
+    fig.suptitle(
+        "§19 — the bainite bay, opened in continuous cooling (per-steel-anchored demonstrator; "
+        "the validated single-curve pipeline is untouched)",
+        fontsize=12.0, fontweight="bold",
+    )
+    fig.subplots_adjust(left=0.065, right=0.98, top=0.89, bottom=0.11, wspace=0.2)
+    return fig
+
+
 def austemper_figure(d):
     """The Phase-6d artifact: the atlas-anchored austempering hold, in three panels.
 
