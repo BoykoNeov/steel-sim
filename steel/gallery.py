@@ -79,13 +79,14 @@ CATALOG: tuple[Entry, ...] = (
         "Jominy end-quench",
         "One end-quench bar: shallow-hardening 1045 against deep-hardening 4140, hardness versus "
         "depth from the quenched end.",
-        notebook="§3",
+        notebook="§3", app="Jominy",
     ),
     Entry(
         "Hardenability", "demo_ideal_diameter", "steel-ideal-diameter.png",
         "Ideal critical diameter",
         "Critical diameter read *from* the model against measured H-band data — does it rank "
         "the steels' hardenability in the right order?",
+        notebook="§3",
     ),
     Entry(
         "Tempering", "demo_tempered_jominy", "steel-tempered-jominy.png",
@@ -106,7 +107,7 @@ CATALOG: tuple[Entry, ...] = (
         "Grain morphology swatch",
         "Those two grains drawn to scale — a size-accurate microstructure swatch beside the "
         "schematic.",
-        app="§5",
+        notebook="§5", app="§5",
     ),
     Entry(
         "Process routes", "demo_austemper", "steel-austemper.png",
@@ -120,6 +121,7 @@ CATALOG: tuple[Entry, ...] = (
         "Martempering",
         "The same hardness as a direct quench, far less distortion — the surface−centre "
         "temperature gap closed before the martensite forms.",
+        notebook="§6d", app="martempering",
     ),
     Entry(
         "Process routes", "demo_unified_kv", "steel-unified-kv-bay.png",
@@ -140,6 +142,7 @@ CATALOG: tuple[Entry, ...] = (
         "Does any cited composition factor predict bainite kinetics *across* steels? Eight atlas "
         "steels say no — the per-steel-only wall, measured and quantified (not just asserted), and "
         "the alloy-vs-carbon diagnosis behind it.",
+        notebook="§6c",
     ),
     Entry(
         "Stress", "demo_residual", "steel-residual-stress.png",
@@ -147,12 +150,14 @@ CATALOG: tuple[Entry, ...] = (
         "The residual stress and distortion a quench locks into a section — the "
         "solid-mechanics axis (incremental elastic–perfectly-plastic, transform dilatation "
         "and all).",
+        notebook="§6e", app="residual stress",
     ),
     Entry(
         "Case hardening", "demo_carburize", "steel-carburize-gradient.png",
         "Carburizing",
         "A carburized gear tooth: carbon diffused in at the surface, case hardness profiled out "
         "— the same sealed engine as Jominy, a mass-diffusion face.",
+        notebook="§8", app="carburizing",
     ),
     Entry(
         "Inverse design", "demo_design", "steel-design.png",

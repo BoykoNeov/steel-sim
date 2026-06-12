@@ -91,18 +91,18 @@ the notebook (§) and the app.
 |---|---|---|---|
 | **Core** | `demo_four_curves` | notebook §1–2 · app *four fates* | One 1080 steel, four quench rates → pearlite → bainite → martensite — the C-curve mechanism beside the resulting microstructure. |
 | **Core** | `demo_sweep` | notebook §3 · app *grid / build-your-own* | Composition × cooling rate, side by side — the hardenability axis the four-curves view can't show. |
-| **Hardenability** | `demo_jominy` | notebook §3 | One end-quench bar: shallow 1045 vs deep-hardening 4140, hardness vs depth. |
-| **Hardenability** | `demo_ideal_diameter` | — | Critical diameter read *from* the model vs measured H-band data — does it rank hardenability right? |
+| **Hardenability** | `demo_jominy` | notebook §3 · app *Jominy* | One end-quench bar: shallow 1045 vs deep-hardening 4140, hardness vs depth. |
+| **Hardenability** | `demo_ideal_diameter` | notebook §3 | Critical diameter read *from* the model vs measured H-band data — does it rank hardenability right? |
 | **Tempering** | `demo_tempered_jominy` | notebook §4 · app *quench-and-temper* | A *tempered* Jominy traverse — per-constituent temper of a mixed structure. |
 | **Grain size** | `demo_grain` | notebook §5 · app §5 | Grain refinement — the lone lever that raises strength *and* toughness at once. |
-| **Grain size** | `demo_grain_morphology` | app §5 | Those two grains drawn to scale — a size-accurate microstructure swatch. |
+| **Grain size** | `demo_grain_morphology` | notebook §5 · app §5 | Those two grains drawn to scale — a size-accurate microstructure swatch. |
 | **Process routes** | `demo_austemper` | notebook §6 · app §6 | Austempering: quench past the nose, hold inside the diagram, grow bainite. |
-| **Process routes** | `demo_martemper` | — | Martempering: the same hardness as a direct quench, far less distortion. |
+| **Process routes** | `demo_martemper` | notebook §6d · app *martempering* | Martempering: the same hardness as a direct quench, far less distortion. |
 | **Process routes** | `demo_unified_kv` | notebook §6b · app §6b | The bainite bay *opened* in continuous cooling — three competing reactions raced on one austenite pool. |
 | **Process routes** | `demo_bainite` | — | The cited bainite reaction, and why its bay can't form in a plain continuous cool (the negative-result companion). |
-| **Validation** | `demo_cct_validation` | — | Does any cited composition factor predict bainite kinetics *across* steels? Eight atlas steels say no — the per-steel-only wall, measured and quantified. |
-| **Stress** | `demo_residual` | — | The residual stress and distortion a quench locks into a section (the solid-mechanics axis). |
-| **Case hardening** | `demo_carburize` | — | A carburized gear tooth: carbon diffused in at the surface, case hardness out. |
+| **Validation** | `demo_cct_validation` | notebook §6c | Does any cited composition factor predict bainite kinetics *across* steels? Eight atlas steels say no — the per-steel-only wall, measured and quantified. |
+| **Stress** | `demo_residual` | notebook §6e · app *residual stress* | The residual stress and distortion a quench locks into a section (the solid-mechanics axis). |
+| **Case hardening** | `demo_carburize` | notebook §8 · app *carburizing* | A carburized gear tooth: carbon diffused in at the surface, case hardness out. |
 | **Inverse design** | `demo_design` | notebook §7 · app §7 | Name a target hardness, get a feasible recipe (grade + quench + temper). |
 | **Equilibrium** | `demo_calphad` | — | Real CALPHAD thermodynamics vs the parametrised Fe-C diagram (needs the `.[calphad]` extra). |
 
