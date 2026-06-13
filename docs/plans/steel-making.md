@@ -246,6 +246,51 @@ dissolved-gas removal by **Sieverts' law** ([H], [N] ∝ √p).
 - **Banked artifact.** A "tap chemistry" panel — set blow/additions, watch C, O,
   S, P, H, N land in or out of spec; the deoxidation curve [O] vs Al added.
 
+> **As built — 2026-06-13 (build-order item 4, Slice 1).** `steel/refining.py` (+ `demo_refining.py`,
+> `plots.refining_figure`, `tests/test_refining.py` 20 + `test_demo_refining.py` 6; fast lane → **614 green**,
+> +26). **Standalone — no solver, no engine/back-end touch, no ADR** (this plan is the record). The advisor
+> reframed the honesty before any code, and the build follows that reframe:
+> - **The carbon axis is the *validated* propagation — the proof rides there.** My first read ("the back end
+>   doesn't consume O/N/H, so F2 only *fills fields*") was half-wrong: the back end **does** consume carbon,
+>   and the blow sets it. So **over-blow → carbon below target → the existing** `heat_state.heat_treat` **raises
+>   its soft-core flag** — a real refining mistake → a real, *benchmarked* back-end consequence. This is the same
+>   class as the **spine's Cr/Mo under-dose propagation** (a chosen composition/control error reaching the
+>   already-benchmarked back end) — *not* F4's centerline band, where Scheil **computes** the enrichment from new
+>   cited physics; here F2's new physics (next bullet) sits on the *deferred*-consequence side, while the
+>   validated link rides a control input the back end already responds to. Built: a 4140-backbone heat blown to
+>   0.40 %C through-hardens (94 % M,
+>   628 HV) at oil/Ø15 mm; over-blow to 0.20 %C and the *same* quench drops to 84 % M / 450 HV → **soft core**.
+>   Emergent (martensite fraction crossing `MIN_MARTENSITE_SPEC`), not scripted.
+> - **The gas/inclusion fields — the user's ask — are filled; their consequences are honestly deferred.** The
+>   decarburization that sets carbon **raises dissolved O** (the inverse C–O product), deoxidation removes it
+>   (generating Al₂O₃), degassing strips H/N — so `oxygen_ppm` / `hydrogen_ppm` / `nitrogen_ppm` /
+>   `inclusion_*`, **`None` since the spine**, are now populated. But the *downstream* of that state (porosity,
+>   flaking, hot-tear) is F4-Slice-2 / game-layer (the §6 links marked "F2 new + F4 new"): F2 **sets up** that
+>   propagation, it does not yet close it. Under-deoxidize → **porosity-risk** flag; under-degas → **hydrogen-
+>   flaking-risk** flag (consequences deferred). Nitrogen is **reported, not spec-flagged** (the Sieverts value
+>   is the solubility *limit*, not the kinetically-limited actual — a hard N spec would flag every heat).
+> - **Physics & the two-tier provenance (di-crosscheck applied).** *Robust-anchor teeth:* the carbon–oxygen
+>   product `[%C][%O] ≈ 0.0022` at 1600 °C (ΔG° = −19840 − 40.65·T; Vidhyasagar 2023 / standard, benchmarked
+>   vs measured BOP 27±3, EAF 26±2 ppm·%C), the Sieverts solubilities **H ≈ 26 ppm** (log K = −1900/T + 2.423)
+>   and **N ≈ 450 ppm** (ΔG° = 3598 + 23.89·T, Pehlke–Elliott; cross-checked 3000 ppm @ 50 atm → 424 @ 1 atm),
+>   and `e_O^Al = −3.9` (Sigworth & Elliott 1974) — all read from the sources before pinning. The **deoxidizer
+>   hierarchy Al ≫ Si > Mn** is *computed* from the pinned constants and verified to match **F1's Ellingham
+>   oxide-stability order** (Al₂O₃ < SiO₂ < MnO) — independently sourced (Henrian deox constants vs Raoultian
+>   ΔG°f), so their agreement is a real cross-module coherence tooth, not an assertion. The **Al–O minimum**
+>   (~0.07 % Al; the dilute cartoon misses it) is the headline artifact feature — and its *location* is
+>   `−m/(n·ln10·e_O^Al)`, **independent of the scattered `K_Al`**, so the tooth doesn't ride the source-
+>   sensitive tier (the absolute deox constants are Turkdogan-class, ranking + order-of-magnitude only).
+> - **Scope ceiling (named).** Equilibrium endpoints, never the transport *rate* (the blow/flotation/pick-up
+>   kinetics — the front-end tar pit, §4); 1-wt% Henrian dilute, a single dominant deoxidizer with `f_M ≈ 1`;
+>   dissolved gas is the solubility *limit* (real pick-up below it); inclusion content is *generated* oxide
+>   (flotation removal not modelled). **Slag partition (L_S, L_P vs basicity — desulfurization /
+>   dephosphorization) is Slice 2**, deferred because it needs S/P state the `Heat`/`Steel` does not carry
+>   (a state extension is its own call) — *not* pulled in just to widen the slice.
+> - **Surfacing.** Demo (tap-chemistry trail + the carbon divergence) + banked figure
+>   (`docs/figures/steel-refining.png`: the deoxidation curve with its minimum, the C–O coupling, Sieverts √p
+>   degassing, the carbon-axis propagation) + gallery card (new **"Refining (front-end)"** section) + both
+>   READMEs. **Notebook & app deferred** (same as F1/spine/F4 — all heat-treatment-framed).
+
 ### F3 — Ladle / secondary metallurgy + alloy trim (the seam to the back end)
 Trim the heat to a **target grade** by ferroalloy additions with recovery/yield;
 inclusion control. **This is where the composition vector the back end consumes
@@ -406,17 +451,24 @@ copied as datasets. No export-control dimension. (Same posture as
    Proves the chain runs **front-to-back inside steel-sim** (Scheil microsegregation
    → centerline `Heat` → back-end divergence) — a *new-physics* phase, not the "thin
    reuse" first imagined. The latent-heat solidification map is **deferred to Slice 2**.
-   **← next: item 4 (F2/F3), or Slice 2 (latent-heat map + defects).**
-4. **F2 / F3 — refining + ladle.** Fill in the middle of the chain.
-5. **`game/`.** The loop/economy/UI on a *proven verified spine* — last, by
+4. **F2 — refining. ✅ BUILT 2026-06-13 (Slice 1; as-built record under §7).** The
+   middle of the chain: decarburize / deoxidize / degas. **Fills the dissolved-gas /
+   inclusion fields the spine left `None`**, and the *carbon* the blow sets carries a
+   **validated** propagation (over-blow → back-end soft core). Slag partition (S/P,
+   desulf/dephos) is **deferred to Slice 2** (needs S/P state the `Heat` lacks).
+   **← next: F3 (ladle trim — the hero-demo input), or F2/F4 Slice 2.**
+5. **F3 — ladle + alloy trim.** Where the grade composition is finalized — the
+   hero-demo's off-spec input.
+6. **`game/`.** The loop/economy/UI on a *proven verified spine* — last, by
    design, never first.
 
 **Immediate next step.** ~~Plan only — this document.~~ **F1 (Ellingham), the
-`heat_state.py` spine, and F4 casting (Slice 1) are built** (2026-06-12; as-built
-records under §7, §5, §7). The chain now **runs front-to-back inside steel-sim** (cast
-billet → segregated centerline `Heat` → back-end divergence). The next slice is the
-**middle of the chain (F2/F3 — refining + ladle)**, or **F4 Slice 2** (the latent-heat
-solidification map + defect criteria) — then `game/` last.
+`heat_state.py` spine, F4 casting (Slice 1), and F2 refining (Slice 1) are built**
+(2026-06-12/13; as-built records under §7, §5, §7, §7). The chain now **runs
+front-to-back inside steel-sim**, and the middle (refining) fills the dissolved-gas /
+inclusion state. The next slice is **F3 (ladle trim — the seam where the hero demo's
+off-spec composition is set)**, or a **Slice 2** (F2 slag partition / F4 latent-heat map
++ defects) — then `game/` last.
 
 ---
 

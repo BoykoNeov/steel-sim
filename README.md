@@ -107,6 +107,7 @@ the notebook (§) and the app.
 | **Equilibrium** | `demo_calphad` | — | Real CALPHAD thermodynamics vs the parametrised Fe-C diagram (needs the `.[calphad]` extra). |
 | **Ironmaking** (front-end) | `demo_reduction` | — | The Ellingham diagram: which reductant reduces which oxide, above which temperature — the front-end "ore → iron" first slice (F1). |
 | **Front-end spine** | `demo_heat_state` | — | Failure propagation: a `Heat` record carries an upstream alloy mistake (under-dosed Cr/Mo) into a downstream soft-core defect — the spine that lets the front-end steps compose. |
+| **Refining** (front-end) | `demo_refining` | — | Primary refining (BOF/EAF): blow hot metal to the grade's carbon (over-blow → a *validated* soft core), kill it with aluminium, vacuum-degas — filling the `Heat`'s dissolved O/H/N + inclusion fields (the deoxidation curve with its minimum, the C–O coupling, Sieverts √p) (F2). |
 | **Casting** (front-end) | `demo_casting` | — | The chain closes front-to-back: Scheil microsegregation enriches a casting's centerline → the same billet heat-treats non-uniformly into a hard centerline band (Chvorinov solidification time too). |
 
 **Suggested first pass:** `demo_four_curves` → `demo_jominy` → `demo_sweep` →

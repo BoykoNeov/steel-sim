@@ -190,6 +190,15 @@ CATALOG: tuple[Entry, ...] = (
         "spec line.",
     ),
     Entry(
+        "Refining (front-end)", "demo_refining", "steel-refining.png",
+        "Primary refining — the blow sets carbon, the gas fields fill",
+        "The middle of the chain: blow carbon-saturated hot metal to the grade's carbon, kill it with "
+        "aluminium, vacuum-degas. The blow's carbon is the one output the validated back end consumes — "
+        "over-blow and the same quench leaves a soft core (a real refining mistake, a real downstream "
+        "consequence). Alongside, the dissolved O / H / N and inclusion fields the Heat carried empty are "
+        "filled: the deoxidation curve with its minimum, the C–O coupling, and Sieverts √p degassing.",
+    ),
+    Entry(
         "Casting (front-end)", "demo_casting", "steel-casting.png",
         "Casting & solidification — segregation runs front-to-back",
         "The chain closes front-to-back: cast a billet and Scheil microsegregation enriches the "

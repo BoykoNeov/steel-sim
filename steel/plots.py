@@ -2124,3 +2124,104 @@ def casting_figure(d):
                  fontsize=12.0, fontweight="bold")
     fig.subplots_adjust(left=0.06, right=0.97, top=0.86, bottom=0.12, wspace=0.28)
     return fig
+
+
+def refining_figure(d):
+    """The F2 artifact: the tap-chemistry panel — deoxidation curve, C–O coupling, degassing, propagation.
+
+    ``d`` is a :class:`~steel.demo_refining.RefiningDemo` (already-computed arrays/scalars — this layer only
+    draws them, ADR 0002). Four panels, the refining story top-left → bottom-right:
+
+    * **top-left — the deoxidation curve (the banked artifact).** Equilibrium dissolved oxygen vs aluminium
+      added. The solid line is the real curve with its **minimum** (~0.07 % Al); the dashed line is the
+      dilute *cartoon* that monotonically falls — the gap is exactly what the one cited interaction
+      coefficient ``e_O^Al`` adds. Silicon sits an order of magnitude above aluminium (the hierarchy).
+    * **top-right — the C–O coupling.** Dissolved oxygen vs carbon, the inverse product ``[%C][%O] ≈
+      0.0022``: carbon-saturated charge is low-oxygen, the blow lifts oxygen as it drops carbon, the
+      over-blow lifts it further (the three process points marked).
+    * **bottom-left — vacuum degassing (Sieverts √p).** Hydrogen and nitrogen solubility vs partial
+      pressure: the square-root law means the 2 ppm hydrogen flaking limit needs a few-mbar vacuum (marked).
+    * **bottom-right — the validated propagation.** Core martensite fraction vs the carbon turndown: aim
+      for the grade's carbon and the part clears the soft-core spec; over-blow and the *same* quench falls
+      under it. The one refining output the benchmarked back end consumes — a real mistake, a real
+      consequence.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ((ax_deox, ax_co), (ax_gas, ax_prop)) = plt.subplots(2, 2, figsize=(13.5, 9.6))
+    warn = "#c0392b"
+    al_color, si_color = "#2471a3", "#16a085"
+
+    # --- top-left: the deoxidation curve with the minimum --------------------- #
+    ax_deox.plot(d.al_grid, d.o_vs_al, color=al_color, lw=2.6, label="aluminium (with e_O$^{Al}$)")
+    ax_deox.plot(d.al_grid, d.o_vs_al_dilute, color=al_color, lw=1.6, ls="--",
+                 label="aluminium (dilute cartoon — no minimum)")
+    ax_deox.plot(d.al_grid, d.o_vs_al_si, color=si_color, lw=2.2, label="silicon")
+    ax_deox.plot([d.al_min], [d.o_min], "o", mfc="white", mec=warn, ms=11, mew=2.2, zorder=6)
+    ax_deox.annotate(f"minimum\n[Al] ≈ {d.al_min:.3f} % → {d.o_min:.1f} ppm\n(over-kill RAISES O)",
+                     (d.al_min, d.o_min), textcoords="offset points", xytext=(26, 6), fontsize=8.4,
+                     color=warn, bbox=dict(boxstyle="round,pad=0.3", fc="white", ec=warn, lw=1.0))
+    ax_deox.set_yscale("log")
+    ax_deox.set_xlabel("aluminium added  (wt %)")
+    ax_deox.set_ylabel("equilibrium dissolved oxygen  (ppm)")
+    ax_deox.set_title("Deoxidation curve — [O] vs Al, and the minimum the cartoon misses", fontsize=10.4)
+    ax_deox.grid(True, which="both", alpha=0.22)
+    ax_deox.legend(fontsize=8.0, loc="upper right")
+
+    # --- top-right: the C–O coupling ------------------------------------------ #
+    ax_co.plot(d.carbon_grid, d.o_vs_carbon, color="0.25", lw=2.4)
+    pts = [("hot-metal\ncharge", d.charge_point, "0.45"),
+           ("on-spec\nblow", d.target_point, PHASE_COLORS["martensite"]),
+           ("over-blow", d.overblow_point, warn)]
+    for label, (c, o), color in pts:
+        ax_co.plot([c], [o], "o", color=color, ms=10, zorder=5)
+        ax_co.annotate(f"{label}\n{c:g} %C → {o:.0f} ppm", (c, o), textcoords="offset points",
+                       xytext=(8, -2 if label.startswith('hot') else 10), fontsize=8.0, color=color,
+                       ha="left", va="top" if label.startswith('hot') else "bottom")
+    ax_co.set_xscale("log")
+    ax_co.set_yscale("log")
+    ax_co.set_xlabel("carbon  (wt %)")
+    ax_co.set_ylabel("equilibrium dissolved oxygen  (ppm)")
+    ax_co.set_title("C–O coupling — [%C]·[%O] ≈ 0.0022: blow carbon down, oxygen climbs", fontsize=10.4)
+    ax_co.grid(True, which="both", alpha=0.22)
+
+    # --- bottom-left: Sieverts √p degassing ----------------------------------- #
+    p_mbar = d.pressure_grid * 1000.0
+    ax_gas.plot(p_mbar, d.h_vs_p, color="#8e44ad", lw=2.6, label="hydrogen")
+    ax_gas.plot(p_mbar, d.n_vs_p, color="#d68910", lw=2.2, label="nitrogen (solubility limit)")
+    ax_gas.axhline(2.0, color=warn, ls="--", lw=1.5)                 # MAX_HYDROGEN_PPM, the flaking spec
+    ax_gas.annotate("2 ppm H flaking limit", (p_mbar[-1], 2.0), ha="right", va="bottom",
+                    fontsize=8.2, color=warn)
+    vac = d.vacuum_for_2ppm * 1000.0
+    ax_gas.axvline(vac, color="0.4", ls=":", lw=1.4)
+    ax_gas.annotate(f"vacuum to beat flaking\n≈ {vac:.1f} mbar", (vac, d.h_vs_p[0]),
+                    textcoords="offset points", xytext=(8, -4), fontsize=8.2, color="0.3", ha="left")
+    ax_gas.set_xscale("log")
+    ax_gas.set_yscale("log")
+    ax_gas.set_xlabel("gas partial pressure  (mbar)")
+    ax_gas.set_ylabel("Sieverts solubility  (ppm)")
+    ax_gas.set_title("Vacuum degassing — [X] = K·√p: halve H, quarter the pressure", fontsize=10.4)
+    ax_gas.grid(True, which="both", alpha=0.22)
+    ax_gas.legend(fontsize=8.4, loc="lower right")
+
+    # --- bottom-right: the validated carbon-axis propagation ------------------ #
+    ax_prop.plot(d.carbon_axis, d.fM_vs_carbon, color="0.25", lw=2.4, zorder=3)
+    ax_prop.axhline(d.spec, color="0.35", ls="--", lw=1.6, zorder=2)
+    ax_prop.axhspan(0.0, d.spec, color="#fdecea", alpha=0.6, zorder=0)
+    ax_prop.annotate(f"soft-core spec (≥ {d.spec:.0%} martensite)", (0.5, d.spec),
+                     xycoords=("axes fraction", "data"), ha="center", va="bottom", fontsize=8.4, color="0.3")
+    for label, c, fM, color in [("on-spec\n0.40 %C", 0.40, d.on_spec_fM, PHASE_COLORS["martensite"]),
+                                ("over-blown\n0.20 %C", 0.20, d.over_fM, warn)]:
+        ax_prop.plot([c], [fM], "o", color=color, ms=11, zorder=5)
+        ax_prop.annotate(label, (c, fM), textcoords="offset points", xytext=(0, 12 if color != warn else -30),
+                         ha="center", fontsize=8.6, color=color, fontweight="bold")
+    ax_prop.set_xlabel("carbon after the blow  (wt %)")
+    ax_prop.set_ylabel("core martensite fraction")
+    ax_prop.set_ylim(0.0, 1.05)
+    ax_prop.set_title("Validated axis — over-blow carbon → soft core (same oil quench)", fontsize=10.4)
+    ax_prop.grid(True, alpha=0.25)
+
+    fig.suptitle("F2 — primary refining: the blow sets carbon (validated), and the gas / inclusion fields fill",
+                 fontsize=12.4, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.92, bottom=0.07, hspace=0.28, wspace=0.22)
+    return fig
