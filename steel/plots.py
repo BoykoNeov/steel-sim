@@ -2126,6 +2126,107 @@ def casting_figure(d):
     return fig
 
 
+def solidification_figure(d):
+    """The F4 Slice-2 artifact: the latent-heat solidification map, the arrest, the Stefan tooth, the hot spot.
+
+    ``d`` is a :class:`~steel.demo_solidification.SolidificationDemo` (already-computed arrays — this layer
+    only draws them, ADR 0002). Four panels:
+
+    * **top-left — the solidification map.** ``T(x, t)`` of the section freezing against the chill; the solid
+      front (solidus isotherm) sweeps from the chill toward the insulated thermal centre — the iconic picture.
+    * **top-right — the latent-heat arrest.** The centre's temperature history, latent heat on vs off: with
+      latent heat the cool-down *stalls* in the freezing band (the plateau) — directional, not a precise tooth.
+    * **bottom-left — the Stefan benchmark (the tooth).** The numerical freezing front vs the analytic
+      one-phase ``2λ√(αt)``, at two grid resolutions: the match converges toward the closed form as Δx halves.
+    * **bottom-right — where the defects are.** Local solidification time rises to the insulated centre (the
+      last-to-freeze hot spot, the same centerline Slice 1 enriches); the cited Niyama number collapses there
+      (G → 0) — porosity-prone. Illustrative / by-construction.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ((ax_map, ax_arr), (ax_stef, ax_def)) = plt.subplots(2, 2, figsize=(13.8, 9.8))
+    p = d.path
+    warn, good, amber = "#c0392b", "#1f6f3c", "#d68910"
+
+    # --- top-left: the solidification map T(x, t) (cropped to the freezing window) --- #
+    t_cap = min(d.field.t[-1], 1.7 * max(d.centre_freeze_on, 1.0))
+    keep = d.field.t <= t_cap
+    step = max(1, int(keep.sum()) // 320)            # subsample time rows for a clean mesh
+    ti = d.field.t[keep][::step]
+    Tmesh = d.field.T[keep][::step]
+    xm = d.field.x * 1e3
+    pcm = ax_map.pcolormesh(xm, ti, Tmesh, cmap="inferno", shading="auto",
+                            vmin=p.T_sol - 250.0, vmax=p.T_liq)
+    ax_map.plot(d.solidus_front[keep][::step] * 1e3, ti, color="cyan", lw=1.8, label="solidus front")
+    cb = fig.colorbar(pcm, ax=ax_map, pad=0.02)
+    cb.set_label("temperature (°C)")
+    ax_map.set_xlabel("distance from chill  x  (mm)")
+    ax_map.set_ylabel("time  t  (s)")
+    ax_map.set_title(f"Solidification map — {p.T_liq:.0f}→{p.T_sol:.0f} °C front sweeps from the chill",
+                     fontsize=10.2)
+    ax_map.legend(loc="lower right", fontsize=8.4, framealpha=0.85)
+
+    # --- top-right: the latent-heat arrest at the centre ----------------------- #
+    ax_arr.axhspan(p.T_sol, p.T_liq, color=amber, alpha=0.16, zorder=0)
+    ax_arr.annotate("freezing band", (0.98, 0.5 * (p.T_sol + p.T_liq)), xycoords=("axes fraction", "data"),
+                    ha="right", va="center", fontsize=8.2, color=amber)
+    t_lim = min(d.centre_t[-1], 2.2 * max(d.centre_freeze_on, 1.0))
+    ax_arr.plot(d.centre_t, d.centre_T_on, color=warn, lw=2.4, label="latent heat ON (the plateau)")
+    ax_arr.plot(d.centre_t, d.centre_T_off, color="0.45", lw=1.8, ls="--", label="latent heat OFF")
+    ax_arr.set_xlim(0.0, t_lim)
+    ax_arr.set_xlabel("time  t  (s)")
+    ax_arr.set_ylabel("centre temperature (°C)")
+    ax_arr.set_title(f"Latent-heat arrest at the thermal centre\nfreeze-through ×{d.centre_freeze_on/d.centre_freeze_off:.1f} vs no latent heat",
+                     fontsize=10.2)
+    ax_arr.legend(loc="upper right", fontsize=8.4)
+    ax_arr.grid(True, alpha=0.25)
+
+    # --- bottom-left: the Stefan benchmark (the headline tooth) ---------------- #
+    v_fine = d.stefan[-1]
+    tline = np.linspace(0.0, v_fine.t[-1], 200)
+    from .solidification import stefan_front
+    ax_stef.plot(tline, stefan_front(tline, p.alpha, v_fine.lam) * 1e3, color="0.2", lw=2.2,
+                 label=f"analytic Stefan 2λ√(αt)  (λ={v_fine.lam:.3f})")
+    markers = ["o", "s"]
+    for v, mk in zip(d.stefan, markers):
+        ax_stef.plot(v.t, v.x_numerical * 1e3, mk, ms=6.5, mfc="none",
+                     color=warn if mk == "o" else good,
+                     label=f"numerical, n={v.n_cells} (ratio {v.ratio.mean():.3f})")
+    ax_stef.set_xlabel("time  t  (s)")
+    ax_stef.set_ylabel("freezing front  X  (mm)")
+    ax_stef.set_title("Stefan benchmark — the front converges to the\nclosed form as the grid refines (the tooth)",
+                      fontsize=10.2)
+    ax_stef.legend(loc="upper left", fontsize=8.2)
+    ax_stef.grid(True, alpha=0.25)
+
+    # --- bottom-right: defect localization (by construction) ------------------- #
+    fin = np.isfinite(d.solidification_time)
+    ax_def.plot(d.x[fin] * 1e3, d.solidification_time[fin], color="0.2", lw=2.4)
+    ax_def.set_xlabel("distance from chill  x  (mm)")
+    ax_def.set_ylabel("local solidification time  (s)", color="0.2")
+    ax_def.set_title("Where the defects concentrate (by construction):\nthe centre freezes last — Slice 1's enriched centerline",
+                     fontsize=10.2)
+    ax_def.grid(True, alpha=0.22)
+    xc = d.x[fin][-1] * 1e3
+    ax_def.axvline(xc, color=warn, ls=":", lw=1.4)
+    ax_def.annotate("hot spot\n(last to freeze)", (xc, d.solidification_time[fin][-1]),
+                    textcoords="offset points", xytext=(-8, -4), ha="right", va="top",
+                    fontsize=8.6, color=warn, fontweight="bold")
+    ax_ny = ax_def.twinx()
+    # mask the immediate chill-shock band (initial liquid-against-cold-wall transient) — the cited
+    # criterion is meaningful in the directionally-solidified interior, where it declines toward the centre.
+    nfin = np.isfinite(d.niyama) & (d.niyama_x > 0.04 * d.x[-1])
+    ax_ny.plot(d.niyama_x[nfin] * 1e3, d.niyama[nfin], color="#2471a3", lw=1.8, alpha=0.85)
+    ax_ny.set_ylabel("Niyama  Ny = G/√Ṫ  (cited; illustrative)", color="#2471a3")
+    ax_ny.set_yscale("log")
+    ax_ny.tick_params(axis="y", labelcolor="#2471a3")
+
+    fig.suptitle("F4 Slice 2 — latent-heat solidification: the map, the arrest, the Stefan tooth, the hot spot",
+                 fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.93, top=0.90, bottom=0.08, wspace=0.32, hspace=0.32)
+    return fig
+
+
 def refining_figure(d):
     """The F2 artifact: the tap-chemistry panel — deoxidation curve, C–O coupling, degassing, propagation.
 

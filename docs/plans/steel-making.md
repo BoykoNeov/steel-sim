@@ -441,6 +441,40 @@ porosity (a feeding / Niyama-style proxy), hot-tear susceptibility.
 >   & app deferred** (same as F1/spine). The "frozen engine" framing is dropped from this build's docs (a
 >   monorepo artifact; the solver is used as a plain library — Slice 2 only).
 
+> **As built — 2026-06-13 (F4 Slice 2).** `steel/solidification.py` (+ `demo_solidification.py`,
+> `plots.solidification_figure`, `tests/test_solidification.py` 14 + `test_demo_solidification.py` 5).
+> **Second solver-bearing front-end physics, NO engine touch, NO ADR** — latent heat rides the engine's
+> *already-unfrozen* nonlinear `D(u)` path (ADR 0004); this plan is the record.
+> - **The formulation — the enthalpy method (the one trap avoided).** The advisor confirmed the tempting
+>   shortcut is **physically wrong**: folding an apparent capacity into a *temperature-mode* diffusivity
+>   `D(T)=k/(ρc_app(T))` does not reduce cleanly when `c_app` varies in space (a spurious `k∂ₓT·∂ₓ(1/ρc_app)`
+>   term; the engine would conserve `∫T dx`, not enthalpy). The conservation-correct route is **state =
+>   specific enthalpy** `u=h` (the engine's heat-mode invariant *is* `∫h dx`): recast as `∂h/∂t = ∂ₓ(D(h)∂ₓh)`
+>   with `D(h)=(k/ρ)dT/dh`, which drops in the mushy range → the front slows (the plateau), conserved exactly
+>   (the engine caches the accepted D-field → machine-precision identity). Maps onto `D_of_u` natively.
+> - **Smoothing `f_s` is numerical REGULARIZATION, not a physics claim** (advisor's framing). A lever top-hat
+>   makes `D(h)` a step function → **Picard oscillates and fails**; a smooth `sin²` `f_s` makes `D(h)`
+>   continuous → converges. Legitimacy is *proven by the tooth*: the Stefan front depends on latent-heat
+>   **content** + `α`, not the mushy profile shape (`∫df_l=1` for any shape), so it is insensitive to `sin²`.
+> - **BC = a fixed-temperature chill** (`Dirichlet`). With `u=h` the engine's `Robin` would cool toward an
+>   *enthalpy*, wrong for Newton cooling → enthalpy method is `Dirichlet`/`Neumann` only (the named scope
+>   edge; convective cooling is the `martemper`/`residual` idiom on `u=T`). A chill / water-cooled mold is
+>   exactly `Dirichlet` and exact (`T(h)` monotone).
+> - **HEADLINE TOOTH (validated, untuned): the analytic one-phase Stefan/Neumann benchmark.** The numerical
+>   `f_s=0.5` front **converges to** `X=2λ√(αt)` under grid refinement — to ~1–2 % (consistent isotherm),
+>   ratio climbing toward 1 as Δx halves (`0.958→0.969→…`); the solidus-isotherm offset accounts for a ~3 %
+>   gap when tracking the fully-solid front (named, not hidden), and the `ΔT→0` sharp limit *under-resolves*
+>   on a fixed grid (the named numerical limit — do **not** show convergence by narrowing ΔT). Plus
+>   **enthalpy conservation** exact to machine precision (~1e-13). A broken latent coupling misses by tens of %.
+> - **Directional (NOT a tooth):** the latent ON/OFF toggle slows the freeze-through ~×3 (order
+>   `L/c_pΔT`; the exact multiplier is profile-shape-dependent — advisor's correction, demoting it from the
+>   headline it was first pitched as). **By construction (NOT teeth):** Niyama `Ny=G/√Ṫ` (cited *form*) and
+>   the last-to-freeze hot spot — the insulated centre freezes last, *the same centerline Slice 1 enriches*
+>   (porosity + macro-seg, one place, two reasons); named illustrative up front (the Mushet/TE-nose
+>   discipline). **Chvorinov stays scaling-only** (a metal-conduction chill is a different heat-extraction
+>   regime than mold-diffusion `B`). **Notebook & app deferred** (as F1/spine/F4 Slice 1). Hot-tear and a
+>   defect-feeding model remain deferred.
+
 **Hand-off.** After F4 the `Heat` is a real cast billet; it flows into the back
 end's grain → heat-treatment → properties chain, and the loop is **end-to-end**.
 

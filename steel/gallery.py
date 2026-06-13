@@ -253,6 +253,17 @@ CATALOG: tuple[Entry, ...] = (
         "reaches. A real front-end engine produces the Heat the validated back end consumes. "
         "Chvorinov solidification time alongside.",
     ),
+    Entry(
+        "Casting (front-end)", "demo_solidification", "steel-solidification.png",
+        "Solidification map & casting defects — validated against Stefan",
+        "Casting's deferred half (F4 Slice 2): the latent-heat temperature field of a section freezing "
+        "against a chill, solved on the *same sealed heat engine* (enthalpy method, no engine touch). The "
+        "iconic solidification map, the latent-heat arrest at the thermal centre, and — the headline tooth "
+        "— the numerical freezing front *converging to the analytic one-phase Stefan closed form* "
+        "2λ√(αt) under grid refinement, conservation exact. The insulated centre freezes last (the "
+        "shrinkage hot spot — the same centerline Slice 1 enriches); the cited Niyama criterion collapses "
+        "there. Stefan match is the validated tooth; the Niyama/hot-spot reads are by-construction.",
+    ),
 )
 
 
