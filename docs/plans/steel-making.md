@@ -461,11 +461,13 @@ porosity (a feeding / Niyama-style proxy), hot-tear susceptibility.
 >   edge; convective cooling is the `martemper`/`residual` idiom on `u=T`). A chill / water-cooled mold is
 >   exactly `Dirichlet` and exact (`T(h)` monotone).
 > - **HEADLINE TOOTH (validated, untuned): the analytic one-phase Stefan/Neumann benchmark.** The numerical
->   `f_s=0.5` front **converges to** `X=2λ√(αt)` under grid refinement — to ~1–2 % (consistent isotherm),
->   ratio climbing toward 1 as Δx halves (`0.958→0.969→…`); the solidus-isotherm offset accounts for a ~3 %
->   gap when tracking the fully-solid front (named, not hidden), and the `ΔT→0` sharp limit *under-resolves*
->   on a fixed grid (the named numerical limit — do **not** show convergence by narrowing ΔT). Plus
->   **enthalpy conservation** exact to machine precision (~1e-13). A broken latent coupling misses by tens of %.
+>   `f_s=0.5` front **converges to** `X=2λ√(αt)` under grid refinement: **~3 % below analytic at the demo /
+>   test grid (n=144/216: `0.958→0.969`), tightening toward ~1 % under further refinement** (an in-session
+>   n=800/1600 study, not committed), the ratio climbing monotonically toward 1 as Δx halves. The residual is
+>   grid resolution — the `ΔT→0` sharp limit *under-resolves* on a fixed grid (the named numerical limit — do
+>   **not** show convergence by narrowing ΔT) — plus, if one tracks the fully-solid *solidus* front instead,
+>   a defined isotherm offset (named, not hidden). Plus **enthalpy conservation** exact to machine precision
+>   (~1e-13). A broken latent coupling misses by tens of %.
 > - **Directional (NOT a tooth):** the latent ON/OFF toggle slows the freeze-through ~×3 (order
 >   `L/c_pΔT`; the exact multiplier is profile-shape-dependent — advisor's correction, demoting it from the
 >   headline it was first pitched as). **By construction (NOT teeth):** Niyama `Ny=G/√Ṫ` (cited *form*) and

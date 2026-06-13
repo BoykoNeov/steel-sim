@@ -40,11 +40,14 @@ shape):**
 
 **TEETH POSTURE (advisor FLIPPED their own first steer — surfaced inline):**
 - **HEADLINE TOOTH (validated, untuned): analytic one-phase Stefan/Neumann benchmark.** Numerical `f_s=0.5`
-  front **converges to** `X=2λ√(αt)` (λ from `λe^{λ²}erf(λ)=St/√π`) under grid refinement — ~1–2 % match
-  (consistent isotherm), ratio climbing toward 1 as Δx halves; tracking the *solidus* front instead leaves a
-  ~3 % offset (solidus sits ΔT below the Stefan interface temp — definitional, named). The `ΔT→0` sharp limit
-  *under-resolves* on a fixed grid (named numerical limit — do NOT show convergence by narrowing ΔT, that was
-  my first wrong instinct, advisor caught the common-asymptote tell). Pattern = carburize-vs-erfc.
+  front **converges to** `X=2λ√(αt)` (λ from `λe^{λ²}erf(λ)=St/√π`) under grid refinement. **Be faithful to
+  what's REPRODUCIBLE (advisor completion catch):** the committed demo/test grid (n=144/216) lands **~3 %
+  below analytic (`0.958→0.969`)**; the **~1 % match was the in-session n=800/1600 study, NOT committed** — so
+  the durable records say "~3 % at the demo grid, tightening toward ~1 % under refinement," not a bare
+  "~1–2 %" (which slipped into the first commit msg/plan/memory → corrected in a follow-up). Residual = grid
+  resolution (`ΔT→0` *under-resolves* on a fixed grid — do NOT show convergence by narrowing ΔT; advisor
+  caught the common-asymptote tell) + a solidus-isotherm offset if tracking the fully-solid front. Pattern =
+  carburize-vs-erfc.
 - **Directional sanity (NOT a tooth):** latent ON/OFF toggle slows freeze-through ~×3 (order `L/c_pΔT`;
   shape-dependent). Advisor **demoted this from the headline it first proposed** (≈9.24×) — my data (5×/3×)
   showed it's profile-dependent, so it's a sanity check, the Stefan match is the clean quantitative tooth.
