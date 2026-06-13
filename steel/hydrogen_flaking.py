@@ -30,12 +30,16 @@ This is a **thin consumer** (the red-short class), not a benchmarked field model
 * **The one genuine (soft, OoM/ranking-grade) tooth — cross-source coherence.** The dehydrogenation time
   this model predicts from an *independently pinned* hydrogen diffusivity reproduces cited industrial
   bake-vs-section practice **without tuning**: with ``D_H`` set to reproduce the accepted room-temperature
-  α-Fe **lattice** value (~8×10⁻⁹ m²/s), a 1-inch section clears in ~0.6 h (the "~1 h per inch" rule) and a
-  500 mm heavy forging takes ~10 days (heavy forgings need days). The diffusivity is pinned to the *room-T
-  lattice* number, the practice anchors are *bake times* — two independent sources, so the agreement is a
-  real check, not arithmetic. It is **OoM-grade**: real steel traps hydrogen (carbides, dislocations,
-  grain boundaries) 10–100× below the trap-free lattice value, so the lattice model is a **conservative
-  lower bound** on the bake time (real bakes are at least this long) — the named scatter.
+  α-Fe **lattice** value (~8×10⁻⁹ m²/s), a **500 mm heavy forging takes ~10 days** — the load-bearing
+  anchor: anti-flaking bakes of *heavy* forgings really do run for days-to-weeks, and that long timescale is
+  what the lattice ``D_H`` reproduces. (The "~1 h per inch" rule the thin section gives is only an
+  order-of-magnitude *sanity* check — it is a generic soak-to-temperature rule of thumb, not a
+  dehydrogenation-specific number.) The diffusivity is pinned to the *room-T lattice* number, the practice
+  anchors are *bake times* — two independent sources, so the agreement is a real check, not arithmetic. It
+  is **OoM-grade**: real steel traps hydrogen (carbides, dislocations, grain boundaries) 10–100× below the
+  trap-free lattice value, so the lattice model is a **conservative lower bound** on the bake time (real
+  bakes are at least this long) — the named scatter. The absolute magnitudes also ride on the 75 %-removal
+  ``target_fraction`` (a 90 % criterion lengthens them ~1.5×, 95 % ~doubles); the ``τ ∝ L²`` scaling does not.
 * **By construction (NOT teeth):** the ``τ ∝ L²`` section-size scaling (it falls straight out of the
   diffusion equation — Chvorinov-``M²`` class) and the verdict rule (peak residual hydrogen above the
   critical line ⇒ flakes).
@@ -142,8 +146,12 @@ def dehydrogenation_time(
 ) -> float:
     """Time (s) for the section **centre** to fall to ``target_fraction`` of its initial hydrogen at ``T``.
 
-    The bake time the section needs — the quantity compared to cited practice (~1 h/inch; heavy forgings
-    days). Scales as ``L²`` (the by-construction section-size law). Found by bisection on
+    The bake time the section needs — the quantity compared to cited practice (heavy forgings → days; 500 mm
+    → ~10 days). Scales as ``L²`` (the by-construction section-size law), which is **robust to**
+    ``target_fraction``. The *absolute* magnitudes are OoM/ranking-grade and **do depend on** the
+    ``target_fraction = 0.25`` choice (a 75 %-removal criterion); demanding 90 % removal lengthens them
+    ~1.5× and 95 % removal ~doubles them (verified — leading Crank term ``τ ∝ 0.2416 − ln f``) — so the
+    coherence tooth is an order-of-magnitude check, not a tight one. Found by bisection on
     :func:`centre_residual_fraction`.
     """
     D = hydrogen_diffusivity(T_celsius)
@@ -202,8 +210,10 @@ def flaking_assessment(
     The peak (centre) hydrogen after a ``hold_time_s`` dehydrogenation hold at ``bake_temp_C`` is the initial
     content times :func:`centre_residual_fraction`; the section **flakes** if that residual is still above
     ``critical_ppm`` when it is finally cooled into the brittle range. ``hold_time_s = 0`` is the no-bake
-    case — a thick section then keeps essentially all its hydrogen and flakes, a thin one may already be safe.
-    The section-size and bake levers both enter through the ``L²``/``Dt`` group.
+    case — with no time to degas the centre fraction is 1.0 for **any** section, so the residual equals the
+    initial content regardless of thickness: a no-bake part flakes iff it was handed over above the limit.
+    The **section-size lever operates only through a nonzero hold** (a thin section degasses faster *during
+    the bake*) — both levers enter through the ``L²``/``Dt`` group, which is identically 0 at ``t = 0``.
     """
     D = hydrogen_diffusivity(bake_temp_C)
     residual = initial_H_ppm * centre_residual_fraction(D, hold_time_s, half_thickness)

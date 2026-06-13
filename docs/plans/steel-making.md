@@ -354,10 +354,13 @@ dissolved-gas removal by **Sieverts' law** ([H], [N] ∝ √p).
 > - **The ONE genuine tooth — soft, OoM cross-source coherence (gate run on paper FIRST).** The
 >   dehydrogenation time from an **independently pinned** lattice `D_H` reproduces cited bake-vs-section
 >   practice **without tuning**: `D_H` set to the accepted room-T α-Fe lattice value (~8.9×10⁻⁹ m²/s; Kiuchi–
->   McLellan 1983 reanalysis, cross-checked DFT/MD Jiang–Carter/Hasan 2020), then a 1-inch section clears in
->   ~0.6 h (the "1 h/inch" rule) and a 500 mm forging takes ~10 days (heavy forgings → days). Two independent
->   sources (a room-T diffusivity vs bake times), so the agreement is a real check. **OoM-grade**: real steel
->   traps H 10–100× below lattice → the model is a conservative *lower bound* (named scatter). By construction
+>   McLellan 1983 reanalysis, cross-checked DFT/MD Jiang–Carter/Hasan 2020), then the **lead anchor = a 500 mm
+>   forging takes ~10 days** (heavy forgings → days-to-weeks) — the load-bearing check. The 1-inch → ~0.6 h
+>   "1 h/inch" thin-section number is **OoM sanity only** (a generic soak-to-temperature rule, not
+>   dehydrogenation-specific). Two independent sources (a room-T diffusivity vs bake times), so the agreement
+>   is a real check. **OoM-grade**: real steel traps H 10–100× below lattice → the model is a conservative
+>   *lower bound* (named scatter); absolute magnitudes also ride on the `target_fraction=0.25` (75 %-removal)
+>   criterion (90 % removal ~1.5×, 95 % ~doubles) — the `τ ∝ L²` scaling is robust to it. By construction
 >   (NOT teeth): the `τ ∝ L²` scaling (Chvorinov-`M²` class) and the verdict rule. **Ceiling:** out-diffusion
 >   only — *not* the γ→α supersaturation / H₂ void-pressure thermodynamics (the "can the H escape in time?"
 >   geometric question, not the crack itself).

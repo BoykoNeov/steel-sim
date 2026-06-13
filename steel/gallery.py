@@ -245,8 +245,9 @@ CATALOG: tuple[Entry, ...] = (
         "thin section degasses and is sound, the thick one traps it and flakes — and a long enough bake saves "
         "the thick one (the time scales as section²). Two-tier, like cold-short/red-short: refining sets the "
         "risk, this the consequence. Closed-form slab desorption (Crank) — no engine, no ADR. One genuine "
-        "tooth: the bake time from an independently-pinned lattice D_H reproduces cited practice (~1 h/inch, "
-        "heavy forgings days) without tuning — OoM-grade; the L² scaling and verdict are by-construction.",
+        "tooth: the bake time from an independently-pinned lattice D_H reproduces cited practice without "
+        "tuning — a 500 mm forging → ~10 days (heavy forgings → days, the load-bearing anchor; the 1 h/inch "
+        "thin-section rule is OoM sanity only) — OoM-grade; the L² scaling and verdict are by-construction.",
     ),
     Entry(
         "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",

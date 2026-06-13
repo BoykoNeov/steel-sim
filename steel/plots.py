@@ -2237,8 +2237,9 @@ def hydrogen_flaking_figure(d):
       thick+long-bake, against the flaking limit: same heat, geometry + schedule decide.
     * **top-right — out-diffusion dynamics.** Centre hydrogen vs bake time for the two sections; the thin
       drops below the limit in under an hour, the thick lingers for days (the ``L²`` trap).
-    * **bottom-left — the coherence tooth.** Dehydrogenation time vs section (log-log, slope-2 ``∝L²``), with
-      the cited practice anchors (≈1 h/inch, heavy-forging days) — reproduced from an independently pinned D_H.
+    * **bottom-left — the coherence tooth.** Dehydrogenation time vs section (log-log, slope-2 ``∝L²``); the
+      load-bearing anchor is the heavy forging → days (500 mm ≈ 10 d), reproduced from an independently pinned
+      D_H — the 1 h/inch thin-section mark is OoM sanity only.
     * **bottom-right — the cited input.** The α-Fe lattice diffusivity Arrhenius, the ferritic bake point
       marked; the room-temperature value is the anchor D_H was pinned to (independent of bake practice).
     """
@@ -2286,9 +2287,9 @@ def hydrogen_flaking_figure(d):
     # --- bottom-left: the coherence tooth (bake time vs section, ∝ L²) --------- #
     ax_tooth.loglog(d.section_mm, d.bake_time_h, "o-", color="0.2", lw=2.2, ms=6)
     ax_tooth.plot([25], [np.interp(25, d.section_mm, d.bake_time_h)], "o", color=blue, ms=11, mfc="none", mew=2.2)
-    ax_tooth.annotate("1 inch ≈ 1 h\n(cited rule)", (25, np.interp(25, d.section_mm, d.bake_time_h)),
+    ax_tooth.annotate("1 inch ≈ 1 h\n(OoM sanity)", (25, np.interp(25, d.section_mm, d.bake_time_h)),
                       textcoords="offset points", xytext=(8, -6), fontsize=8.2, color=blue)
-    ax_tooth.annotate("heavy forging\n→ days", (500, np.interp(500, d.section_mm, d.bake_time_h)),
+    ax_tooth.annotate("500 mm → ~10 days\n(load-bearing anchor)", (500, np.interp(500, d.section_mm, d.bake_time_h)),
                       textcoords="offset points", xytext=(-6, 8), ha="right", fontsize=8.2, color=warn)
     ax_tooth.set_xlabel("section thickness (mm)")
     ax_tooth.set_ylabel("dehydrogenation time (h)")

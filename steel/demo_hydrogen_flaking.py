@@ -137,7 +137,9 @@ def print_summary(demo: HydrogenFlakingDemo) -> None:
 
     print(f"\nCoherence tooth — bake time vs section (D_H pinned to the room-T lattice value, no tuning):")
     for mm, h in zip(demo.section_mm, demo.bake_time_h):
-        anchor = "  (≈1 h/inch)" if abs(mm - 25) < 1 else ("  (heavy forging → days)" if mm >= 500 else "")
+        anchor = ("  ← load-bearing anchor: 500 mm forging → ~10 days" if abs(mm - 500) < 1
+                  else "  (1 m rotor → ~6 weeks)" if abs(mm - 1000) < 1
+                  else "  (1 h/inch — OoM sanity only)" if abs(mm - 25) < 1 else "")
         print(f"    {mm:6.1f} mm → {h:7.1f} h{anchor}")
     print("\n→ same hydrogen, geometry + bake decide. One genuine tooth (OoM coherence with cited practice); "
           "the\n  L² scaling and verdict are by-construction; out-diffusion only (the named ceiling).")

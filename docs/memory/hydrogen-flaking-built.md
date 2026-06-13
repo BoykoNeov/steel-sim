@@ -33,9 +33,13 @@ industrial bake-vs-section practice. `D_H = 1e-7·exp(−6000/RT) m²/s` pinned 
 α-Fe lattice value ~8.9×10⁻⁹ m²/s** (Kiuchi–McLellan 1983 experimental reanalysis of 62 datasets;
 cross-checked DFT/MD Jiang–Carter / Hasan 2020: D0≈1–1.5e-7, Ea≈0.04–0.06 eV) — pinned to a *room-T
 diffusivity*, the anchors are *bake times*, so the agreement is a real check, not arithmetic. Result, no
-tuning: 1-inch → ~0.6 h (the "1 h/inch" rule), 500 mm forging → ~10 days, 1 m rotor → ~6 weeks (heavy
-forgings → days-to-weeks). **OoM/ranking-grade** — real steel traps H 10–100× below the lattice value →
-the model is a **conservative LOWER bound** on bake time (named scatter). **By construction (NOT teeth):** the
+tuning, **LEAD anchor = 500 mm forging → ~10 days** (heavy forgings → days-to-weeks; 1 m rotor → ~6 weeks)
+— that long timescale is the load-bearing check. The "1 h/inch" thin-section number is **demoted to OoM
+*sanity* only** (a generic soak-to-temperature rule of thumb, not dehydrogenation-specific). **OoM/ranking-grade**
+— real steel traps H 10–100× below the lattice value → the model is a **conservative LOWER bound** on bake
+time (named scatter); absolute magnitudes also ride on the `target_fraction=0.25` (75 %-removal) criterion —
+a 90 % criterion lengthens them ~1.5×, 95 % ~doubles (verified, leading Crank term `τ ∝ 0.2416 − ln f`); the
+`τ ∝ L²` scaling is robust to it. **By construction (NOT teeth):** the
 `τ ∝ L²` scaling (Chvorinov-`M²` class) and the verdict rule. **Cited INPUTS (≠ tooth):** D_H Arrhenius, the
 ~650 °C ferritic bake (below A₁=727, where H diffuses fastest), the ~2 ppm limit (= `refining.MAX_HYDROGEN_PPM`).
 
