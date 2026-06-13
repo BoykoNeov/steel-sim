@@ -573,6 +573,49 @@ deferred state extensions (P/S on `Steel`) — then **`game/` last**, on the pro
 > fold, **not** a build; the *back-end* engine candidates it implies are pointed
 > to from `steel-production.md` §11. "Just plan, don't build yet" stands.
 
+> **BUILT ✓ 2026-06-13 — the impurity *consequences* are now closed (themes A + B).** The two
+> consequences F2 Slice 2 set as inert state are wired to a downstream verdict, as **two distinct
+> classes** (the load-bearing honesty):
+> - **Phosphorus → cold-shortness = a PROPAGATION.** `grain.py` §3 gained a `P_pct` term in *both*
+>   Pickering laws; `heat_state.cold_short_check` normalizes a `Heat` and flags **cold-short** when the
+>   P-aware DBTT lands above the service temperature. **Teeth (the strength axis):** Thiele–Hošek
+>   **+237 MPa/at% P** — now **PDF-verified** (eq. ΔR_p0.2 = G·ε·X_c/100, G = 83 000 MPa, ε = 0.286 from
+>   Fe/P radii), not snippet-level — and the teeth are *cross-source coherence*: ≈427 MPa/wt% (after the
+>   ×1.803 at%→wt% conversion, the registered unit trap) sits inside Total Materia's independent
+>   365–620 MPa/wt% bracket, and the hardness increment 119.8 vs lit 123–125 vs theoretical 127 HV/wt%
+>   coheres within ~6 %. **The P→DBTT slope stays FLAGGED representative** (`grain.ITT_K_P` ≈ 500 °C/wt%,
+>   the §14.1 unpinned band) — clean relations use grain-boundary *segregation* at%, not bulk wt%; the
+>   strength term carries the teeth, the slope does not.
+> - **Sulfur → red-shortness = a NEW consumer with NO strict tooth.** New module `hot_work.py` (`hot_work`
+>   orchestrator → **red-short** flag): free sulfur (the slag-reused `manganese_sulfide` balance) forms a
+>   Fe–FeS grain-boundary film above the eutectic when forged. This slice is **cited constants +
+>   by-construction**, the same shape slag.py labels "by construction (NOT teeth)" — it carries no
+>   falsifiable benchmark, and that is fine (a thin, honest consumer). The Mn:S ≥ 1.71 threshold reproducing
+>   *Mushet's manganese* is the **historical-coherence anchor (a RESULT, by-construction — 1.71 = M_Mn/M_S
+>   cannot come out wrong)**, NOT the analog of slag.py's acid/basic `L_P` endpoint (that emerges from a
+>   Healy correlation that could have failed history; this cannot). The transition temperatures are
+>   di-crosschecked, pinned **inputs** (verification ≠ tooth): Fe–FeS **eutectic 988 °C** (the GB-film onset,
+>   confirmed *distinct* from FeS melting ~1192 °C — the advisor's trap), MnS **1610 °C**. The temperature
+>   *ordering* is mechanism narrative, **never asserted as a tooth** (vacuous-benchmark trap avoided).
+>
+> **So the whole build adds exactly ONE genuine tooth: the P-strength cross-source coherence (above).**
+> Everything else is cited / flagged / by-construction — the P→DBTT slope flagged representative, the
+> cold-short verdict riding that flagged slope (the demo's +96 °C is illustrative), and the entire S slice
+> cited-constants + by-construction. The *value* of the build is the closed consequence + the §5b foil +
+> the historical arc, not a second benchmark.
+>
+> **The split** (`test_phosphorus_sulfur_inert_in_the_hardenability_back_end`, renamed): P/S now propagate
+> on **exactly one path each** — consumed in `cold_short_check` / `hot_work`, still **inert in
+> `heat_treat`** (hardenability/hardness/martensite read C/Si/Mn/Ni/Cr/Mo only). **Demo + figure +
+> gallery card:** `demo_impurity_window` — the *same* high-P, sulfurous pig iron made cold-short **and**
+> red-short by acid Bessemer / no manganese, and sound by basic + Mushet + ladle desulf; four panels
+> (P→DBTT with the yield foil; free-S vs Mn:S Mushet threshold; the signed yield–DBTT foil; the closing
+> workable window). Suite **668 green / 2 skipped**, no engine touch, no ADR (additive `P_pct` + two new
+> orchestrators, not a semantics change). **Named deferrals:** temper embrittlement (martensitic P → PAG
+> segregation), MnS inclusion fracture-anisotropy / transverse-toughness debit, the "good-impurity"
+> free-machining use of S (resulfurized 11xx), and the kinetic hot-ductility *trough shape*. Theme C
+> (purity ramp), D (inverse hardness) and E (Scheil ghost lines) remain as written below.
+
 **The reframe that makes it useful.** The originally-named tramp axes
 (hardenability/Jominy, CCT kinetics, residual stress) are the *weakest* for our
 verified engines. A two-turn scan of the archaeometallurgy literature showed the
@@ -670,11 +713,14 @@ The one piece that would need *new* sourcing before it could clear the triad is
 the **P → DBTT slope** (unpinned above). Candidate cited benchmarks already
 located, for whoever picks this up:
 - **Thiele–Hošek 2015** — P-from-hardness; the +237 MPa/at%, 142 HV numbers.
-  Open-access PDF `acta.uni-obuda.hu/Thiele_Hosek_60.pdf`. *Numbers are
-  search-snippet level — verify against the PDF before pinning any constant.*
-  **Unit-basis trap:** this strength number is **per at% P**, the §14.1 DBTT
-  slope is **per wt% P** (1 at% P ≈ 0.56 wt% P) — convert before comparing or
-  pinning.
+  Open-access PDF `acta.uni-obuda.hu/Thiele_Hosek_60.pdf`. **VERIFIED against the
+  PDF and PINNED 2026-06-13** (the §14.0 build): eq. ΔR_p0.2 = G·ε·X_c/100,
+  G = 83 000 MPa, ε = 0.286, "237 MPa for 1 at% P"; hardness increment 119.8
+  HV/wt% (eq. 4) — the strength axis now carries teeth. **Unit-basis trap
+  (handled at the function boundary):** this strength number is **per at% P**, the
+  §14.1 DBTT slope is **per wt% P** (1 at% P ≈ 0.56 wt% P) — converted before use.
+  *The P→DBTT slope itself remains the unpinned piece (flagged representative, not
+  pinned with teeth) — clean relations use GB-segregation at%, not bulk wt%.*
 - **Medieval-bloomery Charpy + tensile vs. a modern S235JRG2 control** — the most
   triad-relevant hit (measured properties on genuinely impure steel **with a
   modern reference**): `bucavasgyuro.net/.../2015PP_Mech_props.pdf` (PDF did not

@@ -100,11 +100,14 @@ def test_sulfide_capacity_and_partition_reject_bad_inputs():
 # --------------------------------------------------------------------------- #
 # Teeth — the honesty posture: P/S are inert in the validated back end
 # --------------------------------------------------------------------------- #
-def test_phosphorus_sulfur_inert_in_back_end():
-    # The structural tooth that fixes this slice's posture: P and S thread the composition but NO validated
-    # model reads them (minor() is C/Si/Mn/Ni/Cr/Mo). So a wildly off-spec-P/S heat heat-treats IDENTICALLY
-    # to a clean one — the benchmarked chemistry sets state, its consequence is deferred. If this ever fails,
-    # something started consuming P/S and the "consequence deferred" framing is no longer honest.
+def test_phosphorus_sulfur_inert_in_the_hardenability_back_end():
+    # The structural tooth, now SPLIT (steel-making.md §14). P/S still thread the composition WITHOUT being
+    # read by the hardenability/hardness back end (minor() is C/Si/Mn/Ni/Cr/Mo), so a wildly off-spec-P/S
+    # heat HEAT-TREATS IDENTICALLY to a clean one — this pins inertness *specifically on the quench path*.
+    # Their consequence is no longer deferred everywhere: phosphorus is now consumed in
+    # heat_state.cold_short_check (DBTT) and sulfur in hot_work.hot_work (red-shortness). So P/S propagate on
+    # exactly ONE path each; if THIS test ever fails, something started reading P/S in the hardenability
+    # chain, where they must stay inert.
     clean = STEELS["4140"]
     dirty = replace(clean, P=0.5, S=0.3)
     assert clean.minor() == dirty.minor()                       # P/S excluded from the back-end dict

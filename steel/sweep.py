@@ -106,11 +106,13 @@ class Steel:
     :func:`ccurve_for_steel` warns about).
 
     ``P`` and ``S`` (default 0) are the residual-impurity state the slag-partition refining
-    (:mod:`steel.slag`, F2 Slice 2) sets — *carried* on the composition but **inert** in the
-    validated back end (see :meth:`minor`): no benchmarked model reads them, so an off-spec heat
-    threads its phosphorus and sulfur down the chain without a downstream consequence yet (the
-    embrittlement / hot-tear links are deferred, ``steel-making.md`` §6/§14). Adding them was an
-    additive state extension — every existing call names its arguments, so field order is moot.
+    (:mod:`steel.slag`, F2 Slice 2) sets. They are **inert in the hardenability / hardness back end**
+    (see :meth:`minor` — those models read C/Si/Mn/Ni/Cr/Mo only), so an off-spec heat threads P/S
+    through the *quench* unchanged. Their **consequence is closed on dedicated downstream paths** that
+    read the field directly: phosphorus drives :func:`steel.heat_state.cold_short_check` (DBTT /
+    cold-shortness, via the Pickering laws) and sulfur :func:`steel.hot_work.hot_work` (red-shortness)
+    — so the same off-spec heat normalizes brittle / forges red-short (``steel-making.md`` §14). Adding
+    them was an additive state extension — every existing call names its arguments, so field order is moot.
     """
 
     C: float
@@ -130,13 +132,12 @@ class Steel:
         reads Mn/Ni/Cr/Mo/Si — each picks the keys it knows). Zeros are kept so the dict is a
         stable shape; the models treat a missing or zero element identically.
 
-        **Phosphorus and sulfur are deliberately excluded here.** They are *carried* on the
-        composition (the residual-impurity state F2 Slice 2's slag partition sets — see
-        :mod:`steel.slag`), but no validated back-end model reads them: hardenability and
-        hardness key on Si/Mn/Ni/Cr/Mo only. So ``P``/``S`` thread the chain *inert*, exactly as
-        the dissolved-gas fields do on :class:`~steel.heat_state.Heat` — filled by an engine,
-        their downstream consequence (embrittlement, hot-tear) deferred until a consumer exists.
-        Adding them to this dict would silently feed unbenchmarked numbers to the kinetics.
+        **Phosphorus and sulfur are deliberately excluded here.** Hardenability and hardness key on
+        Si/Mn/Ni/Cr/Mo only, so ``P``/``S`` thread *this* (the quench) path **inert** — an off-spec-P/S
+        heat hardens identically to a clean one. Their consequence is closed *elsewhere*, on paths that
+        take the field by an **explicit keyword**: :func:`steel.heat_state.cold_short_check` (P → DBTT)
+        and :func:`steel.hot_work.hot_work` (S → red-shortness). Adding ``P``/``S`` to *this* dict would
+        silently feed unbenchmarked numbers to the kinetics — which is exactly why they go by keyword.
         """
         return {"Mn": self.Mn, "Si": self.Si, "Ni": self.Ni, "Cr": self.Cr, "Mo": self.Mo}
 

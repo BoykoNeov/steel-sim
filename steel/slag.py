@@ -14,11 +14,14 @@ Where the proof rides — the honest posture (this is **not** Slice 1)
 Slice 1's carbon axis was a *validated end-to-end propagation*: the back end **consumes** carbon, so an
 over-blow reached a benchmarked soft core. **Phosphorus and sulfur have no such consumer.** The
 hardenability and hardness models read C / Si / Mn / Ni / Cr / Mo only (:meth:`~steel.sweep.Steel.minor`);
-nothing validated reads P or S. So this slice is **benchmarked-physics, the F1-Ellingham / F4-casting
-class — not a spine-class propagation.** Its proof is the *physics itself* checked against published facts,
-and its downstream consequence (P → grain-boundary embrittlement / raised DBTT; S → red-shortness, MnS
-inclusions, hot-tear) is **honestly deferred** — the §6 catalogue rows marked "F2 new + F4 new", the §14
-unpinned P→DBTT slope. F2 Slice 2 *sets the impurity state*; it does not yet close its consequence.
+nothing in the *quench* path reads P or S. So this slice is **benchmarked-physics, the F1-Ellingham /
+F4-casting class — not a spine-class propagation.** Its proof is the *physics itself* checked against
+published facts. Its downstream consequence (P → grain-boundary embrittlement / raised DBTT; S →
+red-shortness) is **closed by dedicated consumers built 2026-06-13** — :func:`steel.heat_state.cold_short_check`
+(phosphorus, a propagation through the Pickering DBTT law) and :func:`steel.hot_work.hot_work` (sulfur, a
+new hot-working verdict; ``steel-making.md`` §14). F2 Slice 2 *sets the impurity state*; those consumers
+*close* it. (The P→DBTT slope they use is flagged representative — the §14 unpinned number; the strength
+axis carries the teeth.)
 
 The teeth — and the trap they avoid
 ------------------------------------
@@ -96,8 +99,9 @@ from .sweep import Steel
 # Where a residual *field* becomes a *defect*. Design requirements (like heat_state.MIN_MARTENSITE_SPEC and
 # refining.MAX_DISSOLVED_OXYGEN_PPM), editable per grade — representative quality-steel limits, NOT fitted
 # constants. The physics that computes the residual P/S is what is benchmarked; these lines are where we
-# decide the result is unacceptable. The *consequence* of crossing them (cold-shortness, hot-tear) is
-# deferred — no validated back-end model reads P/S — so these flags set state, they do not yet propagate.
+# decide the result is unacceptable. The *consequence* of crossing them (cold-shortness, red-shortness) is
+# now closed by dedicated consumers (heat_state.cold_short_check for P, hot_work.hot_work for S, built
+# 2026-06-13); these flags set the residual state those consumers read.
 MAX_PHOSPHORUS_PCT: float = 0.035       # cold-short / temper-embrittlement limit (standard SAE 4140-class)
 MAX_SULFUR_PCT: float = 0.040           # red-short / hot-tear / MnS limit (free-machining grades run higher)
 
@@ -351,7 +355,8 @@ def dephosphorize(
     (:func:`partition_remaining`), and repacks a new ``Heat`` with a ``"dephosphorize"`` step. A **basic**
     converter slag (high lime, high FeO) pulls phosphorus down by orders of magnitude; an **acid** slag
     leaves it almost untouched — and if the residual stays above :data:`MAX_PHOSPHORUS_PCT` the
-    **high-phosphorus** flag is raised (its cold-short consequence deferred — no validated back-end consumer).
+    **high-phosphorus** flag is raised (its cold-short consequence closed downstream by
+    :func:`steel.heat_state.cold_short_check`).
     """
     Lp = phosphorus_partition(slag, T_celsius)
     P0 = heat.composition.P
@@ -382,7 +387,8 @@ def desulfurize(
     oxygen of the blow) barely moves it — the physics reason desulfurization waits for the ladle. When
     ``oxygen_ppm`` is ``None`` (no kill recorded) the undeoxidized C–O-equilibrium oxygen at the heat's carbon
     is used (so an out-of-order desulf honestly under-performs). Residual above :data:`MAX_SULFUR_PCT` raises
-    the **high-sulfur** flag (red-short / hot-tear consequence deferred).
+    the **high-sulfur** flag (its red-short consequence closed downstream by :func:`steel.hot_work.hot_work`,
+    once manganese fails to tie the sulfur as MnS).
     """
     O = heat.oxygen_ppm if heat.oxygen_ppm is not None else equilibrium_oxygen(heat.composition.C, T_celsius)
     Ls = sulfur_partition(slag, O, T_celsius)

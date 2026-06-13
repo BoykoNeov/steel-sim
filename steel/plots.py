@@ -2344,6 +2344,149 @@ def sg_max_s():
     return MAX_SULFUR_PCT
 
 
+def impurity_window_figure(d):
+    """The impurity-consequence artifact: P (cold-short) + S (red-short) bracket the workable window.
+
+    ``d`` is a :class:`~steel.demo_impurity_window.ImpurityDemo` (precomputed — this layer only draws,
+    ADR 0002). Four panels, the same high-P/high-S pig iron made cracking (acid) vs sound (basic + Mushet):
+
+    * **top-left — phosphorus → cold-shortness (the PROPAGATION).** DBTT vs phosphorus along the shared
+      normalize baseline, crossing the service temperature at ``P*``; yield (twin axis) climbs with P — the
+      signed foil's "stronger" half. The acid heat sits brittle and strong to the right, the basic heat
+      ductile to the left.
+    * **top-right — sulfur → red-shortness (the NEW consumer).** Free sulfur vs Mn:S, vanishing at Mushet's
+      stoichiometric 1.71 (the historical-coherence anchor — by construction, not a tooth). Right of the line
+      the steel is sound at the forge; left, free FeS tears the grain boundaries.
+    * **bottom-left — the signed-impurity foil.** On the yield–DBTT plane, adding phosphorus pushes up-AND-right
+      (stronger *and* more brittle); refining the grain pushes up-AND-left (the lone co-improver, §5b).
+    * **bottom-right — the workable temperature window.** Each heat on a temperature axis: brittle below its
+      DBTT (the service/toughness end), red-short above the 988 °C Fe–FeS eutectic when sulfur is free (the
+      hot-working end). The off-spec heat is squeezed from both ends; the clean heat is wide open.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ((ax_p, ax_s), (ax_foil, ax_win)) = plt.subplots(2, 2, figsize=(13.5, 9.6))
+    warn = "#c0392b"
+    good = PHASE_COLORS["martensite"]
+    p_color, s_color = "#b9770e", "#6c3483"
+    y_color = "#1f6f8b"
+
+    # --- top-left: P → DBTT (cold-short), with yield on a twin axis (the foil) ----------------- #
+    ax_p.axhspan(d.service_T, d.dbtt_vs_P.max() + 20.0, color="#fdEDEC", alpha=0.8, zorder=0)
+    ax_p.plot(d.P_grid, d.dbtt_vs_P, color=p_color, lw=2.8, label="DBTT (P-aware Pickering)")
+    ax_p.axhline(d.service_T, color="0.5", ls=":", lw=1.4)
+    ax_p.annotate(f"service {d.service_T:+.0f} °C — above ⇒ brittle", (d.P_grid[-1], d.service_T),
+                  ha="right", va="bottom", fontsize=8.0, color="0.4")
+    ax_p.axvline(d.P_star, color=p_color, ls="--", lw=1.2, alpha=0.7)
+    ax_p.annotate(f"cold-short\nonset P*≈{d.P_star:.3f}", (d.P_star, d.dbtt_vs_P.min()),
+                  textcoords="offset points", xytext=(6, 4), fontsize=8.0, color=p_color, ha="left")
+    for c, color, va in [(d.acid, warn, "top"), (d.basic, good, "bottom")]:
+        ax_p.plot([c.P], [c.dbtt_C], "o", color=color, ms=11, zorder=6)
+        ax_p.annotate(f"{c.label.split(',')[0]}\nDBTT {c.dbtt_C:+.0f} °C", (c.P, c.dbtt_C),
+                      textcoords="offset points", xytext=(8, -2 if va == "top" else 8),
+                      fontsize=8.2, color=color, ha="left", va=va, fontweight="bold")
+    ax_yld = ax_p.twinx()
+    ax_yld.plot(d.P_grid, d.yield_vs_P, color=y_color, lw=2.0, ls="-.", alpha=0.85)
+    ax_yld.set_ylabel("yield strength  σ_y  (MPa)", color=y_color, fontsize=9.0)
+    ax_yld.tick_params(axis="y", labelcolor=y_color)
+    ax_yld.annotate("yield ↑ with P\n(strengthens)", (d.P_grid[-1], d.yield_vs_P[-1]),
+                    textcoords="offset points", xytext=(-6, -28), fontsize=7.8, color=y_color, ha="right")
+    ax_p.set_xlabel("phosphorus  (wt %)")
+    ax_p.set_ylabel("DBTT  (°C)", color=p_color)
+    ax_p.set_title("Phosphorus → cold-shortness (propagation through Pickering DBTT)", fontsize=10.0)
+    ax_p.grid(True, alpha=0.22)
+
+    # --- top-right: free S vs Mn:S (red-short), the Mushet threshold ---------------------------- #
+    ax_s.axvspan(0.0, d.mushet_ratio, color="#fdEDEC", alpha=0.7, zorder=0)
+    ax_s.plot(d.ratio_grid, d.freeS_vs_ratio, color=s_color, lw=2.8)
+    ax_s.axvline(d.mushet_ratio, color=s_color, ls="--", lw=1.5)
+    ax_s.annotate(f"Mushet Mn:S = {d.mushet_ratio:.2f}\n(all S → MnS)", (d.mushet_ratio, d.freeS_vs_ratio.max()),
+                  textcoords="offset points", xytext=(8, -6), fontsize=8.2, color=s_color, ha="left", va="top",
+                  fontweight="bold")
+    ax_s.annotate("free FeS\n→ red-short", (d.mushet_ratio * 0.45, d.freeS_vs_ratio.max() * 0.6),
+                  fontsize=8.4, color=warn, ha="center")
+    for c, color in [(d.acid, warn), (d.basic, good)]:
+        ratio = c.Mn / c.S if c.S > 0 else 4.0
+        ax_s.plot([min(ratio, d.ratio_grid[-1])], [c.free_S], "o", color=color, ms=11, zorder=6)
+        ax_s.annotate(f"{c.label.split(',')[0]}\nMn:S {ratio:.1f}", (min(ratio, d.ratio_grid[-1]), c.free_S),
+                      textcoords="offset points", xytext=(-6 if color == good else 8, 10),
+                      fontsize=8.2, color=color, ha="right" if color == good else "left", fontweight="bold")
+    ax_s.set_xlabel("manganese-to-sulfur ratio  Mn:S  (by weight)")
+    ax_s.set_ylabel("free sulfur  (wt %)  → FeS")
+    ax_s.set_title("Sulfur → red-shortness (new hot-work consumer; Mushet threshold)", fontsize=10.0)
+    ax_s.grid(True, alpha=0.22)
+
+    # --- bottom-left: the signed-impurity foil on the yield–DBTT plane -------------------------- #
+    y0, t0 = d.foil_baseline
+    dyP, dtP = d.foil_P_arrow
+    dyG, dtG = d.foil_grain_arrow
+    ax_foil.annotate("", xy=(y0 + dyP, t0 + dtP), xytext=(y0, t0),
+                     arrowprops=dict(arrowstyle="-|>", color=p_color, lw=2.6))
+    ax_foil.annotate("", xy=(y0 + dyG, t0 + dtG), xytext=(y0, t0),
+                     arrowprops=dict(arrowstyle="-|>", color=good, lw=2.6))
+    ax_foil.plot([y0], [t0], "o", color="0.3", ms=9, zorder=6)
+    ax_foil.annotate("+phosphorus\nstronger AND brittler", (y0 + dyP, t0 + dtP), textcoords="offset points",
+                     xytext=(6, 4), fontsize=8.6, color=p_color, ha="left", fontweight="bold")
+    ax_foil.annotate("refine grain\nstronger AND tougher\n(the lone co-improver)", (y0 + dyG, t0 + dtG),
+                     textcoords="offset points", xytext=(6, -6), fontsize=8.6, color=good, ha="left",
+                     va="top", fontweight="bold")
+    ax_foil.axhline(d.service_T, color="0.6", ls=":", lw=1.2)
+    # annotate() arrows do not drive autoscale — set limits to frame the baseline and both arrow tips.
+    xs = [y0, y0 + dyP, y0 + dyG]
+    ys = [t0, t0 + dtP, t0 + dtG]
+    xpad = max(8.0, 0.18 * (max(xs) - min(xs)))
+    ypad = max(8.0, 0.22 * (max(ys) - min(ys)))
+    ax_foil.set_xlim(min(xs) - xpad, max(xs) + xpad * 2.2)
+    ax_foil.set_ylim(min(ys) - ypad * 1.5, max(ys) + ypad)
+    ax_foil.set_xlabel("yield strength  σ_y  (MPa)")
+    ax_foil.set_ylabel("DBTT  (°C)   ↑ = more brittle")
+    ax_foil.set_title("The signed-impurity foil — P embrittles while it strengthens", fontsize=10.0)
+    ax_foil.grid(True, alpha=0.22)
+
+    # --- bottom-right: the workable temperature window ------------------------------------------ #
+    T_lo, T_hi = -120.0, 1320.0
+    rows = [(d.basic, 1, good), (d.acid, 0, warn)]
+    for c, y, _ in rows:
+        # brittle (below DBTT) — the service/toughness end
+        ax_win.broken_barh([(T_lo, c.dbtt_C - T_lo)], (y - 0.32, 0.64), facecolors="#f1948a", edgecolor="none")
+        # red-short (above the eutectic) when sulfur is free — the hot-working end
+        if c.red_short:
+            ax_win.broken_barh([(d.eutectic_C, T_hi - d.eutectic_C)], (y - 0.32, 0.64),
+                               facecolors="#f5b041", edgecolor="none")
+            workable_hi = d.eutectic_C
+        else:
+            workable_hi = T_hi
+        # the workable window between
+        ax_win.broken_barh([(c.dbtt_C, workable_hi - c.dbtt_C)], (y - 0.32, 0.64),
+                           facecolors="#abebc6", edgecolor="none")
+        ax_win.annotate(c.label.split(",")[0], (T_lo + 20, y), va="center", ha="left", fontsize=8.6,
+                        fontweight="bold")
+    ax_win.axvline(d.service_T, color="0.25", ls=":", lw=1.6)
+    ax_win.annotate("room T", (d.service_T, 1.5), rotation=90, fontsize=7.8, color="0.25", va="top", ha="right")
+    ax_win.axvline(d.eutectic_C, color=warn, ls="--", lw=1.4)
+    ax_win.annotate(f"Fe–FeS eutectic {d.eutectic_C:.0f} °C", (d.eutectic_C, -0.5), rotation=90, fontsize=7.8,
+                    color=warn, va="bottom", ha="right")
+    ax_win.axvline(d.forge_temp_C, color="0.25", ls=":", lw=1.2)
+    ax_win.annotate("forge", (d.forge_temp_C, 1.5), rotation=90, fontsize=7.8, color="0.25", va="top", ha="left")
+    # legend swatches
+    from matplotlib.patches import Patch
+    ax_win.legend(handles=[Patch(facecolor="#f1948a", label="brittle (below DBTT)"),
+                           Patch(facecolor="#abebc6", label="workable"),
+                           Patch(facecolor="#f5b041", label="red-short (free S, hot)")],
+                  fontsize=7.8, loc="lower right", framealpha=0.9)
+    ax_win.set_ylim(-0.7, 1.7)
+    ax_win.set_yticks([])
+    ax_win.set_xlim(T_lo, T_hi)
+    ax_win.set_xlabel("temperature  (°C)")
+    ax_win.set_title("The workable window — P caps the cold end, S the hot end", fontsize=10.0)
+    ax_win.grid(True, axis="x", alpha=0.22)
+
+    fig.suptitle("Closing the impurity consequences — phosphorus (cold-short) and sulfur (red-short)",
+                 fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.93, top=0.92, bottom=0.08, hspace=0.30, wspace=0.26)
+    return fig
+
+
 def ladle_figure(d):
     """The F3 artifact: alloy to grade — the trim, the recovery shortfall, and the front-to-back verdict.
 

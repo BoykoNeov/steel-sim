@@ -81,6 +81,7 @@ MIN_MARTENSITE_SPEC: float = 0.90
 # Defect-flag names — the failure carriers that ride in Heat.defects (steel-making.md §5/§6).
 SOFT_CORE: str = "soft-core"                 # insufficient through-hardening (heat_treat, any composition)
 QUENCH_CRACK_RISK: str = "quench-crack-risk"  # surface locked in tension (atlas-steel illustration)
+COLD_SHORT: str = "cold-short"               # phosphorus → DBTT above service temperature (cold_short_check)
 
 
 # --------------------------------------------------------------------------- #
@@ -283,3 +284,48 @@ def quench_crack_check(
     )
     step = ProcessStep("quench-crack-check", summary, in_spec=not crack, flags_added=flags_added)
     return heat.evolve(step, residual_stress_MPa=field_.surface_MPa, defects=defects)
+
+
+def cold_short_check(
+    heat: Heat,
+    *,
+    normalize_T: float = 900.0,
+    normalize_t: float = 0.5,
+    service_T: float | None = None,
+) -> Heat:
+    """Normalize the ``Heat`` and read whether phosphorus has embrittled it — the **P-consequence** seam.
+
+    The orchestrator that **closes the phosphorus consequence** F2 Slice 2 (:mod:`steel.slag`) deferred,
+    and the *propagation* counterpart to :func:`steel.hot_work.hot_work` (which closes sulfur through a new
+    engine): here phosphorus threads the **existing** Pickering DBTT law. It unpacks the Heat, normalizes it
+    (:func:`steel.grain.coupled_grain_properties` → a ferrite-pearlite grain size → yield + DBTT) feeding
+    ``composition.P`` as the phosphorus term, and if the DBTT lands **above the service temperature** the
+    **cold-short** flag is raised and carried forward — the mirror of :func:`heat_treat`'s soft-core seam.
+
+    The split this makes explicit (``steel-making.md`` §14): phosphorus is **consumed here** (an off-spec-P
+    heat normalizes brittle while a clean one stays ductile) yet remains **inert in** :func:`heat_treat`
+    (hardenability / hardness / martensite read C/Si/Mn/Ni/Cr/Mo only) — so P now propagates on exactly one
+    path. **Domain:** this models the **normalized ferrite-pearlite** state Pickering describes (the
+    cold-shortness story is a low-/medium-carbon, normalized-iron one); a quench-hardened martensitic
+    structure is out of the law's scope. The DBTT *slope* is the flagged-representative number
+    (:data:`steel.grain.ITT_K_P`); the phosphorus **strengthening** term carries this slice's teeth.
+    ``service_T`` defaults to :data:`steel.grain.ROOM_TEMPERATURE_C` (brittle in the hand).
+    """
+    from . import grain  # local: the property laws, kept out of the spine's import surface
+
+    service = grain.ROOM_TEMPERATURE_C if service_T is None else service_T
+    gp = grain.coupled_grain_properties(
+        normalize_T, normalize_t, heat.composition.C,
+        comp=heat.composition.minor(), P_pct=heat.composition.P,
+    )
+    brittle = gp.dbtt_C > service
+
+    defects = add_defect(heat.defects, COLD_SHORT) if brittle else heat.defects
+    flags_added = (COLD_SHORT,) if (brittle and not heat.has_defect(COLD_SHORT)) else ()
+    summary = (
+        f"normalize {normalize_T:.0f} °C/{normalize_t:g} h → ferrite-pearlite (P {heat.composition.P:.3f} %), "
+        f"σy {gp.yield_MPa:.0f} MPa, DBTT {gp.dbtt_C:+.0f} °C vs {service:+.0f} °C service"
+        + ("" if not brittle else " → COLD-SHORT (brittle at service temperature)")
+    )
+    step = ProcessStep("cold-short-check", summary, in_spec=not brittle, flags_added=flags_added)
+    return heat.evolve(step, grain_size_um=gp.pags_um, defects=defects)

@@ -427,3 +427,84 @@ def test_yield_below_uts_property_logic():
     assert grain.GrainProperties(yield_MPa=900.0, uts_MPa=500.0, **base).yield_below_uts is False
     # A nan UTS (carbon outside the ISO-18265 table band) ⇒ "no violation detectable", not a fail.
     assert grain.GrainProperties(yield_MPa=400.0, uts_MPa=float("nan"), **base).yield_below_uts is True
+
+
+# =========================================================================== #
+# Phosphorus — the signed-impurity foil (the §14 cold-shortness consequence)
+# =========================================================================== #
+# P closes the F2-Slice-2 deferral by threading the EXISTING Pickering laws (a propagation, consumed via
+# heat_state.cold_short_check). What carries teeth vs what is flagged:
+#   * TEETH — the YIELD strengthening rate, by CROSS-SOURCE coherence: Thiele–Hošek's +237 MPa/at% P,
+#     converted to a wt% basis, lands inside Total Materia's independent 365–620 MPa/wt% bracket. (The
+#     hardness increment 119.8 vs lit 123–125 vs theoretical 127 HV/wt% coheres within ~6%; that is the
+#     tightest leg of the coherence, documented in the module — grain.py does not compute hardness from P.)
+#   * FLAGGED (NOT teeth) — the DBTT slope (ITT_K_P): representative, carrying the direction/magnitude of
+#     cold-shortness, the one number §14 could not cleanly pin (clean relations use GB-segregation at%).
+#   * BY CONSTRUCTION — P is the signed foil: it raises BOTH yield and DBTT, the inverse of refinement.
+def test_phosphorus_default_zero_is_byte_identical():
+    # P_pct defaults to 0 and adds nothing — the existing suite/behaviour is untouched (the additive proof).
+    for d in (8.0, 20.0, 60.0):
+        assert grain.hall_petch_yield_MPa(d, comp=_MILD, f_pearlite=0.3) == \
+               grain.hall_petch_yield_MPa(d, comp=_MILD, f_pearlite=0.3, P_pct=0.0)
+        assert grain.cottrell_petch_dbtt_C(d, comp=_MILD, f_pearlite=0.3) == \
+               grain.cottrell_petch_dbtt_C(d, comp=_MILD, f_pearlite=0.3, P_pct=0.0)
+
+
+def test_phosphorus_yield_rate_in_cross_source_bracket():
+    # THE TEETH (cross-source coherence). The pinned at%-basis rate, converted to a wt% basis, must land in
+    # the INDEPENDENT Total Materia bracket (~365–620 MPa per wt% P). This could have missed: a wrong unit
+    # basis (forgetting the ×1.803 at%→wt%) would give ~237 MPa/wt%, well below the bracket.
+    eff_slope_per_wt = grain.YIELD_K_P_PER_AT * grain.AT_PCT_PER_WT_PCT_P
+    assert 365.0 <= eff_slope_per_wt <= 620.0
+    # the unit conversion itself: 1 wt% P ≈ 1.803 at% P (the M_Fe/M_P dilute factor — the registered trap).
+    assert grain.AT_PCT_PER_WT_PCT_P == pytest.approx(1.8030, rel=1e-3)
+
+
+def test_phosphorus_yield_term_linear_in_atomic_fraction():
+    # The increment is YIELD_K_P_PER_AT per at% P (≈ 42.7 MPa at 0.10 wt%: 237 × 0.10 × 1.803), linear in P.
+    d = 15.0
+    base = grain.hall_petch_yield_MPa(d, comp=_MILD)
+    bump = grain.hall_petch_yield_MPa(d, comp=_MILD, P_pct=0.10) - base
+    assert bump == pytest.approx(grain.YIELD_K_P_PER_AT * 0.10 * grain.AT_PCT_PER_WT_PCT_P, rel=1e-9)
+    assert grain.hall_petch_yield_MPa(d, comp=_MILD, P_pct=0.20) - base == pytest.approx(2.0 * bump, rel=1e-9)
+
+
+def test_phosphorus_dbtt_slope_is_flagged_representative():
+    # NOT teeth — guard only the wiring (P raises DBTT, linearly) and that the flagged slope sits in the
+    # literature band ~40–70 °C per 0.1 wt% P. The strength term carries the teeth, this slope does not.
+    d = 15.0
+    base = grain.cottrell_petch_dbtt_C(d, comp=_MILD)
+    bump = grain.cottrell_petch_dbtt_C(d, comp=_MILD, P_pct=0.10) - base
+    assert bump == pytest.approx(grain.ITT_K_P * 0.10, rel=1e-9)
+    assert 40.0 <= grain.ITT_K_P * 0.10 <= 70.0       # representative band, per 0.1 wt% P
+
+
+def test_phosphorus_is_the_signed_foil_raises_both():
+    # BY CONSTRUCTION: P raises BOTH yield AND DBTT (strengthens AND embrittles) — like Si/pearlite, the
+    # OPPOSITE of the grain term. This is the §5b foil: the reason grain refinement is the lone co-improver.
+    d = 20.0
+    y0 = grain.hall_petch_yield_MPa(d, comp=_MILD, f_pearlite=0.2)
+    T0 = grain.cottrell_petch_dbtt_C(d, comp=_MILD, f_pearlite=0.2)
+    assert grain.hall_petch_yield_MPa(d, comp=_MILD, f_pearlite=0.2, P_pct=0.3) > y0
+    assert grain.cottrell_petch_dbtt_C(d, comp=_MILD, f_pearlite=0.2, P_pct=0.3) > T0
+    # contrast — refining the grain raises yield but LOWERS DBTT (the lone co-improver)
+    assert grain.hall_petch_yield_MPa(8.0, comp=_MILD, f_pearlite=0.2) > y0
+    assert grain.cottrell_petch_dbtt_C(8.0, comp=_MILD, f_pearlite=0.2) < T0
+
+
+def test_coupled_grain_properties_threads_phosphorus():
+    # P_pct flows through the coupling into BOTH laws; P=0 is identical to omitting it (the additive proof).
+    kw = dict(comp=_DEMO_COMP)
+    g0 = grain.coupled_grain_properties(950.0, 1.0, _DEMO_C, **kw)
+    gP = grain.coupled_grain_properties(950.0, 1.0, _DEMO_C, P_pct=0.25, **kw)
+    assert grain.coupled_grain_properties(950.0, 1.0, _DEMO_C, P_pct=0.0, **kw).dbtt_C == g0.dbtt_C
+    assert gP.yield_MPa > g0.yield_MPa and gP.dbtt_C > g0.dbtt_C
+    assert gP.dbtt_C == pytest.approx(
+        grain.cottrell_petch_dbtt_C(gP.ferrite_um, comp=_DEMO_COMP, f_pearlite=gP.f_pearlite, P_pct=0.25))
+
+
+def test_phosphorus_negative_raises():
+    with pytest.raises(ValueError):
+        grain.hall_petch_yield_MPa(15.0, P_pct=-0.01)
+    with pytest.raises(ValueError):
+        grain.cottrell_petch_dbtt_C(15.0, P_pct=-0.01)

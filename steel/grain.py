@@ -219,6 +219,35 @@ ITT_K_NF = 700.0             # °C per (wt% free N)^(1/2)  (embrittles — raise
 ITT_K_PEARLITE = 2.2         # °C per % pearlite    (embrittles — raises DBTT)
 ITT_KT_MM = 11.5             # °C·mm^(1/2) — grain coefficient, applied with a NEGATIVE sign
 
+# --- Phosphorus: the signed-impurity foil (the §14 cold-shortness consequence) ----------------
+# P is the lone *substitutional* element that raises strength AND DBTT through the same linear
+# concentration term — the clean inverse of grain refinement (the only lever that improves both).
+# It is the tramp impurity :mod:`steel.slag` partitions out; this is the **consumer that closes
+# its consequence** — the F2-Slice-2 deferral (an off-spec-P heat threading the chain inert). It
+# reads ``P_pct`` *explicitly* (a dedicated keyword), NOT through ``comp``/``Steel.minor()``, which
+# deliberately withhold P so it is never fed silently to an unbenchmarked model.
+#
+# YIELD term — PINNABLE, the teeth. Thiele–Hošek's solid-solution model gives **+237 MPa per
+# 1 at% P** (ΔR_p0.2 = G·ε·X_c/100, with G = 83000 MPa and ε = (140−100)/140 = 0.286 from the Fe/P
+# atomic radii — PDF-verified, [[historical-impurity-pedagogy]]). The teeth are CROSS-SOURCE
+# coherence, not the lone number: converting at%→wt% (×M_Fe/M_P below) gives ~427 MPa/wt% P, inside
+# Total Materia's independent 365–620 MPa/wt% bracket; and Thiele's hardness increment 119.8 HV/wt%
+# sits within ~6 % of the literature's 123–125 and the theoretical 127. We pin the cited at%-basis
+# number and convert at the boundary — the registered unit trap: **strength is per at% P, DBTT per
+# wt% P** (a ~1.8× basis difference; mixing them is the documented mistake).
+YIELD_K_P_PER_AT = 237.0     # MPa per at% P  (Thiele–Hošek solid-solution model; PDF-verified)
+M_FE = 55.845                # g/mol — iron, for the dilute wt%→at% conversion of phosphorus
+M_P = 30.974                 # g/mol — phosphorus
+AT_PCT_PER_WT_PCT_P = M_FE / M_P     # ≈ 1.803 (1 wt% P ≈ 1.803 at% P; so 1 at% P ≈ 0.555 wt%)
+
+# DBTT term — NOT teeth, FLAGGED representative (the FERRITE_PAGS_RATIO posture). The P→DBTT slope
+# is the one number §14 flagged as *not cleanly pinnable*: clean modern relations express
+# embrittlement vs grain-boundary **segregation** concentration (at% at the boundary), not bulk
+# wt%, and the bulk slope is a scattered, path-dependent reduced form (literature ~40–70 °C per
+# 0.1 wt% P). We pin a representative mid-band value and flag it — it carries the *direction and
+# rough magnitude* of the cold-shortness story, not a benchmark. Override per call.
+ITT_K_P = 500.0              # °C per wt% P  (representative ≈ 50 °C/0.1 wt%; FLAGGED — not teeth)
+
 # Free nitrogen is not in the STEELS registry → a flagged default (a typical small value, wt%).
 # It enters BOTH laws under a √ (raises strength AND DBTT — an embrittler), so it does NOT
 # affect the grain-term sign-opposition; the grain / Si / pearlite terms carry the story.
@@ -251,27 +280,40 @@ def _d_mm(d_um: float) -> float:
     return d_um / 1000.0
 
 
-def _solute_strengthening(comp: dict | None, N_free_pct: float) -> float:
-    """Pickering substitutional (Mn, Si) + interstitial (√N_free) yield contribution (MPa)."""
+def _solute_strengthening(comp: dict | None, N_free_pct: float, P_pct: float = 0.0) -> float:
+    """Pickering substitutional (Mn, Si, **P**) + interstitial (√N_free) yield contribution (MPa).
+
+    Phosphorus enters as a substitutional solid-solution term **linear in its atomic fraction**
+    (Thiele–Hošek): the cited ``YIELD_K_P_PER_AT`` is per **at%**, so the wt% ``P_pct`` is
+    converted at this boundary (``× AT_PCT_PER_WT_PCT_P``) — the registered at%/wt% unit trap.
+    ``P_pct`` is threaded explicitly (never via ``comp`` / ``Steel.minor()``), so it stays zero
+    unless a caller opts in — P is never fed silently to the law.
+    """
     comp = comp or {}
     if N_free_pct < 0.0:
         raise ValueError(f"free nitrogen must be ≥ 0 wt%, got {N_free_pct}")
+    if P_pct < 0.0:
+        raise ValueError(f"phosphorus must be ≥ 0 wt%, got {P_pct}")
     return (
         YIELD_K_MN * comp.get("Mn", 0.0)
         + YIELD_K_SI * comp.get("Si", 0.0)
         + YIELD_K_NF * math.sqrt(N_free_pct)
+        + YIELD_K_P_PER_AT * (P_pct * AT_PCT_PER_WT_PCT_P)
     )
 
 
 def hall_petch_yield_MPa(
     d_um: float, *, comp: dict | None = None, f_pearlite: float = 0.0,
-    N_free_pct: float = DEFAULT_N_FREE_PCT, f_martensite: float = 0.0,
+    N_free_pct: float = DEFAULT_N_FREE_PCT, f_martensite: float = 0.0, P_pct: float = 0.0,
 ) -> float:
     """Lower yield strength (MPa) of a ferrite-pearlite steel — Pickering + Hall–Petch.
 
-    ``σ_y = σ₀ + k_Mn·Mn + k_Si·Si + k_N·√N_free + k_pearl·%pearlite + k_y·d^(−½)``
+    ``σ_y = σ₀ + k_Mn·Mn + k_Si·Si + k_N·√N_free + k_pearl·%pearlite + k_P·at%P + k_y·d^(−½)``
 
     The grain-size term is **positive**: refine the grain (smaller ``d``) and yield *rises*.
+    ``P_pct`` (wt%, default 0) adds Thiele–Hošek's phosphorus solid-solution term — P is the
+    signed-impurity foil: it *raises* yield here AND *raises* DBTT in :func:`cottrell_petch_dbtt_C`
+    (the cold-shortness consequence :mod:`steel.slag` leaves to this consumer to close).
     ``comp`` is the minor-alloy ``{element: wt%}`` dict (``Steel.minor()`` — only Mn, Si are
     read by Pickering's yield form). ``f_pearlite`` is the **mass fraction** in ``[0, 1]``
     (e.g. ``fe_c.equilibrium_constituents(C0).f_pearlite`` — the *equilibrium* slow-cool
@@ -289,7 +331,7 @@ def hall_petch_yield_MPa(
     grain = YIELD_KY_MM * _d_mm(d_um) ** -0.5
     return (
         YIELD_SIGMA0
-        + _solute_strengthening(comp, N_free_pct)
+        + _solute_strengthening(comp, N_free_pct, P_pct)
         + YIELD_K_PEARLITE * 100.0 * f_pearlite
         + grain
     )
@@ -297,17 +339,23 @@ def hall_petch_yield_MPa(
 
 def cottrell_petch_dbtt_C(
     d_um: float, *, comp: dict | None = None, f_pearlite: float = 0.0,
-    N_free_pct: float = DEFAULT_N_FREE_PCT, f_martensite: float = 0.0,
+    N_free_pct: float = DEFAULT_N_FREE_PCT, f_martensite: float = 0.0, P_pct: float = 0.0,
 ) -> float:
     """Ductile-brittle transition temperature (°C) — Cottrell–Petch / Pickering ITT.
 
-    ``DBTT = −19 + 44·Si + 700·√N_free + 2.2·%pearlite − 11.5·d^(−½)``
+    ``DBTT = −19 + 44·Si + 700·√N_free + 2.2·%pearlite + k_P·%P − 11.5·d^(−½)``
 
     The grain-size term is **negative** — the *opposite* sign to :func:`hall_petch_yield_MPa`
     — so refining the grain *lowers* DBTT (tougher) while it *raises* yield (stronger): the
     lone co-improving lever, the headline of option (b). Si / free-N / pearlite raise DBTT
     (embrittle), the same direction they raise yield. ``f_pearlite`` is the **mass fraction**
     in ``[0, 1]`` (the equilibrium value from carbon, as in the yield law).
+
+    ``P_pct`` (wt%, default 0) adds phosphorus embrittlement — P raises DBTT *and* yield, the
+    signed foil that makes grain refinement special. **This slope is FLAGGED representative**
+    (:data:`ITT_K_P`), not a benchmark: it carries the *direction and rough magnitude* of
+    cold-shortness, the one number §14 could not cleanly pin (clean relations use grain-boundary
+    segregation at%, not bulk wt%). The strength term carries this slice's teeth, not this one.
 
     This is a transition **temperature**, *not* a Charpy energy: no shelf energies, no
     absolute J, no tempering-axis non-monotonicity — those stay Phase 3b's named ceiling
@@ -320,12 +368,15 @@ def cottrell_petch_dbtt_C(
     comp = comp or {}
     if N_free_pct < 0.0:
         raise ValueError(f"free nitrogen must be ≥ 0 wt%, got {N_free_pct}")
+    if P_pct < 0.0:
+        raise ValueError(f"phosphorus must be ≥ 0 wt%, got {P_pct}")
     grain = ITT_KT_MM * _d_mm(d_um) ** -0.5
     return (
         ITT_BASE
         + ITT_K_SI * comp.get("Si", 0.0)
         + ITT_K_NF * math.sqrt(N_free_pct)
         + ITT_K_PEARLITE * 100.0 * f_pearlite
+        + ITT_K_P * P_pct
         - grain
     )
 
@@ -411,6 +462,7 @@ def coupled_grain_properties(
     T_austenitize: float, t_hours: float, C: float, *,
     comp: dict | None = None, d0: float = GROWTH_D0,
     ferrite_ratio: float = FERRITE_PAGS_RATIO, N_free_pct: float = DEFAULT_N_FREE_PCT,
+    P_pct: float = 0.0,
 ) -> GrainProperties:
     """Couple an austenitizing hold to the ferrite-pearlite yield **and** DBTT (Phase 5c).
 
@@ -430,16 +482,19 @@ def coupled_grain_properties(
     ``uts_MPa`` is computed from the same structure's ferrite-pearlite hardness
     (:func:`properties.vickers_ferrite_pearlite` → :func:`properties.tensile_strength_MPa`) for
     the :attr:`GrainProperties.yield_below_uts` cross-check; it is *not* part of the grain
-    physics. ``T`` is °C, ``t`` hours, ``C`` wt%; grain sizes returned in µm.
+    physics. ``P_pct`` (wt%, default 0) threads phosphorus into *both* laws — the one piece here
+    that is **not** pure reuse: it adds Thiele's P solid-solution strengthening (pinnable) and the
+    flagged P→DBTT embrittlement, the consumer that closes :mod:`steel.slag`'s cold-shortness
+    deferral on a normalized heat. ``T`` is °C, ``t`` hours, ``C`` wt%; grain sizes returned in µm.
     """
     pags = austenite_grain_size(T_austenitize, t_hours, d0=d0)
     d_ferrite = ferrite_grain_size(pags, ratio=ferrite_ratio)
     f_pearlite = fe_c.equilibrium_constituents(C).f_pearlite
     sigma_y = hall_petch_yield_MPa(
-        d_ferrite, comp=comp, f_pearlite=f_pearlite, N_free_pct=N_free_pct,
+        d_ferrite, comp=comp, f_pearlite=f_pearlite, N_free_pct=N_free_pct, P_pct=P_pct,
     )
     dbtt = cottrell_petch_dbtt_C(
-        d_ferrite, comp=comp, f_pearlite=f_pearlite, N_free_pct=N_free_pct,
+        d_ferrite, comp=comp, f_pearlite=f_pearlite, N_free_pct=N_free_pct, P_pct=P_pct,
     )
     uts = float(prop.tensile_strength_MPa(prop.vickers_ferrite_pearlite(C, comp=comp)))
     return GrainProperties(

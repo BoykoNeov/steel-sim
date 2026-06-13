@@ -10,10 +10,12 @@ The *numbers* (the 4140 martensite fractions, the 4340 residual sign) are owned 
 """
 import pytest
 
+from dataclasses import replace
+
 from steel import heat_state as hs
 from steel.heat_state import (
-    Heat, ProcessStep, heat_treat, quench_crack_check, add_defect,
-    SOFT_CORE, QUENCH_CRACK_RISK, MIN_MARTENSITE_SPEC,
+    Heat, ProcessStep, heat_treat, quench_crack_check, cold_short_check, add_defect,
+    SOFT_CORE, QUENCH_CRACK_RISK, COLD_SHORT, MIN_MARTENSITE_SPEC,
 )
 from steel.sweep import Steel, STEELS
 
@@ -152,3 +154,50 @@ def test_quench_crack_check_rejects_non_atlas_grade():
     # silently pretending the off-spec-composition → crack chain exists (it is deferred).
     with pytest.raises(ValueError):
         quench_crack_check(Heat.from_grade("4140"), 0.025)
+
+
+# --------------------------------------------------------------------------- #
+# cold_short_check — the phosphorus consequence, a PROPAGATION through grain.py
+# --------------------------------------------------------------------------- #
+# Closes the F2-Slice-2 deferral for phosphorus: P threads the EXISTING Pickering DBTT law (grain.py), so an
+# off-spec-P heat normalizes brittle. This is the spine-class propagation (unlike sulfur's new hot_work
+# consumer). The teeth are in grain.py (the P strengthening rate); here we test the SEAM and the SPLIT.
+_STRUCT = replace(STEELS["1045"], C=0.12, Mn=0.50, Si=0.15, name="structural")
+
+
+def test_phosphorus_split_inert_in_heat_treat_consumed_in_cold_short():
+    # THE SPLIT (steel-making.md §14): phosphorus now propagates on EXACTLY ONE path. CONSUMED in
+    # cold_short_check (off-spec-P normalizes brittle, clean stays ductile) yet INERT in heat_treat
+    # (hardenability / hardness / martensite read C/Si/Mn/Ni/Cr/Mo only — minor() excludes P).
+    clean = Heat(composition=replace(_STRUCT, P=0.005))
+    dirty = Heat(composition=replace(_STRUCT, P=0.35))          # acid-Bessemer-retained, phosphoric
+    # consumed in cold_short_check — the off-spec heat flips to brittle
+    assert not cold_short_check(clean).has_defect(COLD_SHORT)
+    assert cold_short_check(dirty).has_defect(COLD_SHORT)
+    # still inert in heat_treat — martensite and hardness identical (P excluded from the back-end dict)
+    from steel.sweep import evaluate
+    ec = evaluate(clean.composition, medium="oil", diameter=0.015)
+    ed = evaluate(dirty.composition, medium="oil", diameter=0.015)
+    assert ec.HV == ed.HV and ec.result.martensite == ed.result.martensite
+    assert clean.composition.minor() == dirty.composition.minor()
+
+
+def test_cold_short_check_evolves_heat_and_records_a_step():
+    out = cold_short_check(Heat(composition=replace(_STRUCT, P=0.35)))
+    assert out.has_defect(COLD_SHORT)
+    assert out.history[-1].name == "cold-short-check" and out.history[-1].in_spec is False
+    assert out.history[-1].flags_added == (COLD_SHORT,)
+    assert out.grain_size_um is not None and out.grain_size_um > 0.0   # PAGS repacked from the normalize
+
+
+def test_cold_short_check_clean_heat_stays_clean():
+    out = cold_short_check(Heat(composition=replace(_STRUCT, P=0.005)))
+    assert not out.has_defect(COLD_SHORT) and out.is_clean and out.history[-1].in_spec is True
+
+
+def test_cold_short_check_service_temperature_raises_the_bar():
+    # A colder service temperature is harder to pass: a heat ductile at room temperature can be cold-short
+    # for cryogenic service (the DBTT must beat the service temperature).
+    h = Heat(composition=replace(_STRUCT, P=0.10))
+    assert not cold_short_check(h, service_T=20.0).has_defect(COLD_SHORT)   # DBTT below room temp
+    assert cold_short_check(h, service_T=-80.0).has_defect(COLD_SHORT)      # but above −80 °C

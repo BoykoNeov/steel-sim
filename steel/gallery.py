@@ -210,6 +210,18 @@ CATALOG: tuple[Entry, ...] = (
         "inert in the back end — the chemistry is benchmarked, the embrittlement consequence deferred.",
     ),
     Entry(
+        "Impurity consequences (front-end)", "demo_impurity_window", "steel-impurity-window.png",
+        "Closing the impurity consequences — phosphorus (cold-short) and sulfur (red-short)",
+        "What the tramp impurities finally DO. The same high-phosphorus, sulfurous pig iron, made into "
+        "cracking steel by the acid Bessemer process and into sound steel by the basic process + Mushet's "
+        "manganese + ladle desulfurization. Phosphorus threads the existing Pickering DBTT law (it "
+        "strengthens AND embrittles — the signed foil) so the off-spec heat is brittle in the hand; free "
+        "sulfur forms a Fe–FeS grain-boundary film above the 988 °C eutectic so it tears when forged "
+        "(Mushet's manganese ties it as benign MnS). Together they bracket the workable temperature "
+        "window — the consequence F2's slag partition set as state, now closed: phosphorus by propagation "
+        "through the toughness law, sulfur through a new hot-working verdict.",
+    ),
+    Entry(
         "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",
         "Alloy to grade — where the composition is finalized (and missed)",
         "The seam to the back end: trim an alloy-lean tap up to a grade by ferroalloy additions, sized for "
