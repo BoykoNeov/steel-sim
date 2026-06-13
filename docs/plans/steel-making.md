@@ -641,3 +641,115 @@ located, for whoever picks this up:
 **Status: folded as a research record, assess-only.** No engine, no notebook
 cell, no F-phase started. Sources are listed in the session and in the
 [[historical-impurity-pedagogy]] memory.
+
+---
+
+## 15. Historical & modern production *methods* as paths through the built chain (folded 2026-06-13, plan-only)
+
+> **Why this lives here.** A natural question for the §8 game — *"can it include
+> different historical and modern methods of steelmaking?"* — has a sharp answer
+> that falls straight out of the §4 scope ceiling, so it is recorded here as a
+> **feasibility assessment, not a build.** The load-bearing reframe: **a
+> production method is a particular *path* through the equilibrium endpoints
+> F1–F4 already compute** — so most methods are a `game/` *preset / recipe over
+> built engines*, not new physics. Companion to §14 (which supplies the
+> purity-control-ramp history this section leans on). "Just plan, don't build
+> yet" stands.
+
+### 15.1 The reframe — and the one distinction that splits "method"
+
+Because §4 deliberately built **equilibrium endpoints + lumped rates** (never
+transport-resolved kinetics), the methods differ along axes the engines already
+parametrize: reduction route (F1 Ellingham C/CO crossover), carbon endpoint
+(F2 C–O product), deox/gas state (F2), alloy trim (F3), solidification (F4). A
+"method" is then a *sequence of states*, which the §8 game layer can orchestrate
+without touching a constant — exactly what the firewall (`game/` orchestrates,
+never reimplements physics) is built for.
+
+But the word "method" blurs two things that must stay separate:
+
+- **Chemical outcome** — the `Heat` state a method *yields*. **Built**, producible
+  as a preset over F1–F4 (and reaching the validated back end through the §5
+  carrier, so a bad method fires the §6 flags on its own).
+- **Process dynamics** — what makes a method *feel* different in play (blow time,
+  fuel, the solid-vs-liquid regime, productivity / yield, spark-and-flame cues).
+  This is the **§4 tar pit** (transport-resolved kinetics) → **game-flavor,
+  labeled "plausible, not validated."** Not a gap to close; it is the doctrine
+  working.
+
+The honest one-liner: **the *chemistry* of nearly every method is already a path
+through built engines; the *process feel* is game-layer by design.**
+
+### 15.2 The method → engine map
+
+| Method | Era | Distinguishing physics | Status in repo |
+|---|---|---|---|
+| **Bloomery** (direct / solid-state) | ancient | reduce *below* the C/CO crossover; stays solid; low-C; slag-laden | F1 crossover **built** (746 °C); "no-decarb + slag retention" = preset + flavor |
+| **Blast furnace → pig iron** | medieval+ | full reduction to liquid ~4 %C iron | F1 **built** |
+| **Finery / puddling** | early-modern | decarburize pig iron by oxidation | F2 C–O endpoint **built** |
+| **Cementation / blister** | 1600s | solid-state carburization of wrought bars | **`carburize.py` BUILT** — essentially free |
+| **Crucible (Huntsman)** | 1740s | melt + homogenize + slag flotation | homogenization = preset (composition averaging) |
+| **Wootz / Damascus** | ancient | trace V/Mo → carbide banding | **future-research gap** (§14.5) — beyond P/S |
+| **Acid Bessemer** | 1856 | air-blow decarb; **can't** remove P; N pickup | F2 decarb **built**; dephos = **P-state gap**; N pickup = flavor |
+| **Thomas (basic Bessemer)** | 1879 | basic slag removes P (L_P vs basicity) | **F2 Slice 2** — named, triad-ready, needs P state |
+| **Siemens–Martin open hearth** | 1860s+ | same endpoints, slower; basic P/S removal | endpoints **built**; P/S = Slice 2; time = flavor |
+| **BOF** (basic oxygen) | 1950s | O₂ blow, fast, low-N, dephos | F2 **essentially models this** (benchmarks BOP 27 ppm·%C) |
+| **EAF** (electric arc) | modern | melt scrap + refine | F2 **built** (benchmarks EAF 26 ppm·%C) |
+| **Ladle / secondary metallurgy** | modern | alloy trim, degas, desulf | F3 **built**; desulf = Slice 2 |
+| **Ingot / continuous casting** | modern | solidification, microsegregation | F4 Scheil + Chvorinov **built** |
+
+The map reads as the §14.3 theme-C *purity-control ramp* in engine terms: each
+historical generation conquers one tramp element, and that arc is precisely the
+F2 slag-partition curve (§7) — bloomery (high P) → acid Bessemer (no dephos) →
+Thomas (dephos) → BOF (low N) → ladle (desulf).
+
+### 15.3 The three feasibility tiers
+
+- **Tier 1 — recombine what's built (HIGH; orchestration, not physics).** Modern
+  grade-steel routes (BOF/EAF → ladle → cast) and several historical ones
+  (bloomery via the F1 crossover, cementation via `carburize.py`, crucible via
+  homogenization, finery/puddling via F2 decarb) are expressible *now* as `game/`
+  presets. F2 already benchmarks against BOP and EAF carbon–oxygen numbers, so
+  those routes are **grounded**, not just plausible.
+- **Tier 2 — the one gap that gates the *interesting* history (MEDIUM; bounded,
+  named).** The historically pivotal distinctions — *why Thomas beat acid
+  Bessemer, why ladle desulfurization mattered* — are the **P/S slag-partition**
+  axis: F2 **Slice 2** (L_P / L_S vs basicity) plus **P/S state on
+  `Heat`/`Steel`** (the state gap §7's F2/F3 records already flag). This is
+  **already planned and triad-ready** (the Mn:S → MnS stoichiometry is
+  conservation-clean, §14 theme B), not speculative. Without it the game can
+  express modern *grades* but **not the purity-control ramp that is the most
+  teachable history** (§14 theme C).
+- **Tier 3 — the tar pit, correctly excluded (LOW → game-flavor only).** Process
+  *rates and dynamics* — blow time, fuel efficiency, bloomery reduction kinetics,
+  productivity — are transport-resolved kinetics (§4 wall). They live in `game/`
+  as tuned-for-feel flavor, labeled plausible. Not a limitation to fix; the
+  doctrine working.
+
+### 15.4 The two genuine physics gaps (so "mostly built" stays honest)
+
+1. **P/S slag partition — the load-bearing one.** Gates Thomas vs acid Bessemer,
+   open-hearth/BOF dephos, and ladle desulf (Tier 2). Bounded and named: F2
+   Slice 2 + a P/S state extension. This is the single highest-leverage front-end
+   build for *historical* coverage.
+2. **Wootz / Damascus carbide banding — beyond P/S.** The signature V/Mo-driven
+   carbide banding is **future research** (§14.5), not a recombination of existing
+   endpoints. So not *every* experientially-distinctive method reduces to a built
+   engine — this one has a real physics gap of its own.
+
+### 15.5 Where it would surface (placement, not a build)
+
+The game home is a **`game/` method-preset table** behind the §8 firewall: each
+preset is a `Heat` *recipe* over the F1–F4 engines + the set of §6 flags it can
+fire + an explicit **verified-vs-flavor** label per field (chemistry from a
+cited engine = verified; dynamics tuned for feel = plausible). A method is thus a
+named walk through the built chain, and a *bad* method (e.g. acid-Bessemer P
+carry-through, once Tier 2 lands) propagates to the back end on its own — the §6
+mechanic, no scripted failure branch. Pedagogy-side it pairs naturally with the
+§14 historical surface (the timeline *is* the ramp).
+
+**Status: folded as a feasibility assessment, plan-only.** No engine, no preset,
+no `game/` package started. The verdict: **chemistry of nearly every method = a
+path over built engines (Tier 1); the historically richest distinctions need one
+named, scoped extension (P/S partition, Tier 2); one method (wootz) has a physics
+gap beyond that; process *feel* is game-layer by design (Tier 3).**
