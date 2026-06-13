@@ -2487,6 +2487,110 @@ def impurity_window_figure(d):
     return fig
 
 
+def temper_embrittlement_figure(d):
+    """The temper-embrittlement artifact: the martensitic-P consequence and the four levers that defeat it.
+
+    ``d`` is a :class:`~steel.demo_temper_embrittlement.TemperEmbrittleDemo` (precomputed — this layer only
+    draws, ADR 0002). Four panels:
+
+    * **top-left — J-factor susceptibility ranking.** Watanabe `(Mn+Si)(P+Sn)·10⁴` for the registry plus the
+      dirty Ni-Cr victim; the threshold line separates susceptible from clean. Mo-bearing bars are marked —
+      composition susceptibility, with the cure flagged.
+    * **top-right — the danger window and the cooling-rate control.** Temperature vs time: the embrittling
+      window (375–575 °C, nose 490–550) and the ≥600 °C reset band shaded; a slow cool dwells in the window
+      (embrittles) while a fast cool passes through (safe).
+    * **bottom-left — the four levers.** One susceptible heat, four independent saves: fast cool, molybdenum,
+      a clean heat, or a reheat — each turns the verdict from embrittled (red) to tough (green).
+    * **bottom-right — reversibility.** The cycle that names the phenomenon: slow-cool → embrittled, reheat
+      >600 °C + fast cool → tough, slow-cool again → embrittled.
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyArrowPatch
+
+    fig, ((ax_j, ax_win), (ax_lev, ax_rev)) = plt.subplots(2, 2, figsize=(13.5, 9.6))
+    warn = "#c0392b"
+    good = PHASE_COLORS["martensite"]
+    amber = "#d68910"
+
+    # --- top-left: J-factor susceptibility ranking ------------------------------------------- #
+    labels = [r[0] for r in d.ranking]
+    Js = [r[1] for r in d.ranking]
+    mos = [r[2] for r in d.ranking]
+    ypos = np.arange(len(labels))
+    colors = [(amber if mo else warn) if J >= d.j_threshold else good for J, mo in zip(Js, mos)]
+    ax_j.barh(ypos, Js, color=colors, edgecolor="0.3", zorder=3)
+    ax_j.axvline(d.j_threshold, color="0.3", ls="--", lw=1.5, zorder=4)
+    ax_j.annotate(f"susceptible →\nJ > {d.j_threshold:.0f}", (d.j_threshold, 0.4),
+                  textcoords="offset points", xytext=(6, 0), fontsize=8.0, color="0.3", va="center")
+    for y, (J, mo) in enumerate(zip(Js, mos)):
+        if mo:
+            ax_j.annotate("Mo cure", (J, y), textcoords="offset points", xytext=(-6, 0), ha="right",
+                          va="center", fontsize=7.4, color="white", fontweight="bold")
+    ax_j.set_yticks(ypos)
+    ax_j.set_yticklabels(labels, fontsize=8.4)
+    ax_j.set_xlabel("J-factor  (Mn+Si)(P+Sn)·10⁴")
+    ax_j.set_title("Susceptibility ranking — dirty Ni-Cr (no Mo) is the victim", fontsize=10.2)
+    ax_j.grid(True, axis="x", alpha=0.22)
+
+    # --- top-right: the danger window + slow/fast cooling paths ------------------------------- #
+    t = np.linspace(0.0, 10.0, 200)
+    T0, Tenv = 680.0, 250.0
+    slow = Tenv + (T0 - Tenv) * np.exp(-t / 6.0)        # gentle cool — dwells in the window
+    fast = Tenv + (T0 - Tenv) * np.exp(-t / 0.7)        # steep quench — passes through
+    ax_win.axhspan(d.window[0], d.window[1], color="#fadbd8", zorder=0)
+    ax_win.axhspan(d.nose[0], d.nose[1], color="#f1948a", zorder=0)
+    ax_win.axhspan(d.de_embrittle_T, 720.0, color="#d5f5e3", zorder=0)
+    ax_win.annotate(f"danger window\n{d.window[0]:.0f}–{d.window[1]:.0f} °C", (9.8, sum(d.window) / 2),
+                    ha="right", va="center", fontsize=8.0, color=warn)
+    ax_win.annotate(f"reset > {d.de_embrittle_T:.0f} °C", (5.5, 655.0), ha="center", va="center",
+                    fontsize=8.0, color=good)
+    ax_win.plot(t, slow, color=warn, lw=2.8, label="slow cool — dwells → embrittles")
+    ax_win.plot(t, fast, color=good, lw=2.8, label="fast cool — passes → safe")
+    ax_win.set_xlabel("time (arb.)")
+    ax_win.set_ylabel("temperature (°C)")
+    ax_win.set_ylim(220.0, 720.0)
+    ax_win.set_title("The cooling-rate control — cool fast through the window", fontsize=10.2)
+    ax_win.legend(fontsize=8.0, loc="upper right")
+    ax_win.grid(True, alpha=0.18)
+
+    # --- bottom-left: the four levers ---------------------------------------------------------- #
+    lev_labels = [l for l, _ in d.levers]
+    lev_emb = [e for _, e in d.levers]
+    ly = np.arange(len(lev_labels))[::-1]               # first lever on top
+    for y, (lab, emb) in zip(ly, d.levers):
+        ax_lev.barh(y, 1.0, color=warn if emb else good, edgecolor="0.3", zorder=3)
+        ax_lev.annotate("EMBRITTLED" if emb else "tough", (0.5, y), ha="center", va="center",
+                        fontsize=9.0, color="white", fontweight="bold")
+    ax_lev.set_yticks(ly)
+    ax_lev.set_yticklabels(lev_labels, fontsize=8.2)
+    ax_lev.set_xlim(0.0, 1.0)
+    ax_lev.set_xticks([])
+    ax_lev.set_title("Four levers on ONE susceptible heat — any one saves it", fontsize=10.2)
+
+    # --- bottom-right: the reversibility cycle ------------------------------------------------- #
+    ax_rev.set_xlim(0.0, 1.0)
+    ax_rev.set_ylim(0.0, 1.0)
+    ax_rev.axis("off")
+    ax_rev.set_title("Reversible — reheat resets it", fontsize=10.2)
+    xs = [0.18, 0.5, 0.82]
+    ys = [0.78, 0.30, 0.78]
+    for (lab, emb), x, y in zip(d.cycle, xs, ys):
+        ax_rev.annotate(("EMBRITTLED\n" if emb else "TOUGH\n") + lab, (x, y), ha="center", va="center",
+                        fontsize=8.2, color="white", fontweight="bold",
+                        bbox=dict(boxstyle="round,pad=0.4", fc=warn if emb else good, ec="0.3"))
+    for (x0, y0), (x1, y1) in (((xs[0], ys[0]), (xs[1], ys[1])), ((xs[1], ys[1]), (xs[2], ys[2]))):
+        ax_rev.add_patch(FancyArrowPatch((x0, y0 - 0.12), (x1, y1 + 0.12), arrowstyle="-|>",
+                                         mutation_scale=16, color="0.4", lw=1.8,
+                                         connectionstyle="arc3,rad=-0.2"))
+    ax_rev.annotate("reheat > 600 °C\n+ fast cool", (0.34, 0.50), fontsize=7.8, color=good, ha="center")
+    ax_rev.annotate("slow-cool again", (0.66, 0.50), fontsize=7.8, color=warn, ha="center")
+
+    fig.suptitle("Temper embrittlement — the reversible, alloy-driven phosphorus consequence (martensitic P)",
+                 fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.16, right=0.97, top=0.92, bottom=0.08, hspace=0.32, wspace=0.28)
+    return fig
+
+
 def ladle_figure(d):
     """The F3 artifact: alloy to grade — the trim, the recovery shortfall, and the front-to-back verdict.
 

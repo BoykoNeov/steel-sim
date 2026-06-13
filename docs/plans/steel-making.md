@@ -611,10 +611,33 @@ deferred state extensions (P/S on `Steel`) — then **`game/` last**, on the pro
 > red-short by acid Bessemer / no manganese, and sound by basic + Mushet + ladle desulf; four panels
 > (P→DBTT with the yield foil; free-S vs Mn:S Mushet threshold; the signed yield–DBTT foil; the closing
 > workable window). Suite **668 green / 2 skipped**, no engine touch, no ADR (additive `P_pct` + two new
-> orchestrators, not a semantics change). **Named deferrals:** temper embrittlement (martensitic P → PAG
-> segregation), MnS inclusion fracture-anisotropy / transverse-toughness debit, the "good-impurity"
-> free-machining use of S (resulfurized 11xx), and the kinetic hot-ductility *trough shape*. Theme C
-> (purity ramp), D (inverse hardness) and E (Scheil ghost lines) remain as written below.
+> orchestrators, not a semantics change). **Named deferrals:** MnS inclusion fracture-anisotropy /
+> transverse-toughness debit, the "good-impurity" free-machining use of S (resulfurized 11xx), and the
+> kinetic hot-ductility *trough shape*. (Temper embrittlement — the martensitic-P deferral named here — is
+> now BUILT; see the next banner.) Theme C (purity ramp), D (inverse hardness) and E (Scheil ghost lines)
+> remain as written below.
+
+> **BUILT ✓ 2026-06-13 — temper embrittlement closes phosphorus' MARTENSITIC path (theme A, the other half).**
+> `cold_short_check` closed the ferritic/normalized P path (DBTT); `temper_embrittlement.py` closes the
+> quench-and-tempered one. Reversible, alloy-driven: P co-segregates with Ni/Cr to prior-austenite grain
+> boundaries on slow cooling through **375–575 °C** → intergranular fracture; **Mo (~0.5 %) is the cure**;
+> **reversible** (reheat >600 °C + fast cool resets it). `temper_embrittlement_check` orchestrator → the
+> **`temper-embrittled`** flag. **NO strict tooth — the gate was run and failed (the load-bearing
+> discipline).** The tempting tooth — "the segregation C-curve *nose* emerges at the observed ~490–550 °C
+> from cited ΔG_seg(P) + D_P(α-Fe)" — was **falsified on paper before any code**: a Langmuir–McLean model with
+> the cited ΔG_seg = −34469 + 22.9·T J/mol (Yang–Chen/Erhart–Grabke) and cited D_P puts the peak at
+> ~390–435 °C (not 490–550), drifts with exposure time, and runs ~100× faster than the source's own kinetic
+> anchor (the real kinetics add a Fe₃P-cluster step). So the segregation model was **not built to manufacture
+> a tooth.** This slice is **cited constants + by-construction** (the J-factor `(Mn+Si)(P+Sn)·10⁴`, Watanabe,
+> is regression-fit → "high J ⇒ susceptible" cannot miss; the danger window / ≥600 °C reset / 0.5 % Mo are
+> cited inputs) — symmetric with the S/red-short slice, no benchmark. The teaching beat (a coherence note,
+> not a tooth): the registry's Mo-bearing grades (4140/8620) are *not* susceptible — the cure is in the
+> workhorse. **Demo + figure + gallery card:** `demo_temper_embrittlement` — one dirty Ni-Cr forging, four
+> levers (fast cool / Mo / clean heat / reheat) each save it; the reversibility cycle. Suite **685 green /
+> 2 skipped** (+17), no engine touch, no ADR. **Deferrals:** absolute ΔFATT (scattered), the full Guttmann
+> co-segregation / Fe₃P-cluster C-curve, and *tempered-martensite* embrittlement (the irreversible
+> ~260–370 °C cementite-film one — a different mechanism). **Phosphorus' coverage is now complete** (ferritic
+> cold-short + martensitic temper-embrittlement).
 
 **The reframe that makes it useful.** The originally-named tramp axes
 (hardenability/Jominy, CCT kinetics, residual stress) are the *weakest* for our

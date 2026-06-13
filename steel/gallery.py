@@ -222,6 +222,18 @@ CATALOG: tuple[Entry, ...] = (
         "through the toughness law, sulfur through a new hot-working verdict.",
     ),
     Entry(
+        "Impurity consequences (front-end)", "demo_temper_embrittlement", "steel-temper-embrittlement.png",
+        "Temper embrittlement — the reversible Ni-Cr-Mo phosphorus trap",
+        "Phosphorus' OTHER consequence — the quench-and-tempered (martensitic) path, completing its coverage "
+        "(cold-short was the ferritic one). A dirty Ni-Cr forging with residual phosphorus and no molybdenum, "
+        "slow-cooled through ~375–575 °C, segregates phosphorus to the prior-austenite grain boundaries and "
+        "fractures intergranularly. Four independent cures: a fast cool through the window, molybdenum (the "
+        "classic remedy — and part of why 4140/8620 are workhorse grades), a clean heat, or a reheat above "
+        "600 °C (the reversibility that names it). The Watanabe J-factor ranks susceptibility. No strict "
+        "tooth — the segregation-C-curve-nose gate was run on paper and failed (it lands ~400 °C, not the "
+        "observed ~500 °C), so the model was not built to manufacture one.",
+    ),
+    Entry(
         "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",
         "Alloy to grade — where the composition is finalized (and missed)",
         "The seam to the back end: trim an alloy-lean tap up to a grade by ferroalloy additions, sized for "
