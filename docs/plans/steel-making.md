@@ -753,3 +753,116 @@ no `game/` package started. The verdict: **chemistry of nearly every method = a
 path over built engines (Tier 1); the historically richest distinctions need one
 named, scoped extension (P/S partition, Tier 2); one method (wootz) has a physics
 gap beyond that; process *feel* is game-layer by design (Tier 3).**
+
+---
+
+## 16. The Tier-3 game-flavor layer — physics-shaped process dynamics (folded 2026-06-13, plan-only)
+
+> **Why this lives here.** §15.3 placed *process rates and dynamics* in Tier 3 —
+> correctly **excluded from the validated `steel/` engines** by the §4
+> transport-kinetics wall. But "excluded from the validated engines" is **not**
+> "arbitrary RNG in the game." This section records a forward-looking **design
+> doctrine** for the `game/` flavor layer so its dynamics are *physics-shaped
+> approximations, labeled plausible* — the user's "game, but based on physics and
+> chemistry, with approximations." It is the constructive other half of "Tier-3
+> exclusion is the doctrine working." Plan-only: no `game/` code, no τ-law.
+
+### 16.1 The organizing principle — relaxation toward a validated endpoint
+
+Every Tier-3 dynamic animates the **path** to an endpoint the F1–F4 engines
+already compute. The *shape* of the path is textbook (first-order, Arrhenius,
+Stokes); the *time constant* τ is feel-tuned and lives in `game/`. Three
+properties keep the §8 firewall intact:
+
+- **Endpoint in `steel/`, τ in `game/`.** The validated number (F1 crossover, F2
+  C–O / Sieverts / deox, F3 trim, F4 Scheil/Chvorinov) is the *destination* and is
+  never re-derived — flavor **animates** the approach, it never **recomputes** the
+  physics.
+- **Flavor cannot contradict a built engine** (see the per-type contract in §16.4).
+- **The player's knobs become a control surface routed through validated physics.**
+  Working the bellows, timing the blow, killing the heat, holding for clean steel —
+  each is a knob on τ or on *when you stop*, and **stopping at the wrong moment is a
+  physically-meaningful failure** that fires the §6 flags on its own. A grounded
+  failure source, not a scripted branch.
+
+### 16.2 Two trajectory archetypes (the load-bearing distinction)
+
+A single "monotone relaxation" frame is **wrong** for the most iconic Tier-3
+process. There are two shapes:
+
+- **Type A — one-sided asymptotic approach.** State relaxes *monotonically* toward
+  a floor/ceiling the engine fixes; you can only fall **short**.
+  `s(t) = s∞ − (s∞ − s₀)·e^(−t/τ)`, and `t → ∞` recovers the validated endpoint
+  exactly. Reduction extent, degassing (H/N → Sieverts floor), inclusion
+  flotation, desulf/dephos → slag-partition equilibrium. **Failure = stop short.**
+- **Type B — targeted optimum / overshoot-capable.** *No* fixed asymptote — the
+  endpoint is a **target with a turning point** you can under- *or* over-shoot, and
+  "knowing when to stop" is the mechanic. The **decarb blow** drives C down, then
+  past the target the O₂ begins oxidizing iron → FeO in the metal (**over-blow**).
+  **Deoxidation** has a genuine *minimum* in dissolved O — F2's `e_O^Al = −3.9`
+  curve (Al-O minimum ≈ 0.074 %): add Al past it and dissolved O climbs again.
+  **Failure = both under- and over-shoot.** The Bessemer **flame-drop** is the
+  canonical in-world "you've hit it — stop now" cue.
+
+Type B is the iconic Tier-3 dynamic (the decarb blow *is* the whole §14 theme-C
+Bessemer story), so it must not be flattened into an asymptote — and timing /
+overshoot failures are both richer game design and physically real.
+
+### 16.3 The candidate-dynamics table
+
+| Dynamic | Type | Physics shape (approx) | Player knob | Validated endpoint it rides | Stop-wrong failure | Routable today? |
+|---|---|---|---|---|---|---|
+| **Bloomery reduction** (extent / yield) | A | Arrhenius `k(T)` × approach; `ξ = 1 − e^(−k t)` | bellows/airflow, time, charcoal:ore | F1 crossover (reduction above 746 °C) | cold/short → ore lost to slag, low yield, low-C sponge | partial — low-C carries via §5; yield = flavor |
+| **Decarb blow** (Bessemer / finery / BOF) | **B** | first-order C decay, then Fe oxidation past target | blow time, air/O₂ rate | F2 C–O product | under → high residual C (soft); **over → FeO / over-oxidized bath** | **YES — carbon → soft-core is the built, proven §6 exemplar** |
+| **Deoxidation** (Al / Si kill) | **B** | dissolved-O **minimum** vs deox dose (`e_O^Al = −3.9`) | deoxidizer dose | F2 deox-curve minimum | under → O retained (porosity); over → alumina clusters | partial — O floor is F2; porosity = F4 Slice 2 |
+| **Degassing** (H / N) | A | first-order → Sieverts floor; `k ∝` stir/vacuum | vacuum / stir time | F2 Sieverts gas | short → retained H → flaking risk | needs deferred state (H-flaking, F4 Slice 2) |
+| **Inclusion flotation** (cleanliness) | A | Stokes `v ∝ r²Δρ/μ` → first-order clearance | quiet-hold time | F4 inclusion floor | rushed → dirty steel, inclusion stress-raisers | needs fracture coupling (§14.4) |
+| **Desulf / dephos kinetics** | A | approach to slag-partition equilibrium | slag basicity, stir, time | F2 **Slice 2** `L_P`/`L_S` (Tier 2) | short → tramp carry-through | needs Tier-2 P/S state (§15.4) |
+| **Thermal / fuel** (hold-feasibility) | gate¹ | lumped heat balance | fuel rate, blast temp | "bath hot enough to stay liquid / reach T?" | too cold → freeze-up, can't cast/trim | partial — couples to existing Biot / lumped-valid gates |
+| **Casting / teeming speed** | A | Chvorinov time (built) vs withdrawal rate | cast speed | F4 solidification time | too fast → solidification defects | flavor (defect engine deferred, F4 Slice 2) |
+
+¹ *Thermal/fuel is a feasibility **gate**, not a relaxation curve — it decides
+whether a step can run at all, then hands off to the trajectory dynamics.*
+
+**Not in the trajectory frame — productivity / throughput.** This is a *separate
+category*: an **economy-scale anchor**, not a relaxation-toward-endpoint dynamic
+(bloomery ~kg/day → crucible ~tens-of-kg/heat → BOF ~300 t / 40 min). Keep it as
+flavor **anchored to historical orders of magnitude** — it grounds the §8
+economy's *scale* in real proportions without pretending to be a validated rate.
+
+### 16.4 What keeps it honest (the labeling contract)
+
+- **Shapes textbook; constants feel-tuned.** First-order / Arrhenius / Stokes are
+  real; the τ values are tuned for play, **not** benchmarked → every τ-driven
+  field is labeled **plausible, not validated** (the §8 / §15.5 verified-vs-flavor
+  contract).
+- **Type-A endpoint-consistency:** asymptotic dynamics must be **monotone and may
+  not overshoot** the validated floor/ceiling — so they can't silently contradict
+  a built engine.
+- **Type-B target-consistency:** these *do* turn around, but the **turning point
+  itself** (the C–O target, the deox minimum) is the **validated** F2 number; only
+  the over-/under-shoot *region* around it is flavor. The optimum is physics, the
+  excursion is feel.
+- **Nothing is promoted to `steel/`.** The §4 wall stands; this is `game/` design
+  doctrine for how the flavor layer *behaves*, not transport-resolved kinetics.
+- **Routability is explicit.** Only failures whose endpoint already lives in the
+  validated back end propagate **today** (carbon → soft-core); the rest are tagged
+  *needs deferred state* (H-flaking, inclusion fracture coupling, P/S Tier-2,
+  casting defects), so the table doubles as a **build-order backlog**.
+
+### 16.5 Why this is the doctrine *working*, not a compromise
+
+Excluding transport kinetics from the **validated** engines does not forfeit
+physical **grounding** in the game. The relaxation-toward-endpoint structure means
+the game's most hands-on moments — work the bellows, time the blow, kill the heat,
+hold for clean steel — are physics-shaped and consequence-bearing **without a
+single new triad claim**: endpoints stay validated, the paths to them stay
+plausible-and-labeled, and the player's mistakes propagate through the built
+chain via §6. That is the firewall paying off.
+
+**Status: folded as a forward-looking design sketch, plan-only.** No `game/`
+package, no τ-law, no engine. The doctrine: **Tier-3 dynamics = physics-shaped
+relaxation toward (Type A) — or a targeted optimum at (Type B: decarb, deox) — a
+validated F1–F4 endpoint; shapes textbook, constants plausible-labeled, firewall
+intact; stop-wrong failures route through §6 where the back-end state already
+exists (carbon today; H / inclusion / P-S / casting-defect as their states land).**
