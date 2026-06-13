@@ -8,20 +8,25 @@ nickel and chromium to prior-austenite grain boundaries** during slow cooling th
 roughly **375–575 °C** (fastest ~490–550 °C). The grain boundaries lose cohesion, the fracture turns
 intergranular, and the ductile–brittle transition climbs by tens to >100 °C. It is **reversible**: reheat
 above ~600 °C and cool *fast* and the segregation disperses. **Molybdenum (≈0.5 %) is the classic cure** — it
-scavenges phosphorus and suppresses the segregation; it is part of why 4140 and 8620 are workhorse grades.
+scavenges phosphorus and suppresses the segregation; it is the reason Ni–Cr forging steels carry a Mo
+addition.
 
 The honest posture — a NEW consumer with NO strict tooth (the gate was run and failed)
 --------------------------------------------------------------------------------------
 Like the sulfur / red-short slice (:mod:`steel.hot_work`), this is **cited constants + a by-construction
 verdict**, *not* a benchmarked propagation and *not* a tooth-bearing model. The tempting tooth — "the
 embrittlement C-curve nose emerges at the observed ~490–550 °C from cited segregation thermodynamics +
-diffusion kinetics" — was **falsified on paper before any code was written** (the discipline that saved the
-deox-curve minimum and the Fe–FeS eutectic). With the cited ΔG_seg(P) = −34469 + 22.9·T J/mol (Yang–Chen /
-Erhart–Grabke) and the cited D_P(α-Fe) Arrhenius, a Langmuir–McLean equilibrium × diffusion-kinetics model
-puts the coverage peak at ~390–435 °C (not 490–550 °C), drifts with exposure time, and runs ~100× faster
-than the paper's own kinetic anchor (the real kinetics add a Fe₃P-cluster step). So the nose location does
-**not** emerge cleanly — building the segregation model *to* land it there would be manufacturing a tooth.
-We don't. The parts:
+diffusion kinetics, without tuning" — was **tested on paper before any code was written** (the discipline
+that saved the deox-curve minimum and the Fe–FeS eutectic) and **could not be pinned**. Fed the cited
+ΔG_seg(P) = −34469 + 22.9·T J/mol (Yang–Chen / Erhart–Grabke) and the cited D_P(α-Fe) Arrhenius, a tractable
+Langmuir–McLean equilibrium × diffusion-kinetics model runs ~**100× faster** than the paper's own kinetic
+anchor (450 °C → ~10 h) and yields no single, time-stable nose. The 100× is the tell, not the verdict: the
+real kinetics add an Fe₃P-cluster step the simple model omits, and *correcting* for the missing slowness (a
+slower effective D) pushes the peak **up** from ~410 °C **toward** the observed 490–550 °C — so the model is
+**underdetermined, not wrong-placed**. Pinning the nose faithfully needs the cluster kinetics, which is out
+of scope. The honest conclusion is therefore "**no claimable tooth**," not "the physics lands the nose
+elsewhere" — and building the segregation model *to* land the nose would be manufacturing a tooth. We don't.
+The parts:
 
 * **By construction (NOT teeth):** the **J-factor** susceptibility index `J = (Mn + Si)(P + Sn)·10⁴`
   (Watanabe) — a regression-fit empirical ranking, so "high J ⇒ susceptible" cannot come out wrong; and the
@@ -31,9 +36,13 @@ We don't. The parts:
   Ni/Cr co-segregation promotion. Pinning the right numbers guards transcription; none is a falsifiable
   prediction the model could miss.
 
-**The teaching beat (a coherence note, not a tooth):** the registry's Mo-bearing grades (4140, 8620) carry
-the classic cure; the classic *victims* are clean-looking Ni–Cr steels that were merely slow-cooled with a
-little residual phosphorus. **Named deferrals:** the absolute ΔFATT magnitude (scattered, calibration-heavy);
+**The teaching beat (a coherence note, not a tooth):** in the registry only the dirty Ni–Cr victim (J ≈ 225)
+clears `J_SUSCEPTIBLE`; the lean carbon/alloy grades 1080/1045/8620/4140 sit at J ≈ 108–138 and come out safe
+**by low J** (a little residual P in a lean matrix), *not* by the Mo rule — 4140 and 8620 carry only ~0.2 % Mo,
+below the 0.5 % suppression level, so the model never marks them Mo-protected. Molybdenum is the cited cure,
+and the demo proves it on the genuinely-susceptible J ≈ 225 victim — it just isn't what makes the registry
+grades safe here. The classic *victims* are clean-looking Ni–Cr steels merely slow-cooled with a little
+residual phosphorus. **Named deferrals:** the absolute ΔFATT magnitude (scattered, calibration-heavy);
 the full Guttmann co-segregation kinetics / the Fe₃P-cluster C-curve; tempered-martensite embrittlement (the
 *irreversible* ~260–370 °C cementite-film one — a different mechanism). Units: wt % for composition, °C for
 temperature.

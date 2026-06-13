@@ -22,11 +22,16 @@ would-be tooth on paper FIRST* — "does the embrittlement C-curve **nose** emer
 from independently-cited segregation thermo + diffusion kinetics, without tuning?" Yes→#2; have-to-nudge→#1.
 I pinned cited **ΔG_seg(P) = −34469 + 22.9·T J/mol** (Yang–Chen/ORNL & Erhart–Grabke) + cited **D_P(α-Fe) =
 8×10⁵·exp(−3.2 eV/kT) cm²/s** (the **α-Fe/BCC** value — advisor's catch: "diffusion is in α not γ"), built a
-Langmuir–McLean equilibrium × kinetics calc, and it **FAILED**: nose at **~390–435 °C (not 490–550)**, *drifts*
-with exposure time (no single nose), and **~100× faster than the paper's own anchor** (450 °C → ~10 h) because
-the real kinetics add a Fe₃P-cluster step the simple model omits. So I did **not** build the segregation model
-to land the nose → **build #1**. The negative result IS the honest record. (Same class of discipline as the
-deox-curve minimum and the Fe–FeS eutectic checks; [[di-crosscheck-source]].)
+Langmuir–McLean equilibrium × kinetics calc, and it **COULD NOT PIN THE NOSE**: it runs **~100× faster than
+the paper's own anchor** (450 °C → ~10 h) and gives no single time-stable nose. **The honest framing is
+"underdetermined," NOT "lands at the wrong place"** (advisor's post-commit catch — verified): the 100× is the
+tell, not the verdict — the real kinetics add a Fe₃P-cluster step the model omits, and the verification
+(*"does the nose move up or down if you divide D by 100?"*) confirms that **correcting the missing slowness
+pushes the peak UP** from ~410 °C **toward** the observed 490–550 window (412→436→462→490 °C as D scaled
+1→0.1→0.01→0.001, t=10 h). So the tractable model can't pin the nose and the faithful version needs the
+cluster kinetics (out of scope) → **no *claimable* tooth**; I did **not** build the segregation model to land
+it → **build #1**. The negative result IS the honest record. (Same class of discipline as the deox-curve
+minimum and the Fe–FeS eutectic checks; [[di-crosscheck-source]].)
 
 **The honest map — NO strict tooth in this slice** (cited + by-construction, symmetric with the S/red-short
 slice — that's a fine thing to be):
@@ -35,9 +40,11 @@ slice — that's a fine thing to be):
   (susceptible AND exposed-in-window AND not Mo-protected).
 - **Cited mechanism INPUTS (verification ≠ tooth):** danger window 375–575 (nose 490–550), ≥600 °C reset,
   0.5 % Mo cure, Ni/Cr promotion.
-- **Coherence note (NOT a tooth):** the registry's Mo-bearing 4140/8620 are NOT susceptible (J 108–138 <
-  `J_SUSCEPTIBLE=150`, a labelled spec like `MIN_MARTENSITE_SPEC`) — "the cure is in the workhorse." The dirty
-  Ni-Cr victim (J 225, no Mo) is the only one that pokes past.
+- **Coherence note (NOT a tooth):** in the registry only the dirty Ni-Cr victim (J 225, no Mo) clears
+  `J_SUSCEPTIBLE=150` (a labelled spec like `MIN_MARTENSITE_SPEC`); 1080/1045/8620/4140 (J 108–138) are safe
+  **by LOW J, NOT by Mo** — 4140/8620 carry only ~0.2 % Mo, *below* the 0.5 % threshold, so the model never
+  marks them Mo-protected (advisor's post-commit catch: don't say "the cure is in the workhorse"). Mo IS the
+  cited cure but the demo proves it on the genuinely-susceptible J 225 victim, not on the registry grades.
 
 **Built the RIGHT embrittlement:** *reversible* TE (P GB-segregation, the named deferral) — BUILT;
 *tempered-martensite* embrittlement (irreversible ~260–370 °C cementite-film, a different mechanism) —

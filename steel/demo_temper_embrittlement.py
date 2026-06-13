@@ -14,8 +14,8 @@ embrittlement victim (a turbine rotor / pressure-vessel forging) — slow-cooled
 **embrittles**. The same heat is saved by any one of:
 
 1. **A fast cool** through the window (the part never dwells where phosphorus segregates).
-2. **Molybdenum** (≈0.5 %) — it scavenges phosphorus; the classic cure, and part of why 4140/8620 are
-   workhorse grades.
+2. **Molybdenum** (≈0.5 %) — it scavenges phosphorus; the classic cure (and why Ni–Cr forging steels get a
+   molybdenum addition).
 3. **A clean heat** (low phosphorus → low J-factor → not susceptible at all).
 4. **A reheat above 600 °C + fast cool** — the *reversibility* that names the phenomenon: the segregation
    disperses and the steel is tough again (until it is slow-cooled once more).
@@ -24,13 +24,16 @@ The honest posture (no strict tooth — the gate was run and failed)
 ------------------------------------------------------------------
 Like the sulfur / red-short slice, this is **cited constants + a by-construction verdict**, not a tooth.
 The tempting tooth — "the embrittlement C-curve nose emerges at the observed ~490–550 °C from cited
-segregation thermodynamics + diffusion kinetics" — was *falsified on paper before coding*: with the cited
-ΔG_seg(P) and D_P(α-Fe), a Langmuir–McLean model puts the peak at ~390–435 °C (not 490–550 °C), drifts with
-exposure time, and runs ~100× faster than the source's own kinetic anchor. So the nose does not emerge
-cleanly, and we did not build the segregation model *to* land it there. The **J-factor** susceptibility index
-``(Mn+Si)(P+Sn)·10⁴`` (Watanabe) is a regression-fit ranking (by-construction); the danger window, the
-≥600 °C reversibility, and the ≈0.5 % Mo cure are cited mechanism inputs. The teaching beat — 4140/8620 carry
-the cure — is a coherence note, not a benchmark.
+segregation thermodynamics + diffusion kinetics, without tuning" — was *tested on paper before coding and
+could not be pinned*: a tractable Langmuir–McLean model fed the cited ΔG_seg(P) and D_P(α-Fe) runs ~100×
+faster than the source's own kinetic anchor (450 °C → ~10 h) and gives no time-stable nose. Correcting for
+the missing slowness (the omitted Fe₃P-cluster step) pushes the peak *up* from ~410 °C toward the observed
+window — the model is **underdetermined, not wrong-placed** — and pinning it faithfully is out of scope. So
+**no claimable tooth**, and we did not build the segregation model *to* land the nose. The **J-factor**
+susceptibility index ``(Mn+Si)(P+Sn)·10⁴`` (Watanabe) is a regression-fit ranking (by-construction); the
+danger window, the ≥600 °C reversibility, and the ≈0.5 % Mo cure are cited mechanism inputs. In the registry
+only the dirty Ni–Cr victim (J ≈ 225) is susceptible; 4140/8620 are safe by **low J** (≈ 126–138 < 150), not
+by their sub-threshold Mo — a coherence note, not a benchmark.
 
 Run headless (prints the susceptibility ranking + the four levers + the reversibility cycle):
 

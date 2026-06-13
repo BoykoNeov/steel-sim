@@ -228,10 +228,12 @@ CATALOG: tuple[Entry, ...] = (
         "(cold-short was the ferritic one). A dirty Ni-Cr forging with residual phosphorus and no molybdenum, "
         "slow-cooled through ~375–575 °C, segregates phosphorus to the prior-austenite grain boundaries and "
         "fractures intergranularly. Four independent cures: a fast cool through the window, molybdenum (the "
-        "classic remedy — and part of why 4140/8620 are workhorse grades), a clean heat, or a reheat above "
-        "600 °C (the reversibility that names it). The Watanabe J-factor ranks susceptibility. No strict "
-        "tooth — the segregation-C-curve-nose gate was run on paper and failed (it lands ~400 °C, not the "
-        "observed ~500 °C), so the model was not built to manufacture one.",
+        "classic remedy for susceptible Ni-Cr forgings), a clean heat, or a reheat above 600 °C (the "
+        "reversibility that names it). The Watanabe J-factor ranks susceptibility — in the registry only the "
+        "dirty Ni-Cr victim clears the threshold; 4140/8620 are safe by low J, not their sub-threshold Mo. No "
+        "strict tooth — the segregation-C-curve-nose gate was run on paper and could not be pinned (a "
+        "tractable model is ~100× too fast and underdetermined; the faithful nose needs Fe₃P-cluster "
+        "kinetics, out of scope), so the model was not built to manufacture one.",
     ),
     Entry(
         "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",

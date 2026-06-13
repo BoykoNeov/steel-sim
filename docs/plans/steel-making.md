@@ -622,17 +622,22 @@ deferred state extensions (P/S on `Steel`) — then **`game/` last**, on the pro
 > quench-and-tempered one. Reversible, alloy-driven: P co-segregates with Ni/Cr to prior-austenite grain
 > boundaries on slow cooling through **375–575 °C** → intergranular fracture; **Mo (~0.5 %) is the cure**;
 > **reversible** (reheat >600 °C + fast cool resets it). `temper_embrittlement_check` orchestrator → the
-> **`temper-embrittled`** flag. **NO strict tooth — the gate was run and failed (the load-bearing
-> discipline).** The tempting tooth — "the segregation C-curve *nose* emerges at the observed ~490–550 °C
-> from cited ΔG_seg(P) + D_P(α-Fe)" — was **falsified on paper before any code**: a Langmuir–McLean model with
-> the cited ΔG_seg = −34469 + 22.9·T J/mol (Yang–Chen/Erhart–Grabke) and cited D_P puts the peak at
-> ~390–435 °C (not 490–550), drifts with exposure time, and runs ~100× faster than the source's own kinetic
-> anchor (the real kinetics add a Fe₃P-cluster step). So the segregation model was **not built to manufacture
-> a tooth.** This slice is **cited constants + by-construction** (the J-factor `(Mn+Si)(P+Sn)·10⁴`, Watanabe,
-> is regression-fit → "high J ⇒ susceptible" cannot miss; the danger window / ≥600 °C reset / 0.5 % Mo are
-> cited inputs) — symmetric with the S/red-short slice, no benchmark. The teaching beat (a coherence note,
-> not a tooth): the registry's Mo-bearing grades (4140/8620) are *not* susceptible — the cure is in the
-> workhorse. **Demo + figure + gallery card:** `demo_temper_embrittlement` — one dirty Ni-Cr forging, four
+> **`temper-embrittled`** flag. **NO claimable tooth — the gate was run before coding and could not be pinned
+> (the load-bearing discipline).** The tempting tooth — "the segregation C-curve *nose* emerges at the
+> observed ~490–550 °C from cited ΔG_seg(P) + D_P(α-Fe), without tuning" — was **tested on paper before any
+> code**: a tractable Langmuir–McLean model with the cited ΔG_seg = −34469 + 22.9·T J/mol (Yang–Chen/Erhart–
+> Grabke) and cited D_P runs ~100× faster than the source's own kinetic anchor (450 °C → ~10 h) and gives no
+> single time-stable nose. The 100× is the tell, not the verdict: the real kinetics add an Fe₃P-cluster step
+> the model omits, and *correcting* for the missing slowness pushes the peak **up** from ~410 °C **toward**
+> the observed window — the model is **underdetermined, not wrong-placed**, and pinning it faithfully is out
+> of scope. So **no claimable tooth**, and the segregation model was **not built to manufacture one.** This
+> slice is **cited constants + by-construction** (the J-factor `(Mn+Si)(P+Sn)·10⁴`, Watanabe, is regression-
+> fit → "high J ⇒ susceptible" cannot miss; the danger window / ≥600 °C reset / 0.5 % Mo are cited inputs) —
+> symmetric with the S/red-short slice, no benchmark. The teaching beat (a coherence note, not a tooth): in
+> the registry only the dirty Ni-Cr victim (J ≈ 225) is susceptible; 1080/1045/8620/4140 (J ≈ 108–138) are
+> safe **by low J**, *not* by Mo — 4140/8620 carry only ~0.2 % Mo, below the 0.5 % threshold, so the model
+> never marks them Mo-protected. Mo is the cited cure, demonstrated on the J ≈ 225 victim. **Demo + figure +
+> gallery card:** `demo_temper_embrittlement` — one dirty Ni-Cr forging, four
 > levers (fast cool / Mo / clean heat / reheat) each save it; the reversibility cycle. Suite **685 green /
 > 2 skipped** (+17), no engine touch, no ADR. **Deferrals:** absolute ΔFATT (scattered), the full Guttmann
 > co-segregation / Fe₃P-cluster C-curve, and *tempered-martensite* embrittlement (the irreversible
