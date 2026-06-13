@@ -199,6 +199,15 @@ CATALOG: tuple[Entry, ...] = (
         "filled: the deoxidation curve with its minimum, the C–O coupling, and Sieverts √p degassing.",
     ),
     Entry(
+        "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",
+        "Alloy to grade — where the composition is finalized (and missed)",
+        "The seam to the back end: trim an alloy-lean tap up to a grade by ferroalloy additions, sized for "
+        "an assumed recovery. A bath that under-delivers (Cr/Mo recovery halved) lands below the cited 4140 "
+        "window — F3 flags off-grade — and the same oil quench that through-hardens the on-grade heat leaves "
+        "a soft core. One ladle mistake, two flags: the front-end early warning and the validated back-end "
+        "consequence — the hero-demo's off-spec input, produced rather than hand-set.",
+    ),
+    Entry(
         "Casting (front-end)", "demo_casting", "steel-casting.png",
         "Casting & solidification — segregation runs front-to-back",
         "The chain closes front-to-back: cast a billet and Scheil microsegregation enriches the "

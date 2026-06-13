@@ -2225,3 +2225,112 @@ def refining_figure(d):
                  fontsize=12.4, fontweight="bold")
     fig.subplots_adjust(left=0.07, right=0.97, top=0.92, bottom=0.07, hspace=0.28, wspace=0.22)
     return fig
+
+
+def ladle_figure(d):
+    """The F3 artifact: alloy to grade — the trim, the recovery shortfall, and the front-to-back verdict.
+
+    ``d`` is a :class:`~steel.demo_ladle.LadleDemo` (already-computed arrays/scalars — this layer only draws
+    them, ADR 0002). Four panels, the ladle story top-left → bottom-right:
+
+    * **top-left — alloy to grade (the banked artifact).** Per-element bars (Cr, Mo, Mn, Si) for the lean
+      tap, the on-grade trim, and the under-recovered heat, each against the **cited 4140 window band**
+      (shaded). The on-grade bars land in the bands; the under-recovered Cr/Mo bars fall *below* the floor.
+    * **top-right — the recovery shortfall (the failure mechanism).** Landed chromium vs the bath's actual
+      Cr/Mo recovery (as a fraction of the assumed): the additions were sized for full recovery, so a bath
+      that under-delivers lands short — below the window floor (shaded off-grade region), the two operating
+      points marked.
+    * **bottom-left — the validated propagation.** Core martensite fraction vs the *landed* chromium: the
+      same oil quench clears the soft-core spec on grade and falls under it when Cr is short. The window
+      floor (vertical) sits *above* the soft-core crossing — off-grade is the conservative early warning.
+    * **bottom-right — the verdict.** Martensite and hardness for the on-grade vs under-trimmed heat, with
+      the flags each carries: one ladle mistake → off-grade (F3) **and** soft-core (back end).
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    fig, ((ax_bars, ax_rec), (ax_prop, ax_verdict)) = plt.subplots(2, 2, figsize=(13.5, 9.6))
+    warn, good_c = "#c0392b", PHASE_COLORS["martensite"]
+    band_c = "#d5e8d4"
+
+    # --- top-left: the trim bars vs the cited window bands -------------------- #
+    x = np.arange(len(d.bar_elements))
+    w = 0.26
+    for i in range(len(d.bar_elements)):                                  # the window band behind each group
+        ax_bars.add_patch(plt.Rectangle((x[i] - 0.42, d.window_lo[i]), 0.84, d.window_hi[i] - d.window_lo[i],
+                                        facecolor=band_c, edgecolor="#82b366", lw=1.0, zorder=0))
+    ax_bars.bar(x - w, d.bars_tap, w, label="lean tap", color="0.7", zorder=3)
+    ax_bars.bar(x, d.bars_good, w, label="on-grade trim", color=good_c, zorder=3)
+    ax_bars.bar(x + w, d.bars_bad, w, label="under-recovered", color=warn, zorder=3)
+    ax_bars.set_xticks(x)
+    ax_bars.set_xticklabels(d.bar_elements)
+    ax_bars.set_ylabel("content  (wt %)")
+    ax_bars.set_title("Alloy to grade — trim the lean tap into the 4140 window", fontsize=10.4)
+    ax_bars.legend(fontsize=8.4, loc="upper right")
+    ax_bars.grid(True, axis="y", alpha=0.22)
+    ax_bars.annotate("4140 window\n(SAE J404)", (x[0] - 0.42, d.window_hi[0]), textcoords="offset points",
+                     xytext=(2, 4), fontsize=7.6, color="#5a8a3c")
+
+    # --- top-right: landed Cr vs the actual recovery ------------------------- #
+    rr = d.recovery_ratio * 100.0
+    ax_rec.axhspan(0.0, d.cr_floor, color="#fdecea", alpha=0.7, zorder=0)
+    ax_rec.plot(rr, d.cr_vs_recovery, color="0.25", lw=2.4, zorder=3)
+    ax_rec.axhline(d.cr_floor, color=warn, ls="--", lw=1.5, zorder=2)
+    ax_rec.annotate(f"4140 Cr floor ({d.cr_floor:.2f} %) — below ⇒ off grade", (rr[-1], d.cr_floor),
+                    ha="right", va="bottom", fontsize=8.2, color=warn)
+    for label, (ratio, cr, _fM), color in [("on-grade", d.good_point, good_c),
+                                            ("under-recovered", d.bad_point, warn)]:
+        ax_rec.plot([ratio * 100.0], [cr], "o", color=color, ms=11, zorder=5)
+        ax_rec.annotate(f"{label}\nCr {cr:.2f} %", (ratio * 100.0, cr), textcoords="offset points",
+                        xytext=(6, -2 if color == warn else 8), fontsize=8.2, color=color,
+                        ha="left", va="top" if color == warn else "bottom")
+    ax_rec.set_xlabel("actual Cr/Mo recovery  (% of the assumed yield the trim was sized for)")
+    ax_rec.set_ylabel("landed chromium  (wt %)")
+    ax_rec.set_title("Recovery shortfall — size for one yield, deliver another → short", fontsize=10.4)
+    ax_rec.grid(True, alpha=0.22)
+
+    # --- bottom-left: martensite vs the landed Cr (the validated propagation) - #
+    ax_prop.axhline(d.spec, color="0.35", ls="--", lw=1.6, zorder=2)
+    ax_prop.axhspan(0.0, d.spec, color="#fdecea", alpha=0.55, zorder=0)
+    ax_prop.annotate(f"soft-core spec (≥ {d.spec:.0%} M)", (0.5, d.spec), xycoords=("axes fraction", "data"),
+                     ha="center", va="bottom", fontsize=8.4, color="0.3")
+    ax_prop.axvline(d.cr_floor, color=warn, ls=":", lw=1.6, zorder=2)
+    ax_prop.annotate("4140 Cr floor", (d.cr_floor, 0.05), textcoords="offset points", xytext=(5, 0),
+                     fontsize=8.0, color=warn, ha="left")
+    ax_prop.plot(d.cr_vs_recovery, d.fM_vs_recovery, color="0.25", lw=2.4, zorder=3)
+    for label, (_r, cr, fM), color in [("on-grade", d.good_point, good_c),
+                                       ("under-recovered", d.bad_point, warn)]:
+        ax_prop.plot([cr], [fM], "o", color=color, ms=11, zorder=5)
+        ax_prop.annotate(label, (cr, fM), textcoords="offset points", xytext=(0, 12 if color == good_c else -28),
+                         ha="center", fontsize=8.6, color=color, fontweight="bold")
+    ax_prop.set_xlabel("landed chromium  (wt %)")
+    ax_prop.set_ylabel("core martensite fraction")
+    ax_prop.set_ylim(0.0, 1.05)
+    ax_prop.set_title("Validated axis — under-trim Cr → soft core (same oil quench)", fontsize=10.4)
+    ax_prop.grid(True, alpha=0.25)
+
+    # --- bottom-right: the two-flag verdict --------------------------------- #
+    groups = ["on-grade", "under-recovered"]
+    xv = np.arange(len(groups))
+    fM = [d.good_fM, d.bad_fM]
+    colors = [good_c, warn]
+    bars = ax_verdict.bar(xv, fM, 0.5, color=colors, zorder=3)
+    ax_verdict.axhline(d.spec, color="0.35", ls="--", lw=1.6, zorder=2)
+    ax_verdict.annotate(f"≥ {d.spec:.0%} martensite spec", (1.0, d.spec), xycoords=("axes fraction", "data"),
+                        ha="right", va="bottom", fontsize=8.2, color="0.3")
+    flag_text = ["through-hardens\non grade ✓", f"off-grade + soft-core\n{d.bad_HV:.0f} HV vs {d.good_HV:.0f}"]
+    for bar, val, txt, color in zip(bars, fM, flag_text, colors):
+        ax_verdict.annotate(f"{val:.0%} M\n{txt}", (bar.get_x() + bar.get_width() / 2, val),
+                            textcoords="offset points", xytext=(0, 6), ha="center", va="bottom",
+                            fontsize=8.4, color=color, fontweight="bold")
+    ax_verdict.set_xticks(xv)
+    ax_verdict.set_xticklabels(groups)
+    ax_verdict.set_ylim(0.0, 1.15)
+    ax_verdict.set_ylabel("core martensite fraction")
+    ax_verdict.set_title("One mistake, two flags — F3 off-grade + back-end soft core", fontsize=10.4)
+    ax_verdict.grid(True, axis="y", alpha=0.22)
+
+    fig.suptitle("F3 — ladle trim: the alloy goes in, and recovery decides whether the heat lands on grade",
+                 fontsize=12.4, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.92, bottom=0.07, hspace=0.30, wspace=0.22)
+    return fig

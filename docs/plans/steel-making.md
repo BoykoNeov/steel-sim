@@ -302,6 +302,41 @@ is finalized** — so its *failure* output is the hero-demo input.
   ferroalloys, land (or miss) the grade window. A *missed* spec feeds the back
   end and triggers the §6 propagation demo.
 
+> **As built — 2026-06-13 (build-order item 5, Slice 1).** `steel/ladle.py` (+ `demo_ladle.py`,
+> `plots.ladle_figure`, `tests/test_ladle.py` 14 + `test_demo_ladle.py` 7; fast lane 590 → **611**,
+> full suite **618 passed / 2 skipped**). **Standalone — no solver, no engine touch, no ADR** (this plan
+> is the record). The advisor's pre-code reframe set the slice; two of its calls were load-bearing:
+> - **Grade-band miss ≠ soft-core — probe the back end first.** A *marginal* recovery miss lands inside
+>   the wide commercial window (Cr 0.95→0.80 recovery ≈ 0.86 % Cr, still in 4140's 0.80–1.10 band) and
+>   nowhere near a soft core; the spine's soft core needed a *substantial* under-dose. Probed at 4140 oil
+>   Ø15 mm: the bottom corner of the band still through-hardens (~89–92 % M), and you must drop to ~half
+>   recovery (Cr ≈ 0.53) to fire **both** flags. So the hero is a **gross under-trim** (recovery roughly
+>   halved), not scatter — the "in-band but still soft at a bigger section" subtlety is **deferred**.
+> - **F3 is spine-class, not a physics phase.** No new thermodynamics: the trim is mass-balance arithmetic
+>   + cited recovery + cited windows. So — like the `heat_state` spine — its own checks are **structural**
+>   (round-trip identity, conservation, dilution, immutability), *labelled* by-construction, and the grade
+>   window is a **labelled spec** (the SAE J404 band, like `MIN_MARTENSITE_SPEC`), not a benchmark. The
+>   genuinely **validated** content is the back-end propagation (under-trim Cr/Mo → soft core), the **same
+>   class as the spine's hand-set under-dose** — F3's new value is that the under-dose is now **produced by
+>   a modeled ladle operation**: the additions were sized for an *assumed* recovery the bath did not
+>   deliver. The tier-2 scatter in the cited recovery factor *is* the failure mechanism (turning the weak
+>   input into the point), and it is the front-end consequence of F2's deox state.
+> - **Built — the seam.** `from_tap` (alloy-lean post-refining origin, on F2's carbon) → `trim_to_grade`
+>   sizes ferroalloy charges with a **dilution-exact closed-form inverse** (`additions_for_grade`) and mixes
+>   them at the *actual* recovery (`mix`). On-grade when recovery holds (Cr 1.00/Mo 0.20 → 94 % M, in-band,
+>   through-hardens); the under-recovered heat lands Cr 0.53/Mo 0.10 → **off-grade flag** (F3) + **soft-core
+>   flag** (back end) at the same oil Ø15 mm quench → 81 % M. **One mistake, two flags;** *at this section*
+>   off-grade fires *before* soft-core (the window is the conservative early warning) — but the ordering is
+>   **section-dependent** (a thicker section can soft-core an *on-grade* heat: the chemistry-spec ≠ H-band
+>   point, the same "in-band but still soft" subtlety deferred above).
+> - **Named deferrals (not built).** **Carbon carry-in** — high-carbon ferrochrome/ferromanganese carry
+>   ~6–8 % C, so the 4140 trim *would* add **+0.18 %C** (~45 % of the grade's carbon — quantified by
+>   `carbon_pickup_pct`, the reason low-carbon ferroalloys exist); held off F2's carbon axis here. The
+>   deox-state-dependent recovery coupling (F2 → F3). **P/S residual bands and desulf/dephos** stay out of
+>   the window — the `Steel`/`Heat` vector carries no P/S (the same state gap as F2 Slice 2).
+> - **Notebook & app deferred** (heat-treatment-framed, as F1/spine/F2/F4). Gallery "Ladle trim" card
+>   inserted before Casting (chain-forward); both READMEs updated.
+
 ### F4 — Casting & solidification (reuses the frozen heat engine + existing Scheil)
 Solidification heat extraction (frozen engine, heat mode, mold Robin BC);
 solidification time (Chvorinov, t ∝ (V/A)²); microsegregation (the **existing**
@@ -456,19 +491,26 @@ copied as datasets. No export-control dimension. (Same posture as
    inclusion fields the spine left `None`**, and the *carbon* the blow sets carries a
    **validated** propagation (over-blow → back-end soft core). Slag partition (S/P,
    desulf/dephos) is **deferred to Slice 2** (needs S/P state the `Heat` lacks).
-   **← next: F3 (ladle trim — the hero-demo input), or F2/F4 Slice 2.**
-5. **F3 — ladle + alloy trim.** Where the grade composition is finalized — the
-   hero-demo's off-spec input.
+5. **F3 — ladle + alloy trim. ✅ BUILT 2026-06-13 (Slice 1; as-built record under §7).**
+   Where the grade composition is finalized — the hero-demo's off-spec input,
+   **produced** (recovery shortfall) rather than hand-set. Spine-class (no new
+   physics): the validated under-trim → soft-core link rides the back end, with F3's
+   own off-grade window flag as the front-end early warning.
 6. **`game/`.** The loop/economy/UI on a *proven verified spine* — last, by
    design, never first.
 
 **Immediate next step.** ~~Plan only — this document.~~ **F1 (Ellingham), the
-`heat_state.py` spine, F4 casting (Slice 1), and F2 refining (Slice 1) are built**
-(2026-06-12/13; as-built records under §7, §5, §7, §7). The chain now **runs
-front-to-back inside steel-sim**, and the middle (refining) fills the dissolved-gas /
-inclusion state. The next slice is **F3 (ladle trim — the seam where the hero demo's
-off-spec composition is set)**, or a **Slice 2** (F2 slag partition / F4 latent-heat map
-+ defects) — then `game/` last.
+`heat_state.py` spine, F4 casting (Slice 1), F2 refining (Slice 1), and F3 ladle trim
+(Slice 1) are built** (2026-06-12/13; as-built records under §7, §5, §7, §7, §7). The
+**entire front-end chain is now built inside steel-sim** — ore → iron (F1), the spine
+that composes steps, refine (F2), trim to grade (F3), cast (F4) — each link **composing**
+through the `Heat` carrier (each phase produces the `Heat` *type* the next consumes, and
+under-spec output reaches the validated back end). The links are not yet piped into a
+single hot-metal → … → quench execution (F2's `from_hot_metal` takes a fully-alloyed
+backbone, F3's `from_tap` starts alloy-lean — composed by type, not chained in one run).
+What remains
+is a **Slice 2** (F2 slag partition / S/P state, F4 latent-heat map + defects) or the
+deferred state extensions (P/S on `Steel`) — then **`game/` last**, on the proven spine.
 
 ---
 
