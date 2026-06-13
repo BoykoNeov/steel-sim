@@ -104,6 +104,13 @@ class Steel:
     grade still carries ~0.7 % Mn, and the reference 1080 the kinetics were calibrated to
     *is* that Mn; ``Steel(0.80)`` with ``Mn = 0`` is a leaner hypothetical steel, the trap
     :func:`ccurve_for_steel` warns about).
+
+    ``P`` and ``S`` (default 0) are the residual-impurity state the slag-partition refining
+    (:mod:`steel.slag`, F2 Slice 2) sets — *carried* on the composition but **inert** in the
+    validated back end (see :meth:`minor`): no benchmarked model reads them, so an off-spec heat
+    threads its phosphorus and sulfur down the chain without a downstream consequence yet (the
+    embrittlement / hot-tear links are deferred, ``steel-making.md`` §6/§14). Adding them was an
+    additive state extension — every existing call names its arguments, so field order is moot.
     """
 
     C: float
@@ -112,6 +119,8 @@ class Steel:
     Ni: float = 0.0
     Cr: float = 0.0
     Mo: float = 0.0
+    P: float = 0.0
+    S: float = 0.0
     name: str = ""
 
     def minor(self) -> dict:
@@ -120,6 +129,14 @@ class Steel:
         Only the non-carbon elements (``properties`` reads Si/Mn/Ni/Cr; ``ccurve_for_steel``
         reads Mn/Ni/Cr/Mo/Si — each picks the keys it knows). Zeros are kept so the dict is a
         stable shape; the models treat a missing or zero element identically.
+
+        **Phosphorus and sulfur are deliberately excluded here.** They are *carried* on the
+        composition (the residual-impurity state F2 Slice 2's slag partition sets — see
+        :mod:`steel.slag`), but no validated back-end model reads them: hardenability and
+        hardness key on Si/Mn/Ni/Cr/Mo only. So ``P``/``S`` thread the chain *inert*, exactly as
+        the dissolved-gas fields do on :class:`~steel.heat_state.Heat` — filled by an engine,
+        their downstream consequence (embrittlement, hot-tear) deferred until a consumer exists.
+        Adding them to this dict would silently feed unbenchmarked numbers to the kinetics.
         """
         return {"Mn": self.Mn, "Si": self.Si, "Ni": self.Ni, "Cr": self.Cr, "Mo": self.Mo}
 

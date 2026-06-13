@@ -199,6 +199,17 @@ CATALOG: tuple[Entry, ...] = (
         "filled: the deoxidation curve with its minimum, the C–O coupling, and Sieverts √p degassing.",
     ),
     Entry(
+        "Refining (front-end)", "demo_slag", "steel-slag.png",
+        "Slag partition — phosphorus out in the converter, sulfur in the ladle",
+        "The second half of refining: the two tramp impurities the blast furnace leaves in, partitioned into "
+        "slag. The headline is the opposite oxygen dependence — dephosphorization wants the oxidizing "
+        "converter (L_P rises with slag FeO), desulfurization wants the reducing ladle (L_S falls with "
+        "dissolved oxygen) — two independently sourced correlations whose opposite signs dictate the process "
+        "order. It reproduces the purity-control history: acid Bessemer can't dephosphorize (rails crack), "
+        "Thomas' basic lining can, and sulfur only comes out once the heat is killed. P/S are carried but "
+        "inert in the back end — the chemistry is benchmarked, the embrittlement consequence deferred.",
+    ),
+    Entry(
         "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",
         "Alloy to grade — where the composition is finalized (and missed)",
         "The seam to the back end: trim an alloy-lean tap up to a grade by ferroalloy additions, sized for "

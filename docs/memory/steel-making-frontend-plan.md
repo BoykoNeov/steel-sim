@@ -46,3 +46,43 @@ front-to-back) -> F2/F3 refining+ladle -> `game/` last. The advisor reviewed and
 sharpened this framing (it reversed my initial lean toward an immediate repo
 split). Plan doc is self-contained (no monorepo `ARCHITECTURE.md` refs — that
 file doesn't exist here; [[repo-self-contained]]).
+
+**§15 folded 2026-06-13 (plan-only) — "can the game include different historical
+& modern production methods?"** Answer-as-doc-section (advisor-endorsed framing).
+The load-bearing reframe: **a production *method* is a path/recipe through the
+F1–F4 equilibrium endpoints already built** (because §4 built endpoints + lumped
+rates, methods differ along axes the engines parametrize) → most methods are a
+`game/` preset over existing engines, **not new physics**. Split: **chemical
+outcome = built** vs **process dynamics (blow time/fuel/yield/feel) = §4 tar pit
+→ game-flavor**. Three tiers: (1) recombine-what's-built HIGH (BOF/EAF — F2
+already benchmarks BOP 27/EAF 26 ppm·%C; bloomery via F1 crossover; **cementation
+≈ free via existing `carburize.py`**; crucible/finery); (2) **the P/S
+slag-partition gap = the one that gates the historically richest distinctions**
+(Thomas vs acid Bessemer, the §14 theme-C purity-control ramp) = F2 **Slice 2** +
+P/S state — bounded, named, triad-ready, NOT speculative; (3) transport kinetics
+excluded. Two honest physics gaps: P/S (above) and **wootz V/Mo carbide banding =
+future research** (§14.5, beyond P/S — advisor caught this as the don't-overclaim
+point). Companion to [[historical-impurity-pedagogy]] (§14). Still plan-only.
+
+**§16 folded 2026-06-13 (plan-only) — "explore Tier 3 (the tar pit) → physics-based
+game flavor for future exploration."** Elaborates §15.3 Tier 3 (process dynamics,
+correctly EXCLUDED from validated `steel/` engines by the §4 wall) into a `game/`
+design doctrine: **excluded-from-validated ≠ arbitrary RNG.** Load-bearing principle:
+**every Tier-3 dynamic = a physics-SHAPED relaxation toward a validated F1–F4
+endpoint** — shape textbook (first-order/Arrhenius/Stokes), time-constant τ
+feel-tuned and in `game/`, endpoint in `steel/` (flavor animates the path, never
+recomputes the number). **Advisor's blocking fix (don't re-flatten): TWO trajectory
+archetypes, not one** — (A) one-sided asymptotic approach (reduction/degas/flotation/
+desulf: `s(t)=s∞−(s∞−s₀)e^(−t/τ)`, fail = stop short) vs (B) **targeted optimum /
+overshoot-capable** (decarb blow drives C down then over-blows → FeO; deox has a
+genuine MINIMUM in dissolved O — F2's `e_O^Al=−3.9`, Al-O min ≈0.074% — over-add and
+O climbs). **Decarb is Type B and is the iconic Tier-3 dynamic** (= the §14 theme-C
+Bessemer story; the flame-drop = the "stop now" cue) → must NOT ship as a monotone
+asymptote. The mechanic: **stopping at the wrong moment is a physically-meaningful
+failure** routed through §6 (not scripted). Routability discipline = only failures
+whose endpoint already lives in the validated back end propagate TODAY (**carbon →
+soft-core, the one built/proven exemplar**); rest tagged *needs deferred state*
+(H-flaking/inclusion-fracture/P-S-Tier2/casting-defect) → table doubles as a
+build-order backlog. Productivity/throughput kept but flagged as an **economy-scale
+anchor** (bloomery kg/day → BOF 300t/40min), NOT a relaxation dynamic. Firewall
+intact, nothing promoted to `steel/`. Still plan-only.

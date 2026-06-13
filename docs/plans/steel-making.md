@@ -291,6 +291,55 @@ dissolved-gas removal by **Sieverts' law** ([H], [N] ∝ √p).
 >   degassing, the carbon-axis propagation) + gallery card (new **"Refining (front-end)"** section) + both
 >   READMEs. **Notebook & app deferred** (same as F1/spine/F4 — all heat-treatment-framed).
 
+> **As built — 2026-06-13 (Slice 2 — slag partition).** `steel/slag.py` (+ `demo_slag.py`, `plots.slag_figure`,
+> `tests/test_slag.py` 16 + `test_demo_slag.py` 7; suite 642 → **665 passed / 2 skipped**, +23). **One back-end touch — the
+> deferred state extension, now authorized:** `sweep.Steel` gains `P` / `S` (default 0). It is **additive and
+> inert** — every existing call names its arguments (field order moot), `minor()` deliberately excludes P/S,
+> and the full suite stays green byte-identical (the non-breaking proof). No solver, no engine touch, no ADR
+> (additive inert fields don't change `Steel`'s semantics; this plan is the record). The advisor's pre-code
+> review set the posture, and the build follows it:
+> - **This is benchmarked physics (the F1/F4 class), NOT a spine-class propagation — the load-bearing honesty.**
+>   Slice 1's carbon axis was a *validated* end-to-end propagation because the back end **consumes** carbon.
+>   **P and S have no such consumer** — hardenability/hardness read C/Si/Mn/Ni/Cr/Mo only — so this slice's
+>   proof is the *physics checked against published facts*, and its downstream consequence (P → GB
+>   embrittlement / DBTT; S → red-shortness / MnS / hot-tear) is **honestly deferred** (the §6 rows "F2 new +
+>   F4 new", §14's unpinned P→DBTT slope). A structural test pins it: an off-spec-P/S heat heat-treats
+>   *identically* to a clean one. F2 Slice 2 **sets the impurity state; it does not yet close its consequence.**
+> - **The teeth avoid the vacuous-benchmark trap.** "L rises with basicity" is baked into any correlation with
+>   a basicity term — asserting it proves nothing. The teeth that could have come out wrong: (1) **the opposite
+>   oxygen dependence of P and S**, the headline — dephosphorization is an oxidation (Healy 1970 carries
+>   **+2.5·log %Fe_t**), desulfurization a reduction (the sulfide-capacity partition carries **−log a_O**), two
+>   signs from two *independently sourced* correlations, so their being opposite is **computed, not tuned** (it
+>   cross-coheres with Slice 1 exactly as the Al≫Si>Mn deox hierarchy cohered with F1's Ellingham order):
+>   `desulfurize` **reads the Heat's dissolved oxygen** (Slice 1's kill), so the *same* ladle slag barely works
+>   on the un-killed blow (L_S≈12 at ~53 ppm O) and strips sulfur after the kill (L_S≈140 at ~4 ppm O) — the
+>   physics *dictates the process order* dephos (oxidizing) → deox → desulf (reducing); (2) **the acid/basic
+>   endpoint** — an acid slag leaves L_P≈O(1) even though oxidizing (lime-poor → no stable phosphate) = *why
+>   acid Bessemer rails cracked*, vs basic L_P~400 (Thomas); (3) **order of magnitude vs measured plant L** —
+>   basic-converter L_P lands ~400 (measured BOF 50–200; Healy over-predicts at high lime, named), ladle L_S in
+>   the 10²–10³ band. By construction (NOT teeth): the metal↔slag mass-balance partition (`[%X]=[%X]₀/(1+L·R)`)
+>   and the **Mn:S → MnS** stoichiometry (conservation-clean — Mushet's manganese that made Bessemer sound,
+>   §14 theme B).
+> - **Physics & two-tier provenance (di-crosscheck applied).** *Source-sensitive tier (ranking + order of
+>   magnitude):* Healy 1970 `log L_P = 22350/T + 0.08·%CaO + 2.5·log %Fe_t − 16`; Sosinsky–Sommerville sulfide
+>   capacity `log C_S = (22690 − 54640·Λ)/T + 43.6·Λ − 25.2`; the C_S→L_S conversion `log L_S = log C_S − log
+>   a_O − 770/T + 1.30`; Duffy–Ingram component optical basicities (FeO/MnO themselves optimized from
+>   sulfide-capacity data); the Fe–FeO anchor `[%O]=0.213·a_FeO` (used only to put L_P and L_S on a shared
+>   oxidizing-power axis). *Robust reads (the teeth):* the **signs** of the two oxygen dependences, the
+>   acid/basic endpoint, the measured-range benchmark. P/S equilibria scatter by a factor of several between
+>   studies — the read is ranking + order of magnitude.
+> - **Scope ceiling (named).** Equilibrium partition endpoints, never the slag-metal mass-transfer *rate* (§4);
+>   a single lumped slag of fixed mass ratio; dilute 1-wt% Henrian metal (`a_O ≈ [%O]`); theoretical optical
+>   basicity; `a_FeO ≈ X_FeO` (Raoultian) where the metal-oxygen link is drawn. P/S **carried but inert** (no
+>   validated consumer); the P/S that high-impurity ferroalloys would *add back* in the ladle trim is a named
+>   deferral (like F3's carbon carry-in), not modelled.
+> - **Surfacing.** Demo (the working route + the two history failures + Mn:S→MnS) + banked figure
+>   (`docs/figures/steel-slag.png`: L_P vs basicity, L_S vs oxygen, the opposite-oxygen contrast, the residual
+>   P/S trail) + gallery card (a second **"Refining (front-end)"** card) + both READMEs. **Notebook & app
+>   deferred** (same as the other front-end phases). **The P/S slag-partition gap §15.4 flagged as the single
+>   highest-leverage front-end build is now closed** — the §14 theme-C purity ramp and the Thomas-vs-acid-Bessemer
+>   distinction are expressible (§15.2 map updated). Wootz V/Mo carbide banding (§14.5) remains future research.
+
 ### F3 — Ladle / secondary metallurgy + alloy trim (the seam to the back end)
 Trim the heat to a **target grade** by ferroalloy additions with recovery/yield;
 inclusion control. **This is where the composition vector the back end consumes
@@ -690,12 +739,12 @@ through built engines; the *process feel* is game-layer by design.**
 | **Cementation / blister** | 1600s | solid-state carburization of wrought bars | **`carburize.py` BUILT** — essentially free |
 | **Crucible (Huntsman)** | 1740s | melt + homogenize + slag flotation | homogenization = preset (composition averaging) |
 | **Wootz / Damascus** | ancient | trace V/Mo → carbide banding | **future-research gap** (§14.5) — beyond P/S |
-| **Acid Bessemer** | 1856 | air-blow decarb; **can't** remove P; N pickup | F2 decarb **built**; dephos = **P-state gap**; N pickup = flavor |
-| **Thomas (basic Bessemer)** | 1879 | basic slag removes P (L_P vs basicity) | **F2 Slice 2** — named, triad-ready, needs P state |
-| **Siemens–Martin open hearth** | 1860s+ | same endpoints, slower; basic P/S removal | endpoints **built**; P/S = Slice 2; time = flavor |
-| **BOF** (basic oxygen) | 1950s | O₂ blow, fast, low-N, dephos | F2 **essentially models this** (benchmarks BOP 27 ppm·%C) |
+| **Acid Bessemer** | 1856 | air-blow decarb; **can't** remove P; N pickup | F2 decarb **built**; dephos (acid L_P≈1) **built (Slice 2)**; N pickup = flavor |
+| **Thomas (basic Bessemer)** | 1879 | basic slag removes P (L_P vs basicity) | **F2 Slice 2 BUILT** — basic L_P~400 vs acid ≈1, the dephos advantage |
+| **Siemens–Martin open hearth** | 1860s+ | same endpoints, slower; basic P/S removal | endpoints **built**; P/S **built (Slice 2)**; time = flavor |
+| **BOF** (basic oxygen) | 1950s | O₂ blow, fast, low-N, dephos | F2 **essentially models this** (benchmarks BOP 27 ppm·%C; dephos Slice 2) |
 | **EAF** (electric arc) | modern | melt scrap + refine | F2 **built** (benchmarks EAF 26 ppm·%C) |
-| **Ladle / secondary metallurgy** | modern | alloy trim, degas, desulf | F3 **built**; desulf = Slice 2 |
+| **Ladle / secondary metallurgy** | modern | alloy trim, degas, desulf | F3 **built**; desulf **built (F2 Slice 2 — reads the kill)** |
 | **Ingot / continuous casting** | modern | solidification, microsegregation | F4 Scheil + Chvorinov **built** |
 
 The map reads as the §14.3 theme-C *purity-control ramp* in engine terms: each
@@ -728,10 +777,13 @@ Thomas (dephos) → BOF (low N) → ladle (desulf).
 
 ### 15.4 The two genuine physics gaps (so "mostly built" stays honest)
 
-1. **P/S slag partition — the load-bearing one.** Gates Thomas vs acid Bessemer,
-   open-hearth/BOF dephos, and ladle desulf (Tier 2). Bounded and named: F2
-   Slice 2 + a P/S state extension. This is the single highest-leverage front-end
-   build for *historical* coverage.
+1. **P/S slag partition — the load-bearing one. ✓ BUILT 2026-06-13 (F2 Slice 2,
+   `steel/slag.py`).** Gated Thomas vs acid Bessemer, open-hearth/BOF dephos, and
+   ladle desulf (Tier 2) — now closed: dephosphorization (Healy L_P) and
+   desulfurization (sulfide-capacity L_S) on the `Steel.P`/`Steel.S` state
+   extension, with the opposite-oxygen coupling reading the kill state. It was the
+   single highest-leverage front-end build for *historical* coverage. (Benchmarked
+   physics, not a propagation — P/S inert downstream; consequence deferred.)
 2. **Wootz / Damascus carbide banding — beyond P/S.** The signature V/Mo-driven
    carbide banding is **future research** (§14.5), not a recombination of existing
    endpoints. So not *every* experientially-distinctive method reduces to a built

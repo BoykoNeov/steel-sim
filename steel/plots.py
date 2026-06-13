@@ -2227,6 +2227,123 @@ def refining_figure(d):
     return fig
 
 
+def slag_figure(d):
+    """The F2 Slice-2 artifact: slag partition — P out in the converter, S in the ladle, opposite oxygen.
+
+    ``d`` is a :class:`~steel.demo_slag.SlagDemo` (already-computed arrays/scalars — this layer only draws
+    them, ADR 0002). Four panels, the partition story top-left → bottom-right:
+
+    * **top-left — dephosphorization, L_P vs basicity (the acid/basic history).** Phosphorus partition (log)
+      against slag basicity B = %CaO/%SiO₂. The acid-Bessemer slag sits near ``L_P ≈ 1`` (phosphorus stays —
+      the rails that cracked); the basic converter slag lands in the hundreds. The measured BOF band (50–200)
+      is the order-of-magnitude benchmark — Healy over-predicts at high lime, named.
+    * **top-right — desulfurization, L_S vs metal dissolved oxygen (the deox-first rule).** Sulfur partition
+      (log) against the dissolved oxygen the *same* ladle slag sees. At the un-killed blow oxygen L_S is
+      single-digit (sulfur barely moves); after the kill it is in the hundreds — *deoxidize before you
+      desulfurize*.
+    * **bottom-left — the opposite oxygen dependence (the headline tooth).** On one oxidizing-power axis
+      (metal dissolved oxygen): L_P **rises** with oxygen (Healy's +2.5·log %Fe_t — dephos oxidizes) while
+      L_S **falls** (the −log a_O of the sulfide-capacity partition — desulf reduces). Two independently
+      sourced correlations, opposite signs — which is *why* P comes out in the converter and S in the ladle.
+    * **bottom-right — the heat through the working route.** Residual phosphorus and sulfur down the chain
+      (charge → basic dephos → blow + kill → ladle desulf), with the spec lines — and the two history
+      failures' end-points: acid-Bessemer phosphorus retained, and sulfur retained when desulfurized before
+      the kill.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ((ax_p, ax_s), (ax_x, ax_trail)) = plt.subplots(2, 2, figsize=(13.5, 9.6))
+    warn = "#c0392b"
+    p_color, s_color = "#b9770e", "#6c3483"
+
+    # --- top-left: L_P vs basicity ------------------------------------------- #
+    ax_p.plot(d.B_grid, d.Lp_vs_B, color=p_color, lw=2.6)
+    ax_p.axhspan(d.bof_band[0], d.bof_band[1], color="#eaf2f8", alpha=0.9, zorder=0)
+    ax_p.annotate("measured BOF\nL_P 50–200", (d.B_grid[-1], d.bof_band[1]), ha="right", va="bottom",
+                  fontsize=8.0, color="#2471a3")
+    ax_p.axvline(1.0, color="0.6", ls=":", lw=1.3)
+    ax_p.annotate("acid ↔ basic", (1.0, d.Lp_vs_B.min()), textcoords="offset points", xytext=(4, 2),
+                  fontsize=8.0, color="0.4", ha="left")
+    for label, (B, Lp), color in [("acid Bessemer\n(P stays)", d.acid_point, warn),
+                                   ("basic converter\n(P out)", d.basic_point, PHASE_COLORS["martensite"])]:
+        ax_p.plot([B], [Lp], "o", color=color, ms=11, zorder=5)
+        ax_p.annotate(label, (B, Lp), textcoords="offset points",
+                      xytext=(8, -2 if color == warn else 8), fontsize=8.2, color=color,
+                      ha="left", va="top" if color == warn else "bottom", fontweight="bold")
+    ax_p.set_yscale("log")
+    ax_p.set_xlabel("slag basicity  B = %CaO / %SiO₂")
+    ax_p.set_ylabel("phosphorus partition  L_P = (%P)$_{slag}$ / [%P]")
+    ax_p.set_title("Dephosphorization — L_P vs basicity: acid can't, basic can", fontsize=10.4)
+    ax_p.grid(True, which="both", alpha=0.22)
+
+    # --- top-right: L_S vs metal dissolved oxygen ----------------------------- #
+    ax_s.plot(d.o_grid, d.Ls_vs_o, color=s_color, lw=2.6)
+    for label, (O, Ls), color in [("after kill\n(ladle)", d.ladle_o_point, PHASE_COLORS["martensite"]),
+                                   ("un-killed blow\n(converter)", d.converter_o_point, warn)]:
+        ax_s.plot([O], [Ls], "o", color=color, ms=11, zorder=5)
+        ax_s.annotate(label, (O, Ls), textcoords="offset points",
+                      xytext=(8, 8 if color != warn else -4), fontsize=8.2, color=color,
+                      ha="left", va="bottom" if color != warn else "top", fontweight="bold")
+    ax_s.set_xscale("log")
+    ax_s.set_yscale("log")
+    ax_s.set_xlabel("metal dissolved oxygen  [ppm O]  (the kill state)")
+    ax_s.set_ylabel("sulfur partition  L_S = (%S)$_{slag}$ / [%S]")
+    ax_s.set_title("Desulfurization — L_S vs oxygen: deoxidize FIRST", fontsize=10.4)
+    ax_s.grid(True, which="both", alpha=0.22)
+
+    # --- bottom-left: the opposite oxygen dependence (shared oxygen axis) ------ #
+    ax_x.plot(d.contrast_o, d.Lp_contrast, color=p_color, lw=2.8, label="L_P (dephos) — rises ⇒ oxidizing")
+    ax_x.plot(d.contrast_o, d.Ls_contrast, color=s_color, lw=2.8, label="L_S (desulf) — falls ⇒ reducing")
+    ax_x.annotate("more oxidizing →", (0.5, 0.03), xycoords="axes fraction", ha="center", fontsize=8.4,
+                  color="0.4")
+    ax_x.set_xscale("log")
+    ax_x.set_yscale("log")
+    ax_x.set_xlabel("oxidizing power  —  metal dissolved oxygen [ppm]  (slag FeO ⟷ [O], Fe–FeO)")
+    ax_x.set_ylabel("partition ratio  L")
+    ax_x.set_title("Opposite oxygen dependence — why P goes in the converter, S in the ladle", fontsize=10.0)
+    ax_x.grid(True, which="both", alpha=0.22)
+    ax_x.legend(fontsize=8.4, loc="center left")
+
+    # --- bottom-right: residual P / S through the working route ---------------- #
+    x = np.arange(len(d.steps))
+    w = 0.38
+    ax_trail.bar(x - w / 2, d.p_trail, w, color=p_color, label="phosphorus")
+    ax_trail.bar(x + w / 2, d.s_trail, w, color=s_color, label="sulfur")
+    ax_trail.axhline(sg_max_p(), color=p_color, ls="--", lw=1.3, alpha=0.7)
+    ax_trail.axhline(sg_max_s(), color=s_color, ls="--", lw=1.3, alpha=0.7)
+    ax_trail.annotate(f"P spec {sg_max_p():.3f}", (len(d.steps) - 1, sg_max_p()), ha="right", va="bottom",
+                      fontsize=7.6, color=p_color)
+    # The history failures' retained levels, as ghosted end-bars beyond the route.
+    ax_trail.plot([len(d.steps) - 1 + 0.0], [d.acid_p], "v", color=warn, ms=11, zorder=6)
+    ax_trail.annotate(f"acid Bessemer\nP {d.acid_p:.3f} (retained)", (len(d.steps) - 1, d.acid_p),
+                      textcoords="offset points", xytext=(-6, 6), fontsize=8.0, color=warn, ha="right")
+    ax_trail.plot([len(d.steps) - 1], [d.early_s], "^", color="#7d3c98", ms=11, zorder=6)
+    ax_trail.annotate(f"desulf-before-kill\nS {d.early_s:.3f} (retained)", (len(d.steps) - 1, d.early_s),
+                      textcoords="offset points", xytext=(-6, -22), fontsize=8.0, color="#7d3c98", ha="right")
+    ax_trail.set_xticks(x)
+    ax_trail.set_xticklabels(d.steps, fontsize=8.2)
+    ax_trail.set_yscale("log")
+    ax_trail.set_ylabel("residual content  (wt %)")
+    ax_trail.set_title("The heat through the route — P and S driven below spec", fontsize=10.4)
+    ax_trail.grid(True, which="both", axis="y", alpha=0.22)
+    ax_trail.legend(fontsize=8.4, loc="upper right")
+
+    fig.suptitle("F2 Slice 2 — slag partition: phosphorus out in the converter, sulfur in the ladle "
+                 "(opposite oxygen)", fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.92, bottom=0.08, hspace=0.30, wspace=0.22)
+    return fig
+
+
+def sg_max_p():
+    from .slag import MAX_PHOSPHORUS_PCT
+    return MAX_PHOSPHORUS_PCT
+
+
+def sg_max_s():
+    from .slag import MAX_SULFUR_PCT
+    return MAX_SULFUR_PCT
+
+
 def ladle_figure(d):
     """The F3 artifact: alloy to grade — the trim, the recovery shortfall, and the front-to-back verdict.
 
