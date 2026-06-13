@@ -2227,6 +2227,98 @@ def solidification_figure(d):
     return fig
 
 
+def hydrogen_flaking_figure(d):
+    """The hydrogen-flaking artifact: same ladle H, the section decides — out-diffusion, the bake, the tooth.
+
+    ``d`` is a :class:`~steel.demo_hydrogen_flaking.HydrogenFlakingDemo` (precomputed arrays — this layer only
+    draws, ADR 0002). Four panels:
+
+    * **top-left — the hero verdict.** Peak residual hydrogen after the same bake, thin vs thick section vs
+      thick+long-bake, against the flaking limit: same heat, geometry + schedule decide.
+    * **top-right — out-diffusion dynamics.** Centre hydrogen vs bake time for the two sections; the thin
+      drops below the limit in under an hour, the thick lingers for days (the ``L²`` trap).
+    * **bottom-left — the coherence tooth.** Dehydrogenation time vs section (log-log, slope-2 ``∝L²``), with
+      the cited practice anchors (≈1 h/inch, heavy-forging days) — reproduced from an independently pinned D_H.
+    * **bottom-right — the cited input.** The α-Fe lattice diffusivity Arrhenius, the ferritic bake point
+      marked; the room-temperature value is the anchor D_H was pinned to (independent of bake practice).
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ((ax_bar, ax_dyn), (ax_tooth, ax_arr)) = plt.subplots(2, 2, figsize=(13.6, 9.6))
+    warn, good, blue = "#c0392b", "#1f6f3c", "#2471a3"
+
+    # --- top-left: the hero verdict bars -------------------------------------- #
+    labels = [f"thin\n{int(d.section_mm[2])} mm", f"thick\n{int(d.section_mm[5])} mm", "thick\n+ long bake"]
+    vals = [d.thin_residual_ppm, d.thick_residual_ppm, d.thick_long_residual_ppm]
+    flakes = [d.thin_flakes, d.thick_flakes, d.thick_long_flakes]
+    colors = [warn if f else good for f in flakes]
+    x = np.arange(3)
+    ax_bar.bar(x, vals, width=0.6, color=colors, edgecolor="0.25", zorder=3)
+    ax_bar.axhline(d.critical_ppm, color="0.3", ls="--", lw=1.6, zorder=2)
+    ax_bar.annotate(f"flaking limit ({d.critical_ppm:.0f} ppm)", (1.0, d.critical_ppm),
+                    xycoords=("axes fraction", "data"), ha="right", va="bottom", fontsize=8.4, color="0.3")
+    ax_bar.axhline(d.ladle_H_ppm, color=blue, ls=":", lw=1.4, zorder=2)
+    ax_bar.annotate(f"ladle H ({d.ladle_H_ppm:.1f} ppm)", (0.02, d.ladle_H_ppm),
+                    xycoords=("axes fraction", "data"), ha="left", va="bottom", fontsize=8.0, color=blue)
+    for xi, v, f in zip(x, vals, flakes):
+        ax_bar.annotate(f"{v:.1f}\n{'FLAKES' if f else 'sound'}", (xi, v), textcoords="offset points",
+                        xytext=(0, 4), ha="center", va="bottom", fontsize=9, fontweight="bold",
+                        color=warn if f else good)
+    ax_bar.set_xticks(x)
+    ax_bar.set_xticklabels(labels, fontsize=9)
+    ax_bar.set_ylabel("peak (centre) residual hydrogen (ppm)")
+    ax_bar.set_ylim(0.0, max(vals + [d.ladle_H_ppm]) * 1.25)
+    ax_bar.set_title("Same ladle hydrogen — the section decides\n(same bake; geometry + schedule, not the number alone)",
+                     fontsize=10.2)
+    ax_bar.grid(True, axis="y", alpha=0.25)
+
+    # --- top-right: out-diffusion dynamics (residual H vs bake time) ----------- #
+    ax_dyn.plot(d.time_grid_h, d.thin_curve_ppm, color=good, lw=2.4, label=f"thin {int(d.section_mm[2])} mm")
+    ax_dyn.plot(d.time_grid_h, d.thick_curve_ppm, color=warn, lw=2.4, label=f"thick {int(d.section_mm[5])} mm")
+    ax_dyn.axhline(d.critical_ppm, color="0.3", ls="--", lw=1.5)
+    ax_dyn.set_xlabel("dehydrogenation bake time (h)")
+    ax_dyn.set_ylabel("centre hydrogen (ppm)")
+    ax_dyn.set_title("Out-diffusion: the thin section clears fast,\nthe thick one lingers for days (the L² trap)",
+                     fontsize=10.2)
+    ax_dyn.legend(fontsize=8.6)
+    ax_dyn.grid(True, alpha=0.25)
+
+    # --- bottom-left: the coherence tooth (bake time vs section, ∝ L²) --------- #
+    ax_tooth.loglog(d.section_mm, d.bake_time_h, "o-", color="0.2", lw=2.2, ms=6)
+    ax_tooth.plot([25], [np.interp(25, d.section_mm, d.bake_time_h)], "o", color=blue, ms=11, mfc="none", mew=2.2)
+    ax_tooth.annotate("1 inch ≈ 1 h\n(cited rule)", (25, np.interp(25, d.section_mm, d.bake_time_h)),
+                      textcoords="offset points", xytext=(8, -6), fontsize=8.2, color=blue)
+    ax_tooth.annotate("heavy forging\n→ days", (500, np.interp(500, d.section_mm, d.bake_time_h)),
+                      textcoords="offset points", xytext=(-6, 8), ha="right", fontsize=8.2, color=warn)
+    ax_tooth.set_xlabel("section thickness (mm)")
+    ax_tooth.set_ylabel("dehydrogenation time (h)")
+    ax_tooth.set_title("Coherence tooth — bake time ∝ section²\nreproduces cited practice (pinned D_H, no tuning)",
+                       fontsize=10.2)
+    ax_tooth.grid(True, which="both", alpha=0.25)
+
+    # --- bottom-right: the cited input — D_H Arrhenius ------------------------- #
+    from .hydrogen_flaking import DEFAULT_BAKE_TEMP_C as hf_bake
+    ax_arr.semilogy(d.arrhenius_T, d.arrhenius_D, color=blue, lw=2.4)
+    D_bake = float(np.interp(hf_bake, d.arrhenius_T, d.arrhenius_D))
+    ax_arr.plot([hf_bake], [D_bake], "o", color=warn, ms=10, zorder=5)
+    ax_arr.annotate(f"ferritic bake\n{hf_bake:.0f} °C", (hf_bake, D_bake), textcoords="offset points",
+                    xytext=(-10, -2), ha="right", fontsize=8.4, color=warn)
+    D_room = float(np.interp(25.0, d.arrhenius_T, d.arrhenius_D))
+    ax_arr.plot([25.0], [D_room], "o", color="0.3", ms=8, zorder=5)
+    ax_arr.annotate(f"room-T anchor\n~{D_room:.1e} m²/s", (25.0, D_room), textcoords="offset points",
+                    xytext=(10, 6), fontsize=8.0, color="0.3")
+    ax_arr.set_xlabel("temperature (°C)")
+    ax_arr.set_ylabel("hydrogen diffusivity in α-Fe (m²/s)")
+    ax_arr.set_title("The cited input: lattice D_H (α-Fe)\npinned to the room-T value — independent of bake practice",
+                     fontsize=10.2)
+    ax_arr.grid(True, which="both", alpha=0.25)
+
+    fig.suptitle("Hydrogen flaking — the dissolved-H consequence: same ladle H, the section decides",
+                 fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.90, bottom=0.08, wspace=0.24, hspace=0.34)
+    return fig
+
+
 def refining_figure(d):
     """The F2 artifact: the tap-chemistry panel — deoxidation curve, C–O coupling, degassing, propagation.
 

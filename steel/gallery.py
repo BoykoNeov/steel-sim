@@ -236,6 +236,19 @@ CATALOG: tuple[Entry, ...] = (
         "kinetics, out of scope), so the model was not built to manufacture one.",
     ),
     Entry(
+        "Impurity consequences (front-end)", "demo_hydrogen_flaking", "steel-hydrogen-flaking.png",
+        "Hydrogen flaking — same ladle hydrogen, the section decides",
+        "What dissolved hydrogen finally does — and why it is a *geometric* consequence, not a number. "
+        "Refining fills the ladle hydrogen and flags the chemistry-state risk; whether a *part* flakes "
+        "(internal hairline cracks) is set by whether the hydrogen can diffuse out before the section cools "
+        "into the brittle range. Same 4140 heat at ~3.6 ppm, two sections, same dehydrogenation bake: the "
+        "thin section degasses and is sound, the thick one traps it and flakes — and a long enough bake saves "
+        "the thick one (the time scales as section²). Two-tier, like cold-short/red-short: refining sets the "
+        "risk, this the consequence. Closed-form slab desorption (Crank) — no engine, no ADR. One genuine "
+        "tooth: the bake time from an independently-pinned lattice D_H reproduces cited practice (~1 h/inch, "
+        "heavy forgings days) without tuning — OoM-grade; the L² scaling and verdict are by-construction.",
+    ),
+    Entry(
         "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",
         "Alloy to grade — where the composition is finalized (and missed)",
         "The seam to the back end: trim an alloy-lean tap up to a grade by ferroalloy additions, sized for "

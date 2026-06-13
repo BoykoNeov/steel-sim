@@ -340,6 +340,34 @@ dissolved-gas removal by **Sieverts' law** ([H], [N] ∝ √p).
 >   highest-leverage front-end build is now closed** — the §14 theme-C purity ramp and the Thomas-vs-acid-Bessemer
 >   distinction are expressible (§15.2 map updated). Wootz V/Mo carbide banding (§14.5) remains future research.
 
+> **As built — 2026-06-14 (the hydrogen consequence — closing F2's deferred dissolved-gas downstream).**
+> `steel/hydrogen_flaking.py` (+ `demo_hydrogen_flaking.py`, `plots.hydrogen_flaking_figure`,
+> `tests/test_hydrogen_flaking.py` 12 + `test_demo_hydrogen_flaking.py` 5). **Standalone (closed-form, no
+> engine, no ADR);** this plan is the record. F2's `degas` already *fills* `hydrogen_ppm` and raises the
+> chemistry-state **`hydrogen-flaking-risk`**; this closes the **consequence** F2 deferred — whether a *part*
+> actually flakes — which is a **geometric** (out-diffusion) question, the two-tier cold-short(propagation) /
+> red-short(new-consumer) pattern: refining sets the risk, this the consequence (`hydrogen-flaking` flag).
+> - **Model = analytic slab desorption (Crank), NOT the engine.** Advisor's sharpening: an engine H-solve
+>   would be **redundant with the engine's existing analytic seal** (`test_erfc.py`), not a new check — the
+>   flaking verdict is a scalar (peak/centre residual H after a cool/bake), which the closed-form series gives
+>   directly. Standalone like reduction / casting Slice 1.
+> - **The ONE genuine tooth — soft, OoM cross-source coherence (gate run on paper FIRST).** The
+>   dehydrogenation time from an **independently pinned** lattice `D_H` reproduces cited bake-vs-section
+>   practice **without tuning**: `D_H` set to the accepted room-T α-Fe lattice value (~8.9×10⁻⁹ m²/s; Kiuchi–
+>   McLellan 1983 reanalysis, cross-checked DFT/MD Jiang–Carter/Hasan 2020), then a 1-inch section clears in
+>   ~0.6 h (the "1 h/inch" rule) and a 500 mm forging takes ~10 days (heavy forgings → days). Two independent
+>   sources (a room-T diffusivity vs bake times), so the agreement is a real check. **OoM-grade**: real steel
+>   traps H 10–100× below lattice → the model is a conservative *lower bound* (named scatter). By construction
+>   (NOT teeth): the `τ ∝ L²` scaling (Chvorinov-`M²` class) and the verdict rule. **Ceiling:** out-diffusion
+>   only — *not* the γ→α supersaturation / H₂ void-pressure thermodynamics (the "can the H escape in time?"
+>   geometric question, not the crack itself).
+> - **Hero = same ladle H, the section decides** (the only genuinely-new content vs refining.py): a 4140 heat
+>   degassed to ~3.6 ppm (risk set), cast into two sections + the *same* bake → thin sound, thick **flakes**
+>   (adds `hydrogen-flaking`), thick saved by a long enough hold (the bake lever). The analog of "same quench,
+>   two compositions → soft core" and "same casting, two locations → hard band". Suite **+17 tests**, all
+>   green; no engine touch, no ADR. **Notebook & app deferred** (as the other front-end phases). Gas
+>   **porosity** (the other F2 `porosity-risk` consequence) and hot-tear remain deferred.
+
 ### F3 — Ladle / secondary metallurgy + alloy trim (the seam to the back end)
 Trim the heat to a **target grade** by ferroalloy additions with recovery/yield;
 inclusion control. **This is where the composition vector the back end consumes
