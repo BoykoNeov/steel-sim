@@ -266,6 +266,21 @@ CATALOG: tuple[Entry, ...] = (
         "thin-section rule is OoM sanity only) — OoM-grade; the L² scaling and verdict are by-construction.",
     ),
     Entry(
+        "Impurity consequences (front-end)", "demo_gas_porosity", "steel-gas-porosity.png",
+        "Gas (CO) porosity — same oxygen spec, the carbon decides",
+        "What dissolved oxygen finally does — and why it is a *carbon-aware* consequence, not a single number. "
+        "Refining flags a carbon-blind risk (O > 30 ppm); whether a *casting* blows CO holes is set by the "
+        "carbon the oxygen reacts with: gas evolves where [%C]·[%O] crosses the same CO equilibrium the "
+        "converter runs on. Same light kill, two carbons, both within the 30 ppm spec: the high-carbon 1080 "
+        "sits right on the CO line (limit ~25 ppm) and blows holes — carrying *less* oxygen than the sound "
+        "low-carbon 8620 (limit ~100 ppm). A full kill saves it (the deox lever). Two-tier, like "
+        "cold-short/red-short/flaking: refining sets the risk, this the consequence — and the two disagree "
+        "because of carbon. No engine, no ADR, and honestly **no claimable tooth** (the criterion is the "
+        "cited C–O equilibrium against held composition); the soft OoM note is 'high-C must be killed, low-C "
+        "can be rimmed' from O_crit ∝ 1/C, no tuning. The solidification CO-margin is a conservative "
+        "secondary (Scheil over-predicts carbon), not the verdict.",
+    ),
+    Entry(
         "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",
         "Alloy to grade — where the composition is finalized (and missed)",
         "The seam to the back end: trim an alloy-lean tap up to a grade by ferroalloy additions, sized for "

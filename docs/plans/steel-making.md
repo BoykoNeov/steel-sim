@@ -369,7 +369,64 @@ dissolved-gas removal by **Sieverts' law** ([H], [N] ∝ √p).
 >   (adds `hydrogen-flaking`), thick saved by a long enough hold (the bake lever). The analog of "same quench,
 >   two compositions → soft core" and "same casting, two locations → hard band". Suite **+17 tests**, all
 >   green; no engine touch, no ADR. **Notebook & app deferred** (as the other front-end phases). Gas
->   **porosity** (the other F2 `porosity-risk` consequence) and hot-tear remain deferred.
+>   **porosity** (the other F2 `porosity-risk` consequence) is now BUILT (next banner); hot-tear remains deferred.
+
+> **As built — 2026-06-14 (the gas-porosity consequence — closing F2's deferred dissolved-oxygen downstream).**
+> `steel/gas_porosity.py` (+ `demo_gas_porosity.py`, `plots.gas_porosity_figure`,
+> `tests/test_gas_porosity.py` 17 + `test_demo_gas_porosity.py` 6; suite 741 → **764 passed / 2 skipped**, +23).
+> **Standalone (closed-form, no engine, no ADR);** this plan is the record. F2's `deoxidize` already *fills*
+> `oxygen_ppm` and raises the chemistry-state **`porosity-risk`** when the killed-bath oxygen clears a single,
+> **carbon-blind** line (`MAX_DISSOLVED_OXYGEN_PPM` = 30 ppm); this closes the **consequence** F2 deferred —
+> whether a *casting* actually blows **CO holes** — which is a fundamentally **carbon-aware** question. The
+> two-tier cold-short / red-short / flaking pattern: refining sets the risk, this the consequence
+> (`gas-porosity` flag). **The sibling of hydrogen-flaking, but where flaking's second lever was geometric,
+> this one is the *carbon*.**
+> - **Model = the carbon-aware CO product (the SAME C–O equilibrium F2 runs on), held oxygen.** CO evolves
+>   and is trapped where the dissolved product `[%C]·[%O] > K_CO` (= `refining.carbon_oxygen_product`, the
+>   converter's own equilibrium, here at a representative freezing-front T ≈ 1530 °C / p_CO = 1 atm). The
+>   verdict is the **supersaturation** `S = [%C][%O]/K_CO` (> 1 ⇒ porous). The cooling-supersaturation
+>   mechanism is physical: the heat equilibrates with CO at tap (1600 °C) but K_CO *falls* as it cools to the
+>   front, so a tap-line (undeoxidized) heat tips supersaturated — killing it (dropping O below the line)
+>   buys the margin. No solver; the latent-heat field (`solidification.py`) would buy **no new content** (the
+>   verdict is a chemistry scalar, not a T-map) — the same B-over-C logic that kept hydrogen-flaking
+>   standalone.
+> - **TWO advisor catches BEFORE writing (paper-gate), both load-bearing.** (1) **Do NOT Scheil-enrich the
+>   dissolved oxygen** — reprecipitation pins O in killed steel as T falls, so naive O-Scheil is *wrong* (not
+>   a "named ceiling"): it false-positives sound killed steel (a killed 0.4 %C/3 ppm heat would cross at
+>   f_s ≈ 0.81). **Hold O at the as-refined value** (bonus: no k_O to pin). (2) **Carbon-Scheil enrichment is
+>   a trap** — `casting.py` explicitly disowns it (`enrich_carbon=False`, "Scheil over-predicts interstitial
+>   C"); making it the load-bearing amplifier would contradict our own ceiling. **My spot-check confirmed it
+>   worse than feared:** a well-killed *high-carbon* heat (1.0 %C/3 ppm) crosses at f_s ≈ 0.90 < cutoff → the
+>   enrichment-verdict false-flags it **porous**, yet 1095/52100 cast sound routinely (the Scheil f_s→1
+>   singularity drives *any* held O over the line). So the **bath/front product is the load-bearing verdict**;
+>   carbon-Scheil survives only as a **conservative, decorative secondary** (`solidification_co_fraction` — a
+>   "freezing erodes the margin" indicator, cutoff-dominated, never the pass/fail).
+> - **NO claimable tooth — by-construction + cited inputs (the reversible-TE / TME landing, a feature).** The
+>   criterion *is* the cited C–O equilibrium evaluated against held composition, so it cannot independently
+>   "fail". The one soft **OoM-coherence note** (really by-construction): the critical oxygen
+>   `O_crit(C) = K_CO/[%C]` falls as `1/C` with **no tuning**, reproducing "high-carbon steels must be killed,
+>   only low-carbon steels can be rimmed / semi-killed" — and exposing the carbon-blindness of a flat oxygen
+>   spec (the 30 ppm line crosses `O_crit` near C ≈ 0.67 %: leaner it over-warns, richer it under-warns).
+>   Nothing else claimed.
+> - **Hero = same oxygen, the carbon decides** (the non-duplication, made the demo's job per the advisor):
+>   1080 and 8620 given the *same* light kill, **both within the 30 ppm spec → both risk-cleared**, yet the
+>   1080 sits right on the CO line (O_crit ≈ 25 ppm) and **blows holes** while the 8620 has an order of
+>   magnitude of carbon-margin (O_crit ≈ 100 ppm) and is **sound** — the 1080 carrying *less* oxygen than the
+>   sound 8620. A full kill saves the 1080 (the deox lever). The two flags **disagree because of carbon**:
+>   without that, the consequence would be refining restated. **The 1080's modest S ≈ 1.05 is sign-robust, not
+>   marginal (advisor sharpening, verified):** the C–O coupling self-limits a high-carbon heat's dissolved O
+>   to ~its C–O equilibrium, so the under-killed 1080 sits *exactly on the tap C–O line* (`C·O = K_CO(1600)`
+>   to machine precision) — its verdict therefore reduces to the **cooling-supersaturation ratio**
+>   `S = K_CO(tap)/K_CO(front)`, which is `> 1` for *any* front below tap (physically certain, not a coin-flip
+>   on the 1530 pin) and *grows* as the front cools toward the true freezing range (verified S: 1.000 at 1600,
+>   1.051 at 1530, 1.091 at 1480). The named ~7 % absolute-K_CO scatter largely **cancels in that ratio** (the
+>   ΔG° *slope* is better constrained than the absolute level). So a high-C steel is never *deeply* porous from
+>   O — it lives at the boundary and must be killed — but the *sign* of that verdict is guaranteed.
+> - **Ceiling:** the CO-*evolution criterion*, not the bubble nucleation/escape kinetics that set how much
+>   porosity actually results; p_CO pinned at 1 atm (the **ferrostatic head** that suppresses CO deep in a
+>   tall section — the deep ingot rims less — is a named over-conservatism); shrinkage / Niyama porosity (a
+>   feeding problem) stays the F4-Slice-2 deferral. Suite **+23 tests**, all green; no engine touch, no ADR.
+> **Notebook & app deferred** (as the other front-end phases). Hot-tear remains the last open F4/F2 defect.
 
 ### F3 — Ladle / secondary metallurgy + alloy trim (the seam to the back end)
 Trim the heat to a **target grade** by ferroalloy additions with recovery/yield;

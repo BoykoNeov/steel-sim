@@ -2320,6 +2320,123 @@ def hydrogen_flaking_figure(d):
     return fig
 
 
+def gas_porosity_figure(d):
+    """The gas-porosity artifact: same oxygen spec, the carbon decides — the carbon-aware CO criterion.
+
+    ``d`` is a :class:`~steel.demo_gas_porosity.GasPorosityDemo` (precomputed arrays — this layer only draws,
+    ADR 0002). Four panels:
+
+    * **top-left — the carbon-blindness map (the centerpiece).** Dissolved oxygen vs carbon. The
+      ``O_crit(C) = K_CO/[%C]`` curve is the carbon-aware porosity boundary (porous above, sound below); the
+      flat 30 ppm line is refining's carbon-blind risk spec. They cross near C ≈ 0.67 % — leaner the spec
+      over-warns, richer it under-warns. The three heats are plotted, coloured by verdict.
+    * **top-right — the hero verdict.** CO supersaturation ``S = [%C][%O]/K_CO`` of the three heats against
+      the ``S = 1`` line: the same light kill leaves the high-carbon heat over the line (porous) and the
+      low-carbon heat far under (sound); a full kill saves the high-carbon heat.
+    * **bottom-left — same oxygen, the carbon decides.** Dissolved oxygen of the two under-killed heats (both
+      under the 30 ppm spec) with each heat's *own* carbon-aware limit ``O_crit`` capped on top: the
+      high-carbon bar pokes over its (low) limit, the low-carbon bar sits far under its (high) one.
+    * **bottom-right — the conservative secondary (NOT the verdict).** The solidification CO-margin: the
+      solid fraction at which Scheil carbon enrichment would drive a fixed-oxygen heat over the line. Labelled
+      conservative (Scheil over-predicts carbon) and cutoff-dominated — a margin indicator, not a pass/fail.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ((ax_map, ax_bar), (ax_same, ax_margin)) = plt.subplots(2, 2, figsize=(13.6, 9.6))
+    warn, good, blue, spec = "#c0392b", "#1f6f3c", "#2471a3", "#8e44ad"
+
+    pts = [  # (carbon, oxygen, supersaturation, porous, label)
+        (d.high_C, d.high_O_ppm, d.high_S, d.high_porous, f"1080 under-killed"),
+        (d.low_C, d.low_O_ppm, d.low_S, d.low_porous, f"8620 under-killed"),
+        (d.high_C, d.killed_O_ppm, d.killed_S, d.killed_porous, f"1080 killed"),
+    ]
+
+    # --- top-left: the carbon-blindness map ----------------------------------- #
+    ax_map.plot(d.carbon_grid, d.Ocrit_curve_ppm, color=warn, lw=2.6,
+                label=r"$O_{\rm crit}=K_{\rm CO}/\%C$ (carbon-aware)")
+    ax_map.fill_between(d.carbon_grid, d.Ocrit_curve_ppm, 1e3, color=warn, alpha=0.07)
+    ax_map.fill_between(d.carbon_grid, 0.0, d.Ocrit_curve_ppm, color=good, alpha=0.07)
+    ax_map.axhline(d.risk_spec_ppm, color=spec, ls="--", lw=1.8,
+                   label=f"refining spec ({d.risk_spec_ppm:.0f} ppm, carbon-blind)")
+    ax_map.axvline(d.crossover_C, color="0.45", ls=":", lw=1.3)
+    ax_map.annotate(f"spec crosses\nO_crit at C≈{d.crossover_C:.2f}%", (d.crossover_C, d.risk_spec_ppm),
+                    textcoords="offset points", xytext=(8, 26), fontsize=8.0, color="0.4")
+    for c, o, _s, por, lab in pts:
+        ax_map.plot([c], [o], "o", ms=11, color=warn if por else good, mec="0.2", mew=1.2, zorder=5)
+        ax_map.annotate(lab, (c, o), textcoords="offset points", xytext=(9, -3), fontsize=8.0,
+                        color=warn if por else good)
+    ax_map.set_xlabel("carbon (wt %)")
+    ax_map.set_ylabel("dissolved oxygen (ppm)")
+    ax_map.set_ylim(0.0, 60.0)
+    ax_map.set_xlim(0.0, 1.10)
+    ax_map.set_title("The carbon-blindness: a flat oxygen spec vs the\ncarbon-aware CO line (porous above, sound below)",
+                     fontsize=10.2)
+    ax_map.legend(fontsize=8.2, loc="upper right")
+    ax_map.grid(True, alpha=0.25)
+
+    # --- top-right: the hero verdict (supersaturation bars) ------------------- #
+    x = np.arange(3)
+    colors = [warn if p else good for (_c, _o, _s, p, _l) in pts]
+    ax_bar.bar(x, d.bar_S, width=0.62, color=colors, edgecolor="0.25", zorder=3)
+    ax_bar.axhline(1.0, color="0.3", ls="--", lw=1.6, zorder=2)
+    ax_bar.annotate("CO line (S = 1)", (0.98, 1.0), xycoords=("axes fraction", "data"),
+                    ha="right", va="bottom", fontsize=8.4, color="0.3")
+    for xi, (_c, _o, s, p, _l) in zip(x, pts):
+        ax_bar.annotate(f"S={s:.2f}\n{'POROUS' if p else 'sound'}", (xi, s), textcoords="offset points",
+                        xytext=(0, 4), ha="center", va="bottom", fontsize=9, fontweight="bold",
+                        color=warn if p else good)
+    ax_bar.set_xticks(x)
+    ax_bar.set_xticklabels(list(d.bar_labels), fontsize=8.8)
+    ax_bar.set_ylabel(r"CO supersaturation $S=\%C\cdot\%O/K_{\rm CO}$")
+    ax_bar.set_ylim(0.0, max(float(d.bar_S.max()) * 1.25, 1.3))
+    ax_bar.set_title("Hero verdict — same light kill, the carbon decides\n(high-C over the line, low-C far under)",
+                     fontsize=10.2)
+    ax_bar.grid(True, axis="y", alpha=0.25)
+
+    # --- bottom-left: same oxygen, the carbon decides ------------------------- #
+    xs = np.arange(2)
+    o_vals = [d.high_O_ppm, d.low_O_ppm]
+    ocrit_vals = [d.high_Ocrit, d.low_Ocrit]
+    por_vals = [d.high_porous, d.low_porous]
+    ax_same.bar(xs, o_vals, width=0.5, color=[warn if p else good for p in por_vals], edgecolor="0.25", zorder=3)
+    ax_same.axhline(d.risk_spec_ppm, color=spec, ls="--", lw=1.7, zorder=2)
+    ax_same.annotate(f"refining spec ({d.risk_spec_ppm:.0f} ppm) — both pass", (0.98, d.risk_spec_ppm),
+                     xycoords=("axes fraction", "data"), ha="right", va="bottom", fontsize=8.2, color=spec)
+    for xi, ocr, p in zip(xs, ocrit_vals, por_vals):
+        ax_same.plot([xi - 0.25, xi + 0.25], [min(ocr, 60), min(ocr, 60)], color="0.15", lw=2.2, zorder=4)
+        cap = f"O_crit {ocr:.0f}" + (" ↑(off-scale)" if ocr > 60 else "")
+        ax_same.annotate(cap, (xi, min(ocr, 58)), textcoords="offset points", xytext=(0, 3),
+                         ha="center", fontsize=8.0, color="0.15")
+    for xi, o, p in zip(xs, o_vals, por_vals):
+        ax_same.annotate(f"{o:.0f} ppm\n{'POROUS' if p else 'sound'}", (xi, o), textcoords="offset points",
+                         xytext=(0, -22), ha="center", fontsize=8.6, fontweight="bold", color="w")
+    ax_same.set_xticks(xs)
+    ax_same.set_xticklabels([f"1080\n{d.high_C:.2f} %C", f"8620\n{d.low_C:.2f} %C"], fontsize=9)
+    ax_same.set_ylabel("dissolved oxygen (ppm)")
+    ax_same.set_ylim(0.0, 62.0)
+    ax_same.set_title("Same oxygen, both within spec — the carbon decides\n(each bar capped at its OWN carbon-aware limit)",
+                      fontsize=10.2)
+    ax_same.grid(True, axis="y", alpha=0.25)
+
+    # --- bottom-right: the conservative secondary (solidification CO-margin) --- #
+    ax_margin.plot(d.margin_carbon, d.margin_fs, color=blue, lw=2.4)
+    ax_margin.axhline(1.0, color="0.6", ls=":", lw=1.1)
+    ax_margin.fill_between(d.margin_carbon, d.margin_fs, 1.0, color=blue, alpha=0.08)
+    ax_margin.set_xlabel("carbon (wt %)")
+    ax_margin.set_ylabel("solid fraction where freezing\nwould cross the CO line")
+    ax_margin.set_ylim(0.0, 1.02)
+    ax_margin.set_title("Conservative secondary (NOT the verdict): freezing\nerodes the CO margin faster at higher carbon",
+                        fontsize=10.2)
+    ax_margin.grid(True, alpha=0.25)
+    ax_margin.annotate("Scheil over-predicts C → conservative;\ncutoff-dominated → a margin, not a pass/fail",
+                       (0.04, 0.06), xycoords="axes fraction", fontsize=8.0, color="0.4")
+
+    fig.suptitle("Gas (CO) porosity — the dissolved-O consequence: same oxygen spec, the carbon decides",
+                 fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.90, bottom=0.08, wspace=0.24, hspace=0.34)
+    return fig
+
+
 def refining_figure(d):
     """The F2 artifact: the tap-chemistry panel — deoxidation curve, C–O coupling, degassing, propagation.
 

@@ -318,6 +318,15 @@ em { color: #c8cee0; font-style: italic; }
         <div class="links"><a href="figures/steel-hydrogen-flaking.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_hydrogen_flaking.py" target="_blank" rel="noopener">source ↗</a></div>
       </div>
     </article>
+    <article class="card">
+      <a class="shot" href="figures/steel-gas-porosity.png" target="_blank" rel="noopener"><img src="figures/steel-gas-porosity.png" alt="Gas (CO) porosity — same oxygen spec, the carbon decides" loading="lazy"></a>
+      <div class="body">
+        <h3>Gas (CO) porosity — same oxygen spec, the carbon decides</h3>
+        <p class="blurb">What dissolved oxygen finally does — and why it is a *carbon-aware* consequence, not a single number. Refining flags a carbon-blind risk (O &gt; 30 ppm); whether a *casting* blows CO holes is set by the carbon the oxygen reacts with: gas evolves where [%C]·[%O] crosses the same CO equilibrium the converter runs on. Same light kill, two carbons, both within the 30 ppm spec: the high-carbon 1080 sits right on the CO line (limit ~25 ppm) and blows holes — carrying *less* oxygen than the sound low-carbon 8620 (limit ~100 ppm). A full kill saves it (the deox lever). Two-tier, like cold-short/red-short/flaking: refining sets the risk, this the consequence — and the two disagree because of carbon. No engine, no ADR, and honestly **no claimable tooth** (the criterion is the cited C–O equilibrium against held composition); the soft OoM note is &#x27;high-C must be killed, low-C can be rimmed&#x27; from O_crit ∝ 1/C, no tuning. The solidification CO-margin is a conservative secondary (Scheil over-predicts carbon), not the verdict.</p>
+        <code class="cmd">python -m steel.demo_gas_porosity</code>
+        <div class="links"><a href="figures/steel-gas-porosity.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_gas_porosity.py" target="_blank" rel="noopener">source ↗</a></div>
+      </div>
+    </article>
   </div>
   <h2 class="section">Ladle trim (front-end)</h2>
   <div class="grid">
