@@ -1,3 +1,8 @@
 # Normalize shell scripts to LF so they run on the Linux CI runner regardless of
 # the checkout platform (Windows autocrlf would otherwise give them CRLF).
 *.sh text eol=lf
+
+# Keep patch/diff files LF so they apply cleanly upstream (git am / git apply)
+# and don't get CRLF-rewritten on a Windows checkout.
+*.patch text eol=lf
+*.diff text eol=lf
