@@ -21,6 +21,15 @@ metadata:
 > - **"kernel idle (0 % CPU)" is CONFIRMED.** So the loss is **between the idle kernel's send
 >   and the client recv queue** — at/below the kernel's message-send path or the transport —
 >   *not* the client asyncio/FD layer. Deeper and less tractable; still no clean in-code fix.
+> - **No connection flap (Rung-0 socket-monitor probe, 2026-06-14).** A zmq socket monitor armed
+>   on the client SHELL socket (read by a sync shadow-context thread, independent of the suspect
+>   loop) saw **zero transport events across all three 45 s silences** (3/8 runs wedged, ~37 %, so
+>   the monitor doesn't suppress the bug). DISCONNECTED/CONNECT_RETRIED appear only at *post-wedge
+>   teardown* — identical to a clean run's shutdown — so the connection stays nominally healthy and
+>   the reply is lost with **no reset**. This rules out a transient shell-channel flap; it does
+>   **not** discriminate a kernel-send-stall from a transport-buffer loss (a monitor reports
+>   connection *state*, not message *delivery* — there is no "message dropped" event). Both remain
+>   open for a Rung-1 raw-pyzmq reproducer.
 > The retry mitigation remains correct. The original paragraph below is the *symptom* record;
 > read its mechanism attribution as superseded.
 

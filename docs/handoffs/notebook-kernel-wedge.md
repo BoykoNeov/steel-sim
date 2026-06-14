@@ -86,7 +86,10 @@ pinning the interpreter won't help).
 > **tornado's selector is faithful** — it sits *correctly blocked* in `select()` on the shell fd
 > the whole time; (c) the reply is **not at the client socket at all** — `getsockopt(EVENTS)`
 > never shows POLLIN across the silence, so there is **no dropped readability notification** to
-> drop; (d) the kernel is **confirmed idle (0 % CPU)**. So the loss is *between the idle kernel's
+> drop; (d) the kernel is **confirmed idle (0 % CPU)**; (e) **no connection flap** — a zmq socket
+> monitor armed on the client shell socket saw *zero* transport events across all three 45 s
+> silences (DISCONNECTED/CONNECT_RETRIED fire only at *post-wedge teardown*, identical to a clean
+> run), so the connection stays nominally healthy with no reset to blame. So the loss is *between the idle kernel's
 > send and the client recv queue* — at/below the kernel send path or the transport — **not** the
 > client-side selector-shim "dropped notification" described below. The paragraph below is kept
 > as the original symptom/triage account; treat its *mechanism* as superseded (see
