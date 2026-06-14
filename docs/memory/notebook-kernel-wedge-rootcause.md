@@ -76,11 +76,17 @@ metadata:
 >   race; a sterile notebook does not). **Advisor crux:** don't swap one premature attribution
 >   (send-path) for another — the client+recv-callback variant was required to *measure* the side, not
 >   infer it (the very error this banner exists to fix); H-client (client never delivered the request)
->   stayed live until the client log showed the request's send completing. **NOT established
->   (Rung-3):** *why* a forced-**Selector** loop (ipykernel's `_init_asyncio_patch`, where `add_reader`
->   is native) misses an inbound POLLIN on the shell-channel thread; the H-kernel localization rests on
->   the Rung-1 wire-reliability inference, **not** a direct kernel-side `EVENTS`/POLLIN read (hazardous:
->   cross-thread `getsockopt` on a wedged-loop socket, and the wedged loop can't schedule the probe).
+>   stayed live until the client log showed the request's send completing. **No tension with Rung-1
+>   (and this names the Rung-3 target):** Rung-1's clean Selector *receiver* was a **raw `zmq.asyncio`
+>   recv on the main thread** — no tornado `ZMQStream`, no secondary thread, no inproc hop — so its
+>   9,600-message null only shows a *plain* Selector receiver is reliable. The real kernel's intake is
+>   different machinery Rung-1 never replicated: **tornado `ZMQStream` (`add_reader`-based) on a
+>   dedicated shell-channel thread, forwarding via inproc PAIR to the main thread.** **NOT established
+>   (Rung-3):** *which* of that machinery (the `ZMQStream`/`add_reader` integration, the secondary
+>   shell-channel-thread loop, or the inproc PAIR routing) drops the inbound wakeup, and why; the
+>   H-kernel localization rests on the Rung-1 wire-reliability inference, **not** a direct kernel-side
+>   `EVENTS`/POLLIN read (hazardous: cross-thread `getsockopt` on a wedged-loop socket, and the wedged
+>   loop can't schedule the probe).
 > The retry mitigation remains correct. The original paragraph below is the *symptom* record;
 > read its mechanism attribution as superseded — and note the Rung-2 refinement: the failure is on
 > the kernel's request-**intake** path, not its reply-send path.

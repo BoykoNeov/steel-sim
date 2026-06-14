@@ -108,8 +108,11 @@ pinning the interpreter won't help).
 > accepts), the request reached the kernel's libzmq but the kernel's shell-channel **event loop never
 > woke to read it** = a kernel-side **missed inbound FD-readiness** (the receive-side mirror of the
 > client `add_reader` miss). This explains the client POLLIN-never: no reply was sent *because the
-> request was never picked up*. **Still open (deeper):** *why* the forced-Selector kernel loop misses
-> the inbound POLLIN. The paragraph below is kept
+> request was never picked up*. This does **not** contradict Rung-1's clean Selector receiver: that
+> was a raw `zmq.asyncio` recv on the main thread, whereas the real kernel's intake is tornado
+> `ZMQStream` (`add_reader`) on a dedicated shell-channel thread forwarding via inproc PAIR — machinery
+> Rung-1 never replicated. **Still open (deeper):** *which* of that machinery drops the inbound wakeup,
+> and why. The paragraph below is kept
 > as the original symptom/triage account; treat its *mechanism* as superseded (see
 > `docs/memory/notebook-kernel-wedge-rootcause.md`). **The retry mitigation in §5 is unaffected
 > and remains correct** — it recovers any intermittent lost-reply regardless of the layer.
