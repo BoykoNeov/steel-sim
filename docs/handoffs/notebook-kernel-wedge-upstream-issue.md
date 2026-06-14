@@ -14,9 +14,22 @@
 > exact zmqstream line that loses the edge) — please treat them differently. The reply-send trigger,
 > earlier "strongly-suggested", is now **confirmed** by the fix experiment (§4).
 >
-> **Before filing:** dup-search both trackers for an existing report — pyzmq and ipykernel for
-> `ZMQ_FD` edge / "lost execute_request" / "ZMQStream missed event" / "kernel hang Windows
-> execute_reply" — so this lands as a comment on an open issue or a clean new one, not a duplicate.
+> **Dup-search (done 2026-06-14).** No existing report pins this root cause (the ipykernel-7
+> dual-use shell ROUTER: an out-of-band reply send drains the `ZMQ_FD` read edge and the shell
+> `ZMQStream` is never re-armed). **File as a NEW `ipython/ipykernel` issue**, cross-referencing:
+> - **`ipython/ipykernel#1438`** — the official "report problems with 7.0.0" hub; post a pointer
+>   comment there too so it's discoverable.
+> - **`microsoft/vscode-jupyter#17228`** + its WIP **PR #17411** — the downstream user-visible hang
+>   ("ipykernel 7 causes notebook execution to hang", Windows 11, restart-only recovery): the symptom
+>   this root cause explains. The PR stalled with no root cause identified.
+> - **`ipython/ipykernel#1469`** (PR, from issue **#1468**) — Windows `ProactorEventLoop` enablement;
+>   a commenter flagged it as "probably relevant" to #17228. Adjacent (same Windows + ZMQ-FD area) but
+>   a *different* mechanism (Proactor lacks `add_reader`), **not** this edge-drain — cite to disambiguate.
+> - **`ipython/ipykernel#307`** (minrk, 2018; the 4.8.2 fix "ensure zmq streams start in a clean
+>   state") — prior art for the *same bug class* (edge-triggered `ZMQ_FD` missed events) at an earlier
+>   site; shows maintainers already accept and fix this family.
+> - **pyzmq:** no open dup; `zmqstream.py::_update_handler` (cited in §Mechanism) is the relevant code.
+>   `zeromq/libzmq#3641` and `#2941` are background on `ZMQ_FD` edge semantics, not dups.
 
 ---
 
@@ -374,6 +387,12 @@ timeout-length stall on every run. Not a fix.
    reference was live on every send (551 re-arms, 0 None/mismatch across 19 kernels), so `init_kernel`
    sets the attr before the lazy `manager` is first built. The `_WEDGEFIX` counter used for that
    instrumentation is test-only and is not part of the diff above.*
+
+   An **applicable patch** of exactly these three hunks — `git format-patch` form, so it takes
+   `git am` or `git apply -p1` against an `ipython/ipykernel` checkout — is committed alongside this
+   doc at [`ipykernel-shell-wedge-rearm.patch`](./ipykernel-shell-wedge-rearm.patch). It was generated
+   against 7.2.0 and verified to apply cleanly (`git apply --check`); on a newer `main` it may need
+   `git apply -3` / `patch --fuzz` if the surrounding lines have drifted.
 2. **pyzmq — make `ZMQStream` robust to read edges consumed by un-mediated operations on its
    socket.** Document/handle that any `send`/`getsockopt(EVENTS)` on a stream's socket from
    outside the stream can strand a pending recv; consider a guarded re-check on `on_recv`
