@@ -209,8 +209,9 @@ exact diff.) Three arms × **20** real `steel.ipynb` runs, one session:
 This brackets the mechanism end-to-end: §1.5 measured "the reply send drains the read edge", §4
 measures "re-arming after that send closes the window". The re-arm fires after *every* send, so on
 its own one could read it as "drains the socket often enough to catch strands however they form" —
-but **the kernel goes idle (0 % CPU, no further sends) once a request strands** (Rung-0/3): no send
-follows a strand, so the re-arm that prevents *each* wedge is the one after the **strand-adjacent**
+but **the kernel goes idle (0 % CPU, no further sends) once a request strands** (measured: at the
+hang the kernel is idle, and the synchronous client waits for the reply before sending the next
+request, so no send follows a strand): the re-arm that prevents *each* wedge is the one after the **strand-adjacent**
 send, which places strand formation at the reply-send. And that send is **the only** un-mediated
 operation on the shell ROUTER that can drain its read edge — verified by grep of the kernel path:
 there is **no `getsockopt(EVENTS)` on the shell socket at all**; the other `getsockopt`s on it are
