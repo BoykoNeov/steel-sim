@@ -319,6 +319,21 @@ CATALOG: tuple[Entry, ...] = (
         notebook="§F3",
     ),
     Entry(
+        "Ladle trim (front-end)", "demo_carbon_carry_in", "steel-carbon-carry-in.png",
+        "Carbon carry-in — same trim, the ferroalloy carbon grade decides",
+        "A *second* ladle mistake beside the recovery shortfall: the carbon the ferroalloys carry. One "
+        "alloy-lean 4140 tap, one set of charges sized to reach grade (identical assay/recovery either way) — "
+        "but mixed in with cheap high-carbon (charge-grade) ferrochrome/ferromanganese (6–8 % C) the bath "
+        "picks up ~+0.18 %C and lands at ~0.56 %C, **off-grade on its own carbon band** and a harder steel "
+        "(~700 HV vs the on-grade ~625). The refined low-carbon grades carry the same trim without the "
+        "pickup — *this is why low-carbon ferroalloys exist*. The verdict is off-grade fired on the carbon "
+        "band through the same window machinery (no new flag); the hardness rise is the validated back end "
+        "consuming the carry-in carbon — propagation colour, not a second pass/fail line. No engine, no ADR, "
+        "and **no claimable tooth** (mass-balance on cited assays); the ~40 %-of-the-grade's-carbon magnitude "
+        "is an order-of-magnitude coherence note. Carbon recovery taken ~full; deox-state recovery and P/S "
+        "bands stay deferred.",
+    ),
+    Entry(
         "Casting (front-end)", "demo_casting", "steel-casting.png",
         "Casting & solidification — segregation runs front-to-back",
         "The chain closes front-to-back: cast a billet and Scheil microsegregation enriches the "

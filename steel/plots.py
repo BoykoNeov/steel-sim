@@ -3239,3 +3239,76 @@ def ladle_figure(d):
                  fontsize=12.4, fontweight="bold")
     fig.subplots_adjust(left=0.07, right=0.97, top=0.92, bottom=0.07, hspace=0.30, wspace=0.22)
     return fig
+
+
+def carbon_carry_in_figure(d):
+    """The carbon-carry-in artifact: same trim, the ferroalloy carbon grade decides the heat's carbon.
+
+    ``d`` is a :class:`~steel.demo_carbon_carry_in.CarbonCarryInDemo` (precomputed — this layer only draws,
+    ADR 0002). Two panels:
+
+    * **left — same charges, the carbon grade decides.** Bath carbon for the lean tap, the low-carbon trim,
+      and the high-carbon trim, against the cited 4140 carbon window (shaded). The same charges land the
+      low-carbon heat inside the band and drag the high-carbon heat above its ceiling — the ~0.16–0.18 %C
+      carry-in arrow between them is the magnitude (≈40 % of the grade's carbon), the reason low-carbon
+      ferroalloys exist.
+    * **right — the carry-in rides the validated hardness axis.** As-quenched hardness vs carbon (the same
+      Ø15 mm oil quench), with the carbon window shaded: both heats sit on the *same* benchmarked curve, but
+      the high-carbon trim is pushed off the band into a harder steel (~+75 HV). The verdict is off-grade-on-
+      carbon (left); this is the propagation colour saying why the miss matters — not a second pass/fail line.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_bar, ax_prop) = plt.subplots(1, 2, figsize=(13.4, 5.4))
+    warn, good = "#c0392b", PHASE_COLORS["martensite"]
+    band_c = "#d5e8d4"
+    lo, hi = d.c_window
+
+    # --- left: bath carbon vs the cited window (same charges, the carbon grade decides) --------- #
+    x = np.arange(len(d.bar_labels))
+    bar_colors = ["0.7", good, warn]                                   # tap / LC / HC
+    ax_bar.axhspan(lo, hi, color=band_c, zorder=0)
+    ax_bar.annotate(f"4140 carbon window\n{lo:.2f}–{hi:.2f} % (SAE J404)", (0.02, hi),
+                    xycoords=("axes fraction", "data"), va="bottom", fontsize=8.0, color="#5a8a3c")
+    ax_bar.bar(x, d.bar_carbon, width=0.58, color=bar_colors, edgecolor="0.25", zorder=3)
+    for xi, c in zip(x, d.bar_carbon):
+        off = c > hi + 1e-9
+        ax_bar.annotate(f"{c:.2f} %{chr(10) + 'OFF GRADE' if off else ''}", (xi, c),
+                        textcoords="offset points", xytext=(0, 4), ha="center", va="bottom",
+                        fontsize=9, fontweight="bold", color=warn if off else "0.25")
+    # the carry-in magnitude — a vertical double-arrow at the HC bar, labelled with the bar-to-bar delta it
+    # actually spans (bath-diluted, ~0.16) so the arrow's length and its label agree; the ~0.18 %C heat-mass
+    # quantity (carbon_pickup_pct) lives in the prose / README where that basis is the right one.
+    bar_delta = d.hc_C - d.lc_C
+    ax_bar.annotate("", (1.72, d.hc_C), (1.72, d.lc_C),
+                    arrowprops=dict(arrowstyle="<->", color=warn, lw=1.6))
+    ax_bar.annotate(f"+{bar_delta:.2f} %C\ncarry-in\n(HC FeCr/FeMn,\n~{bar_delta / d.tap_C:.0%} of\n"
+                    f"the grade's C)", (1.66, (d.lc_C + d.hc_C) / 2), ha="right", va="center",
+                    fontsize=7.8, color=warn)
+    ax_bar.set_xticks(x)
+    ax_bar.set_xticklabels(d.bar_labels, fontsize=8.6)
+    ax_bar.set_ylabel("bath carbon  (wt %)")
+    ax_bar.set_ylim(0.0, max(float(d.bar_carbon.max()) * 1.22, hi * 1.5))
+    ax_bar.set_title("Same charges — the ferroalloy carbon grade decides", fontsize=10.6)
+    ax_bar.grid(True, axis="y", alpha=0.22)
+
+    # --- right: the validated propagation — hardness vs carbon ---------------------------------- #
+    ax_prop.axvspan(lo, hi, color=band_c, zorder=0)
+    ax_prop.annotate("on-grade\ncarbon", ((lo + hi) / 2, 0.04), xycoords=("data", "axes fraction"),
+                     ha="center", va="bottom", fontsize=8.0, color="#5a8a3c")
+    ax_prop.plot(d.carbon_grid, d.hv_curve, color="0.3", lw=2.4, zorder=2)
+    for label, C, HV, color in [("low-carbon trim\n(on grade)", d.lc_C, d.lc_HV, good),
+                                ("high-carbon trim\n(off grade)", d.hc_C, d.hc_HV, warn)]:
+        ax_prop.plot([C], [HV], "o", color=color, ms=12, mec="0.2", mew=1.2, zorder=5)
+        ax_prop.annotate(f"{label}\n{C:.2f} %C → {HV:.0f} HV", (C, HV), textcoords="offset points",
+                         xytext=(8, -6 if color == warn else 10), ha="left",
+                         va="top" if color == warn else "bottom", fontsize=8.2, color=color, fontweight="bold")
+    ax_prop.set_xlabel("bath carbon  (wt %)")
+    ax_prop.set_ylabel("as-quenched core hardness  (HV)")
+    ax_prop.set_title("The carry-in rides the validated hardness axis off-grade", fontsize=10.6)
+    ax_prop.grid(True, alpha=0.25)
+
+    fig.suptitle("Carbon carry-in — high-carbon ferroalloys drag the trim off the grade's own carbon band",
+                 fontsize=12.2, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.88, bottom=0.12, wspace=0.22)
+    return fig

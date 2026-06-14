@@ -20,7 +20,7 @@ import pytest
 
 from steel import ladle as ld
 from steel.ladle import (
-    FERROALLOYS, GRADE_WINDOWS, HEAT_MASS_KG, OFF_GRADE,
+    FERROALLOYS, LOW_CARBON_FERROALLOYS, GRADE_WINDOWS, HEAT_MASS_KG, OFF_GRADE,
     mix, additions_for_grade, slag_loss, carbon_pickup_pct,
     in_window, off_grade_elements, is_on_grade, from_tap, trim_to_grade,
 )
@@ -117,16 +117,60 @@ def test_phosphorus_sulphur_are_not_in_the_window():
 
 
 # --------------------------------------------------------------------------- #
-# The carbon carry-in deferral — named and quantified, not applied
+# The carbon carry-in — the Slice-1 default (off), and the opt-in consequence
 # --------------------------------------------------------------------------- #
-def test_carbon_carry_in_is_quantified_but_not_applied():
-    # The deferred coupling made concrete: high-carbon ferroalloys WOULD add carbon (a sizeable fraction of
-    # the grade's), but mix() holds carbon on F2's axis (only dilutes it down, never up).
+def test_carbon_carry_in_default_off_holds_carbon_on_f2_axis():
+    # The Slice-1 default: high-carbon ferroalloys WOULD add carbon (a sizeable fraction of the grade's), but
+    # mix() with the default apply_carbon_pickup=False holds carbon on F2's axis (only dilutes it down).
     tap = from_tap("4140").composition
     charges = additions_for_grade(tap, STEELS["4140"])
-    assert carbon_pickup_pct(charges) > 0.10           # ~0.18 %C of carry-in if HC alloys were used
+    assert carbon_pickup_pct(charges) > 0.10           # ~0.18 %C of carry-in with the HC alloys
     trimmed, _ = mix(tap, charges)
-    assert trimmed.C <= tap.C + 1e-12                   # mix does NOT add that carbon (carbon only dilutes)
+    assert trimmed.C <= tap.C + 1e-12                  # default: mix does NOT add carbon (only dilutes)
+    assert trimmed == mix(tap, charges, apply_carbon_pickup=False)[0]   # the flag default is a no-op
+
+
+def test_high_carbon_pickup_drags_carbon_off_the_grade_band():
+    # The consequence on: the carbon the high-carbon ferroalloys carry is added (net of dilution), pushing the
+    # bath above 4140's carbon ceiling — so off-grade fires on CARBON through the existing window machinery.
+    tap = from_tap("4140").composition
+    charges = additions_for_grade(tap, STEELS["4140"])
+    trimmed, _ = mix(tap, charges, apply_carbon_pickup=True)
+    assert trimmed.C > GRADE_WINDOWS["4140"].bands["C"][1]   # above the 0.43 % ceiling
+    assert "C" in off_grade_elements(trimmed, "4140")        # the verdict is off-grade-on-carbon
+
+
+def test_low_carbon_ferroalloys_carry_the_same_trim_on_grade():
+    # The lever: the SAME charges (LC and HC size identically — same assay/recovery), but the refined
+    # low-carbon grades carry ~no carbon, so the heat stays on its carbon band and on grade.
+    tap = from_tap("4140").composition
+    charges = additions_for_grade(tap, STEELS["4140"])
+    lo, hi = GRADE_WINDOWS["4140"].bands["C"]
+    trimmed, _ = mix(tap, charges, apply_carbon_pickup=True, ferroalloys=LOW_CARBON_FERROALLOYS)
+    assert lo <= trimmed.C <= hi                             # carbon stays in band
+    assert is_on_grade(trimmed, "4140")                      # and on grade (alloys landed, carbon held)
+    assert carbon_pickup_pct(charges, ferroalloys=LOW_CARBON_FERROALLOYS) < 0.02   # an OoM less carry-in
+
+
+def test_carbon_carry_in_conserves_mass():
+    # By construction: the carbon the bath gains equals exactly Σ charge × carbon_fraction (recovered ~fully —
+    # carbon does not oxidise off). Reads the new carbon mass against the bath mix() returns.
+    tap = from_tap("4140").composition
+    charges = additions_for_grade(tap, STEELS["4140"])
+    trimmed, bath = mix(tap, charges, apply_carbon_pickup=True)
+    gained = trimmed.C / 100.0 * bath - tap.C / 100.0 * HEAT_MASS_KG
+    expected = sum(charges[e] * FERROALLOYS[e].carbon_fraction for e in charges)
+    assert gained == pytest.approx(expected, rel=1e-9)
+
+
+def test_trim_to_grade_carbon_pickup_raises_off_grade_on_carbon():
+    # End-to-end seam: a high-carbon trim raises off-grade (on carbon); the same trim with low-carbon grades
+    # lands clean — one mistake (the wrong ferroalloy grade), distinct from the recovery shortfall.
+    hc = trim_to_grade(from_tap("4140"), "4140", apply_carbon_pickup=True)
+    assert hc.has_defect(OFF_GRADE)
+    assert off_grade_elements(hc.composition, "4140") == ["C"]
+    lc = trim_to_grade(from_tap("4140"), "4140", apply_carbon_pickup=True, ferroalloys=LOW_CARBON_FERROALLOYS)
+    assert lc.is_clean
 
 
 # --------------------------------------------------------------------------- #

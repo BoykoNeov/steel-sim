@@ -53,12 +53,16 @@ What is CITED vs the named ceiling — the two-tier discipline (as in casting/re
   assays.
 * **The named ceiling.** Equilibrium / steady-state additions, never the *kinetics* of dissolution or
   flotation (the same transport wall F2 names). **Carbon is held on the F2-set axis**: the additions trim
-  only the substitutional alloys, and the only thing that touches carbon here is **dilution** by the added
-  mass (computed exactly). Two real couplings are **named, not built** (Slice 1): (a) **carbon carry-in** —
-  high-carbon ferrochrome/ferromanganese carry ~6–8 % C, so trimming ~1 % Cr with HC FeCr would add ~0.1 %
-  C (a quarter of 4140's carbon — :func:`carbon_pickup_pct` quantifies it; it is *why* low-carbon
-  ferroalloys exist), which couples the alloy trim back into F2's carbon axis; and (b) the
-  **deox-state-dependent recovery** above. **Phosphorus and sulphur are not in the window check** — the
+  only the substitutional alloys, and on the **Slice-1 default** the only thing that touches carbon here is
+  **dilution** by the added mass (computed exactly). (a) **Carbon carry-in is now built as an opt-in
+  consequence** — high-carbon ferrochrome/ferromanganese carry ~6–8 % C, so a full 4140 trim with the
+  high-carbon grades would add **~0.16 %C** (~40 % of 4140's carbon — :func:`carbon_pickup_pct` quantifies
+  it; it is *why* low-carbon ferroalloys exist). ``mix(apply_carbon_pickup=True)`` applies it and
+  :data:`LOW_CARBON_FERROALLOYS` is the lever; the carbon then crosses the grade's C band and the existing
+  window machinery raises **off-grade on carbon** (the demonstrated propagation: the over-carbon heat is a
+  harder steel — see :mod:`steel.demo_carbon_carry_in`). The Slice-1 clean axis is still the **default** (the
+  trim only dilutes carbon). (b) The **deox-state-dependent recovery** above stays named, not built.
+  **Phosphorus and sulphur are not in the window check** — the
   :class:`~steel.sweep.Steel` vector carries no P/S, so the residual-element bands (and desulf/dephos, which
   is also F2 Slice 2) are deferred until that state exists.
 
@@ -122,6 +126,21 @@ FERROALLOYS: dict[str, Ferroalloy] = {
     "Ni": Ferroalloy("nickel",                     "Ni", 0.99, 0.97, carbon_fraction=0.0),
 }
 
+# The **low-carbon** ferroalloy set — *the same deliverers* (identical assay and recovery, so they size the
+# trim identically), but **refined to low carbon**: low-carbon ferrochrome ≈ 0.5 % C and low-carbon /
+# electrolytic ferromanganese ≈ 0.5 % C, versus the high-carbon (charge-chrome) grades' 6–8 % C above. They
+# cost more — affining the carbon out of the alloy is the extra step — which is *why a heat that can tolerate
+# the carry-in uses the cheap high-carbon grades and one that cannot must pay for these*. This set is the
+# **lever** :func:`carbon_pickup_pct` and ``mix(apply_carbon_pickup=True)`` turn: with high-carbon alloys the
+# trim drags carbon up off-grade; with these it does not. (FeSi / FeMo / Ni carry ~no carbon either way.)
+LOW_CARBON_FERROALLOYS: dict[str, Ferroalloy] = {
+    "Mn": replace(FERROALLOYS["Mn"], name="low-carbon ferromanganese", carbon_fraction=0.005),
+    "Si": FERROALLOYS["Si"],
+    "Cr": replace(FERROALLOYS["Cr"], name="low-carbon ferrochrome",    carbon_fraction=0.005),
+    "Mo": FERROALLOYS["Mo"],
+    "Ni": FERROALLOYS["Ni"],
+}
+
 
 @dataclass(frozen=True)
 class GradeWindow:
@@ -154,28 +173,41 @@ GRADE_WINDOWS: dict[str, GradeWindow] = {
 def mix(
     base: Steel, charges: dict[str, float], *, heat_mass: float = HEAT_MASS_KG,
     recovery: dict[str, float] | None = None,
+    apply_carbon_pickup: bool = False, ferroalloys: dict[str, Ferroalloy] | None = None,
 ) -> tuple[Steel, float]:
     """Mix ``charges`` (kg of each ferroalloy by element) into ``base`` — the **exact** forward mass balance.
 
     Returns ``(new composition, new bath mass kg)``. For each addition the recovered element
     (``charge × assay × η``) enters the steel and the bath mass grows by the retained mass (the recovered
-    element plus the iron carrier; only the *un*-recovered element is lost to slag). Every element's new wt %
-    is ``100 × element mass / bath mass`` — so the added mass **dilutes** the untrimmed elements (carbon
-    drops a touch), which is the "mixing/dilution exact" leg, captured rather than ignored. ``recovery``
-    overrides the ferroalloys' nominal ``η`` per element (this is how a heat that *under*-recovers is mixed:
-    size the charges for the assumed ``η``, mix them at the actual ``η``).
+    element plus the iron carrier *and the carbon it carries*; only the *un*-recovered element is lost to
+    slag). Every element's new wt % is ``100 × element mass / bath mass`` — so the added mass **dilutes** the
+    untrimmed elements (carbon drops a touch), which is the "mixing/dilution exact" leg, captured rather than
+    ignored. ``recovery`` overrides the ferroalloys' nominal ``η`` per element (this is how a heat that
+    *under*-recovers is mixed: size the charges for the assumed ``η``, mix them at the actual ``η``).
+
+    ``apply_carbon_pickup`` turns on the **carbon carry-in** consequence: with it set, the carbon the
+    ferroalloys carry (``Σ charge × carbon_fraction``, recovered ~fully — carbon does not oxidize off like the
+    alloying element does) is added to the bath's carbon, so a high-carbon trim drags carbon **up** (net of
+    dilution). It defaults **off** — the Slice-1 clean axis where carbon is held on F2's blow and the trim
+    only dilutes it. ``ferroalloys`` selects the set whose ``carbon_fraction`` (and assay/recovery) is read —
+    :data:`FERROALLOYS` (high-carbon) by default, :data:`LOW_CARBON_FERROALLOYS` for the refined grades that
+    carry the trim without blowing the carbon. The carbon mass is *already* in ``bath`` (it rode in as part of
+    the non-recovered alloy mass); ``apply_carbon_pickup`` only re-attributes it from inert carrier to carbon.
     """
-    rec = {**{e: fa.recovery for e, fa in FERROALLOYS.items()}, **(recovery or {})}
+    fas = ferroalloys or FERROALLOYS
+    rec = {**{e: fa.recovery for e, fa in fas.items()}, **(recovery or {})}
     bath = heat_mass
     for e, a in charges.items():
-        fa = FERROALLOYS[e]
+        fa = fas[e]
         bath += a * (1.0 - fa.element_fraction * (1.0 - rec[e]))   # retained = recovered element + Fe carrier
 
     def new_pct(el: str, pct: float) -> float:
         mass = heat_mass * pct / 100.0
         if el in charges:
-            fa = FERROALLOYS[el]
+            fa = fas[el]
             mass += charges[el] * fa.element_fraction * rec[el]
+        if el == "C" and apply_carbon_pickup:
+            mass += sum(a * fas[e].carbon_fraction for e, a in charges.items())
         return 100.0 * mass / bath
 
     trimmed = replace(
@@ -230,15 +262,21 @@ def slag_loss(charges: dict[str, float], *, recovery: dict[str, float] | None = 
     return {e: charges[e] * FERROALLOYS[e].element_fraction * (1.0 - rec[e]) for e in charges}
 
 
-def carbon_pickup_pct(charges: dict[str, float], *, heat_mass: float = HEAT_MASS_KG) -> float:
-    """The carbon (wt %) that high-carbon ferroalloys in ``charges`` *would* add — the **named** deferral.
+def carbon_pickup_pct(
+    charges: dict[str, float], *, heat_mass: float = HEAT_MASS_KG,
+    ferroalloys: dict[str, Ferroalloy] | None = None,
+) -> float:
+    """The carbon (wt %) the ferroalloys in ``charges`` carry into the heat — ``Σ charge × carbon_fraction``.
 
-    Quantifies the carbon carry-in the clean Slice-1 axis sets aside: ``Σ charge × carbon_fraction`` over the
-    heat mass. For a 4140 Cr trim with high-carbon ferrochrome this is ~0.1 %C — a quarter of the grade's
-    carbon, and exactly why low-carbon ferroalloys exist. :func:`mix` does **not** apply it (carbon is held
-    on F2's axis); this function makes the deferred coupling concrete instead of hand-waved.
+    Over the heat mass. With the default high-carbon set (:data:`FERROALLOYS`) a full 4140 trim carries
+    **~0.16 %C** — roughly 40 % of the grade's carbon, and exactly why low-carbon ferroalloys exist; with
+    :data:`LOW_CARBON_FERROALLOYS` it is an order of magnitude less. This is the **magnitude** behind the
+    carry-in consequence — an order-of-magnitude coherence number from representative assays, not a 2-sig-fig
+    benchmark. :func:`mix` applies it only when ``apply_carbon_pickup=True`` (the Slice-1 default holds carbon
+    on F2's axis); this function quantifies it either way.
     """
-    return sum(a * FERROALLOYS[e].carbon_fraction for e, a in charges.items()) / heat_mass * 100.0
+    fas = ferroalloys or FERROALLOYS
+    return sum(a * fas[e].carbon_fraction for e, a in charges.items()) / heat_mass * 100.0
 
 
 # --------------------------------------------------------------------------- #
@@ -291,6 +329,7 @@ def from_tap(
 def trim_to_grade(
     heat: Heat, grade: str, *, heat_mass: float = HEAT_MASS_KG,
     recovery: dict[str, float] | None = None, actual_recovery: dict[str, float] | None = None,
+    apply_carbon_pickup: bool = False, ferroalloys: dict[str, Ferroalloy] | None = None,
 ) -> Heat:
     """Trim ``heat`` to ``grade`` by ferroalloy additions — sized for ``recovery``, delivered at ``actual``.
 
@@ -306,10 +345,16 @@ def trim_to_grade(
     :func:`~steel.heat_state.heat_treat` seam (the validated propagation), the same way F2's over-blow carbon
     does. So an under-trimmed Cr/Mo heat carries **two** flags by the time it is treated: off-grade (F3) and
     soft-core (back end) — the front-end early warning and the validated consequence of one mistake.
+
+    ``apply_carbon_pickup`` / ``ferroalloys`` route the **carbon carry-in** consequence (:func:`mix`): with
+    high-carbon ferroalloys (default set) and the pickup on, the trim drags carbon up off the grade's C band —
+    a *different* ladle mistake than the recovery shortfall, fixed by paying for :data:`LOW_CARBON_FERROALLOYS`.
+    The off-grade flag then fires on **carbon** through the same window machinery; see :mod:`steel.demo_carbon_carry_in`.
     """
     aim = STEELS[grade]
     charges = additions_for_grade(heat.composition, aim, heat_mass=heat_mass, recovery=recovery)
-    trimmed, _ = mix(heat.composition, charges, heat_mass=heat_mass, recovery=actual_recovery or recovery)
+    trimmed, _ = mix(heat.composition, charges, heat_mass=heat_mass, recovery=actual_recovery or recovery,
+                     apply_carbon_pickup=apply_carbon_pickup, ferroalloys=ferroalloys)
     trimmed = replace(trimmed, name=grade)
 
     off = off_grade_elements(trimmed, grade)
