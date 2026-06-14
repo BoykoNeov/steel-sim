@@ -148,7 +148,14 @@ pinning the interpreter won't help).
 > caught and all 6 recovered** — each showing a lone `getsockopt` ×3 fails (POLLIN persists, `on_recv`
 > unchanged) then `reader._run()` fires `on_recv`. Candidate / upstream-exhibit only (reaches into
 > asyncio/pyzmq private internals) = a periodic unconditional `ZMQStream._update_handler` reschedule;
-> **retry-on-wedge stays the mitigation.** The paragraph below is kept
+> **retry-on-wedge stays the mitigation.** **FIX VALIDATED (2026-06-14):** a sharper **preventive**
+> arm — re-arm the read *immediately after the out-of-band reply send* (`SubshellManager._send_on_shell_channel`),
+> i.e. `_update_handler`'s own reschedule moved to the post-send site — ran a 3-arm experiment
+> (control / **sham** = same overhead, no re-arm / **fix**) to **fix 0/20 vs control & sham 5/20 each**
+> (`P≈0.003`), `mismatch=0` over 1082 sends. sham≈control isolates the re-arm as the cure and **confirms
+> the reply-send trigger** (link B), sharper than the reactive `drain` (which heals any strand). It is
+> the **upstream** proposal (couples to ipykernel internals; `flush(zmq.POLLIN)` is the public-API form),
+> not a steel-sim graft — retry stays shipped. See the upstream-issue draft §4. The paragraph below is kept
 > as the original symptom/triage account; treat its *mechanism* as superseded (see
 > `docs/memory/notebook-kernel-wedge-rootcause.md`). **The retry mitigation in §5 is unaffected
 > and remains correct** — it recovers any intermittent lost-reply regardless of the layer.

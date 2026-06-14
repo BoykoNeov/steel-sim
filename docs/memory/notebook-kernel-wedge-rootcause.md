@@ -180,6 +180,44 @@ metadata:
 >   shippable** (reaches into asyncio `_selector` internals and tornado/pyzmq private `Handle` objects,
 >   version-coupled); cleanly framed it is a **periodic, unconditional `ZMQStream._update_handler`
 >   reschedule**. The **retry-on-wedge mitigation stays** the shipped fix. Rung ladder 0→4 complete.
+> - **FIX VALIDATED — re-arming the shell read after the out-of-band reply send eliminates the wedge,
+>   confirming the send-window trigger (link B), 2026-06-14.** A three-arm confirming experiment (real
+>   `steel.ipynb`, 20 fresh-kernel runs/arm, one session) tested the upstream-issue fix #1. Every reply
+>   (main shell + all subshells) funnels through the single raw send `SubshellManager._send_on_shell_channel`
+>   → `self._shell_socket.send_multipart` on the **same ROUTER** the shell `ZMQStream` reads — the dual-use
+>   socket. A PYTHONPATH-`sitecustomize` monkeypatched that send to, *after* it, schedule on the
+>   shell-channel loop the **exact reschedule `ZMQStream._update_handler` already runs internally** —
+>   `add_callback(lambda: shell_stream._handle_events(shell_stream.socket, 0))`. Three arms: **control**
+>   (no patch) **5/20** wedged; **sham** (same overhead + lazy-kernel lookup + `add_callback(lambda: None)`,
+>   **no re-arm** — a send-gated noop, *not* a periodic timer, so it cannot incidentally "wake `select()`"
+>   recover) **5/20** ⇒ **≈ control: the patch-site timing perturbation is NOT the active ingredient**;
+>   **fix** (the re-arm) **0/20**. Under the pooled ~25% null (control+sham 10/40) P(0/20)≈0.75²⁰≈**0.003**;
+>   the bug was alive all session (both controls 5/20) and the fix arm ran last, same machine. Engagement
+>   instrumented: **mismatch=0 across 1082 sends** (sham 528 + fix 554) ⇒ the dual-use invariant
+>   `shell_stream.socket is self._shell_socket` held **every** send, no errors, `fix` `other=[]` (no
+>   content-error/hang masking). **Reading (advisor-pre-registered confirm branch):** re-arming after the
+>   reply send drives the wedge to zero ⇒ the reply-send **is** the operative in-kernel trigger. The re-arm
+>   fires after *every* send, but **the kernel goes idle after a strand (0% CPU, no further sends, Rung-0/3)**,
+>   so the re-arm that prevents *each* wedge is the one after the **strand-adjacent** send — placing formation
+>   at the reply-send, not "frequent draining" (the one gap sham can't cover, closed by idle-after-strand).
+>   And that send is the **only** un-mediated shell-ROUTER edge-consumer (grep-**verified**: no
+>   `getsockopt(EVENTS)` on the shell socket anywhere in the kernel path; the other `getsockopt`s on it are
+>   `LAST_ENDPOINT`/one-time-setup + `ROUTING_ID`/debugger-only, neither touching the event signaler;
+>   `kernelbase.py:593`'s send is on the inproc PAIR, not the ROUTER). This promotes Rung-3/4's **(B)
+>   NOT-confirmed** to **confirmed**: §1.5's "send drains the read
+>   edge" + "re-arm after the send closes it" now bracket the mechanism end-to-end. Sham≈control vs fix=0
+>   isolates the re-arm (not the timing) as the cure — a sharper test than the Rung-4 watchdog (which polls
+>   and recovers *any* strand regardless of cause). **Upstream patch form** (in `docs/handoffs/notebook-kernel-wedge-upstream-issue.md`):
+>   thread `shell_stream` through `SubshellManager`'s constructor; re-arm after the send. The validated
+>   `_handle_events` call is literally `_update_handler`'s own reschedule moved to the post-send site;
+>   `shell_stream.flush(zmq.POLLIN)` (public, already used in `kernelbase.py`) is the cleaner equivalent for
+>   the PR. (What ran 0/20 is the re-arm **effect** — the prototype resolved the stream via
+>   `Kernel.instance().shell_stream` at send time; the constructor-threaded diff is the equivalent clean
+>   form, reasoned not separately run: lazy `manager` is built in `kernelbase.start()`, after `init_kernel`
+>   sets the attr.) **Scope unchanged: retry-on-wedge STAYS the shipped mitigation** — the local re-arm couples to
+>   ipykernel internals (`SubshellManager`/`ZMQStream` privates), so it is the *upstream* proposal, not a
+>   steel-sim graft, unless the user chooses to trade the retry's version-robustness for it. Scratch
+>   (sitecustomize + driver) deleted, not committed.
 > The retry mitigation remains correct. The original paragraph below is the *symptom* record;
 > read its mechanism attribution as superseded — and note the Rung-2 refinement: the failure is on
 > the kernel's request-**intake** path, not its reply-send path.
