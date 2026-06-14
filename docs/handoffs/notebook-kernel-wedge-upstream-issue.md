@@ -186,10 +186,11 @@ formed). This section tests the **preventive** fix and thereby the *cause*: re-a
 so `0/N` here means the reply-send *is* the trigger. A PYTHONPATH-`sitecustomize` monkeypatched the
 single raw send (`SubshellManager._send_on_shell_channel` — every reply, main + subshells, funnels
 through it) to schedule, after the send, the **exact reschedule `ZMQStream._update_handler` already
-runs internally**: `add_callback(lambda: shell_stream._handle_events(shell_stream.socket, 0))`. (The
-prototype resolved the stream via `Kernel.instance().shell_stream` at send time; fix #1 below gives
-the equivalent constructor-threaded form — what is validated here is the re-arm **effect**, not that
-exact diff.) Three arms × **20** real `steel.ipynb` runs, one session:
+runs internally**: `add_callback(lambda: shell_stream._handle_events(shell_stream.socket, 0))`. (This
+prototype resolved the stream via `Kernel.instance().shell_stream` at send time, so it validates the
+re-arm **effect**; the equivalent constructor-threaded **diff** of fix #1 below is **separately
+validated** as a real edit — see *Confirmed with the real diff* at the end of this section.) Three
+arms × **20** real `steel.ipynb` runs, one session:
 
 | Arm | Action after the reply `send_multipart` | Wedged |
 | --- | --- | --- |
@@ -217,6 +218,24 @@ operation on the shell ROUTER that can drain its read edge — verified by grep 
 there is **no `getsockopt(EVENTS)` on the shell socket at all**; the other `getsockopt`s on it are
 `LAST_ENDPOINT` (one-time setup) and `ROUTING_ID` (debugger-only), neither of which touches the
 event signaler. So the **reply-send is the operative in-kernel trigger**.
+
+**Confirmed with the real diff (not just the effect).** The arms above used a
+`Kernel.instance().shell_stream` monkeypatch, so they validate the re-arm *effect*. To validate the
+*exact diff* proposed below, the constructor-threaded form was applied as a **real edit** to the
+installed ipykernel (7.2.0) — `shell_stream` threaded `kernelapp.init_kernel` → `ShellChannelThread`
+→ `SubshellManager.__init__` → re-arm in `_send_on_shell_channel` — and the same 20-run batch re-run
+against a fresh control on the same machine/session:
+
+| Arm | Form | Wedged |
+| --- | --- | --- |
+| control | pristine ipykernel 7.2.0 | **6 / 20** (30 %) |
+| fix | constructor-threaded diff (real edit) | **0 / 20** |
+
+`P(0/20 | p=0.30) ≈ 0.70²⁰ ≈ 8e-4`. The threaded reference was **live on every send**: across the
+19 kernels that dumped instrumentation, the re-arm fired **551** times with **0** None/mismatch (the
+`stream is not None and stream.socket is self._shell_socket` guard) — so the 0/20 is the patch
+working, not a silently no-opped reference on a low-wedge day. The system kernel was restored to
+pristine (SHA256-verified) after the test.
 
 ---
 
@@ -319,15 +338,19 @@ timeout-length stall on every run. Not a fix.
 
    plus the two wiring lines (`ShellChannelThread.__init__` gains a `shell_stream` attr passed into
    `SubshellManager(...)`; `kernelapp.init_kernel` sets `self.shell_channel_thread.shell_stream =
-   shell_stream` after building it). The validated `_handle_events(socket, 0)` call **is**
-   `_update_handler`'s own reschedule moved to the post-send site; **`shell_stream.flush(zmq.POLLIN)`**
-   (a *public* ZMQStream method ipykernel already calls in `kernelbase.py`) is the equivalent
-   public-API form and is the cleaner shape for the PR.
-   *Validated vs proposed: the re-arm **effect** is what ran 0/20 (§4) — the prototype resolved the
-   stream via `Kernel.instance().shell_stream` inside the patched send. The constructor-threading
-   above is the clean upstream form, equivalent but not the literal code that ran: the lazy `manager`
-   is first built in `kernelbase.start()`, which runs after `init_kernel` sets the attr, so the
-   ordering holds — reasoned, not separately run.*
+   shell_stream` after building it). The validated re-arm is `_handle_events(socket, 0)` —
+   `_update_handler`'s own reschedule moved to the post-send site (what ran 0/20 in §4, both as the
+   effect and as the real diff). **`shell_stream.flush(zmq.POLLIN)`** (a *public* ZMQStream method
+   ipykernel already calls in `kernelbase.py`) is a plausible public-API alternative maintainers may
+   prefer, but it was **not** tested here — `flush` is a synchronous drain loop while
+   `_handle_events(socket, 0)` is the edge-trap reschedule, related but not the same path. Treat it
+   as an untested alternative, not the validated form.
+   *Validated: both the re-arm **effect** (the `Kernel.instance().shell_stream` prototype) and this
+   exact **constructor-threaded diff** (applied as a real edit) ran 0/20 in §4. The construction-order
+   reasoning is now empirically confirmed — with the diff applied, the threaded `self._shell_stream`
+   reference was live on every send (551 re-arms, 0 None/mismatch across 19 kernels), so `init_kernel`
+   sets the attr before the lazy `manager` is first built. The `_WEDGEFIX` counter used for that
+   instrumentation is test-only and is not part of the diff above.*
 2. **pyzmq — make `ZMQStream` robust to read edges consumed by un-mediated operations on its
    socket.** Document/handle that any `send`/`getsockopt(EVENTS)` on a stream's socket from
    outside the stream can strand a pending recv; consider a guarded re-check on `on_recv`

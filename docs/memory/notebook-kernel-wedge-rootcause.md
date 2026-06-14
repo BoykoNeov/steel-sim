@@ -209,12 +209,18 @@ metadata:
 >   isolates the re-arm (not the timing) as the cure — a sharper test than the Rung-4 watchdog (which polls
 >   and recovers *any* strand regardless of cause). **Upstream patch form** (in `docs/handoffs/notebook-kernel-wedge-upstream-issue.md`):
 >   thread `shell_stream` through `SubshellManager`'s constructor; re-arm after the send. The validated
->   `_handle_events` call is literally `_update_handler`'s own reschedule moved to the post-send site;
->   `shell_stream.flush(zmq.POLLIN)` (public, already used in `kernelbase.py`) is the cleaner equivalent for
->   the PR. (What ran 0/20 is the re-arm **effect** — the prototype resolved the stream via
->   `Kernel.instance().shell_stream` at send time; the constructor-threaded diff is the equivalent clean
->   form, reasoned not separately run: lazy `manager` is built in `kernelbase.start()`, after `init_kernel`
->   sets the attr.) **Scope unchanged: retry-on-wedge STAYS the shipped mitigation** — the local re-arm couples to
+>   re-arm is `_handle_events(socket, 0)` — literally `_update_handler`'s own reschedule moved to the
+>   post-send site; `shell_stream.flush(zmq.POLLIN)` (public, already used in `kernelbase.py`) is a
+>   plausible public-API alternative but was **not** tested (flush is a synchronous drain loop, not the
+>   edge-trap reschedule) — treat it as untested, not the validated form. **The constructor-threaded diff
+>   is now separately validated too (2026-06-14):** applied as a **real edit** to ipykernel 7.2.0
+>   (`kernelapp.init_kernel`→`ShellChannelThread.shell_stream`→`SubshellManager.__init__`→re-arm) and
+>   re-run against a fresh control — **control 6/20 → fix 0/20** (same session, P(0/20|0.30)≈**8e-4**),
+>   with the threaded `self._shell_stream` reference **live on every send**: 551 re-arms, **0
+>   None/mismatch** across 19 kernels, empirically confirming the construction-order reasoning
+>   (`init_kernel` sets the attr before the lazy `manager` is first built). System kernel restored to
+>   pristine (SHA256-verified); the `_WEDGEFIX` counter was test-only. **This closes the effect-vs-diff
+>   caveat — both the re-arm effect and the exact diff ran 0/20.** **Scope unchanged: retry-on-wedge STAYS the shipped mitigation** — the local re-arm couples to
 >   ipykernel internals (`SubshellManager`/`ZMQStream` privates), so it is the *upstream* proposal, not a
 >   steel-sim graft, unless the user chooses to trade the retry's version-robustness for it. Scratch
 >   (sitecustomize + driver) deleted, not committed.
