@@ -89,9 +89,15 @@ pinning the interpreter won't help).
 > drop; (d) the kernel is **confirmed idle (0 % CPU)**; (e) **no connection flap** — a zmq socket
 > monitor armed on the client shell socket saw *zero* transport events across all three 45 s
 > silences (DISCONNECTED/CONNECT_RETRIED fire only at *post-wedge teardown*, identical to a clean
-> run), so the connection stays nominally healthy with no reset to blame. So the loss is *between the idle kernel's
-> send and the client recv queue* — at/below the kernel send path or the transport — **not** the
-> client-side selector-shim "dropped notification" described below. The paragraph below is kept
+> run), so the connection stays nominally healthy with no reset to blame; (f) **bare transport is
+> exonerated** — a no-Jupyter raw-pyzmq DEALER/ROUTER reproducer matching the real loop *asymmetry*
+> (ipykernel forces a **Selector** sender via `_init_asyncio_patch`; the **Proactor** client runs the
+> same `add_reader` tornado shim), over loopback TCP, ran **240 runs / 9 600 cells** across three
+> fidelity tiers — up to a figure-sized **iopub firehose** (~0.5–1 MB/cell) on the one shared libzmq
+> io_thread fired right before each shell reply — with **zero** wedges (vs ~33 %/run real). So the
+> loss is **in the kernel/jupyter *application* send path** (ipykernel's ZMQStream/Session), above
+> libzmq transport (Rung-1-exonerated) and above the client recv queue — **not** the client-side
+> selector-shim "dropped notification" described below. The paragraph below is kept
 > as the original symptom/triage account; treat its *mechanism* as superseded (see
 > `docs/memory/notebook-kernel-wedge-rootcause.md`). **The retry mitigation in §5 is unaffected
 > and remains correct** — it recovers any intermittent lost-reply regardless of the layer.

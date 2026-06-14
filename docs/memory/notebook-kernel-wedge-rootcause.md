@@ -30,6 +30,26 @@ metadata:
 >   **not** discriminate a kernel-send-stall from a transport-buffer loss (a monitor reports
 >   connection *state*, not message *delivery* — there is no "message dropped" event). Both remain
 >   open for a Rung-1 raw-pyzmq reproducer.
+> - **Bare transport exonerated (Rung-1 standalone-pyzmq reproducer, 2026-06-14).** A no-Jupyter
+>   DEALER/ROUTER rig reproducing the real loop *asymmetry* — verified from source: **ipykernel's
+>   forced Selector sender** (`_init_asyncio_patch` overrides the Proactor policy on Windows) ×
+>   **Proactor client running the same `add_reader` tornado shim** (the documented `zmq/_future.py`
+>   warning, reproduced) — over loopback TCP with strict request/reply (which makes the sender
+>   quiescent right after each send, the "kernel goes idle" trigger, for free). It ran **240 runs /
+>   9 600 cells across three escalating-fidelity variants** (minimal; + GC/thread churn; + a
+>   figure-sized **iopub firehose** of ~0.5–1 MB/cell fired on the **one shared libzmq io_thread**
+>   right before each shell reply, with a concurrent client drain) and saw **zero wedges** — where
+>   the real stack wedges ~33 %/run (~75 expected). So bare libzmq transport, the asyncio/Proactor
+>   readiness layer, **and** shared-io_thread contention are all exonerated: the lost reply does
+>   **not** reproduce below the Jupyter/kernel *application* layer. Combined with Rung-0 (connection
+>   healthy) and the earlier POLLIN-never, this narrows the locus **by elimination** to the
+>   application send/receive machinery (ipykernel's ZMQStream/Session send path; jupyter_client) —
+>   not the wire. **Advisor crux** (load-bearing, twice): the sender must *not* be reliable-by-
+>   construction (a warm sync loop hides the suspected idle-after-send stall — the strict cadence
+>   supplies the idle window instead); and POLLIN-never is *consistent with* (not against) a stalled
+>   **shared io_thread**, which is why the iopub firehose was the decisive variant. Pinning the
+>   residual locus needs a **kernel-side Rung-2** (instrument ipykernel's send), deferred pending an
+>   explicit go-ahead.
 > The retry mitigation remains correct. The original paragraph below is the *symptom* record;
 > read its mechanism attribution as superseded.
 
