@@ -2563,6 +2563,129 @@ def hot_tear_figure(d):
     return fig
 
 
+def peritectic_figure(d):
+    """The peritectic artifact: carbon decides, non-monotonically — the ~0.1 %C continuous-casting window.
+
+    ``d`` is a :class:`~steel.demo_peritectic.PeritecticDemo` (precomputed arrays — this layer only draws,
+    ADR 0002). Four panels:
+
+    * **top-left — Wolf's ferrite potential vs carbon (the verdict, the centerpiece).** ``FP = 2.5(0.5 − Cp)``
+      falling with carbon; the shaded carbon window is the crack-susceptible depression band
+      (``0.8 < FP < 1.05``), bounded above by ferritic "sticker" grades and below by austenitic. The three
+      hero heats sit on the curve — the lean and rich ones outside the band, the peritectic one inside.
+    * **top-right — the hero verdict bars.** The three heats' FP against the band: the 0.11 %C heat falls in
+      it (cracks), the leaner and richer heats sit outside (sound) — non-monotonic, "more carbon is safer".
+    * **bottom-left — the Fe–C lever-rule mechanism.** The δ-ferrite at the front and the δ the rapid
+      peritectic reaction consumes, vs carbon, with the cited invariant carbons (0.09 / 0.17 / 0.53) marked.
+      The contraction source is concentrated only where the peritectic reaction runs; honestly, the consumed-δ
+      peaks at the band EDGE (Cγ = 0.17), not the empirical worst (the named ceiling).
+    * **bottom-right — the alloying lever.** Same 0.20 %C, two heats: ferrite stabilizers (Si + Cr) pull the
+      carbon equivalent Cp from outside the band into it — a grade safe on carbon alone turns peritectic.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ((ax_fp, ax_bar), (ax_mech, ax_alloy)) = plt.subplots(2, 2, figsize=(13.6, 9.6))
+    warn, good, blue, spec = "#c0392b", "#1f6f3c", "#2471a3", "#8e44ad"
+    lo, hi = d.c_band_low, d.c_band_high
+
+    def hero_color(crack):
+        return warn if crack else good
+
+    # --- top-left: Wolf FP vs carbon (the verdict) ---------------------------- #
+    ax_fp.axvspan(lo, hi, color=warn, alpha=0.10, label=f"crack band (FP {d.fp_low:.2f}–{d.fp_high:.2f})")
+    ax_fp.plot(d.c_grid, d.fp_curve, color=blue, lw=2.8, label="ferrite potential FP = 2.5(0.5 − Cp)")
+    ax_fp.axhline(d.fp_high, color="0.45", ls="--", lw=1.3)
+    ax_fp.axhline(d.fp_low, color="0.45", ls="--", lw=1.3)
+    ax_fp.axhline(d.fp_max, color=warn, ls=":", lw=1.3)
+    ax_fp.annotate("ferritic 'sticker'", (0.005, d.fp_high), textcoords="offset points", xytext=(2, 3),
+                   fontsize=7.8, color="0.4")
+    ax_fp.annotate("austenitic", (0.005, d.fp_low), textcoords="offset points", xytext=(2, -10),
+                   fontsize=7.8, color="0.4")
+    ax_fp.annotate(f"peritectic max\nFP = {d.fp_max:.1f}", (hi, d.fp_max), textcoords="offset points",
+                   xytext=(6, 2), fontsize=7.8, color=warn)
+    for label, C, _Cp, fp, crack, _regime, _flag in d.heroes:
+        ax_fp.plot([C], [fp], "o", ms=11, color=hero_color(crack), mec="0.2", mew=1.2, zorder=5)
+        ax_fp.annotate(label.replace("\n", " "), (C, fp), textcoords="offset points", xytext=(8, 6),
+                       fontsize=7.6, color=hero_color(crack))
+    ax_fp.set_xlabel("carbon equivalent  $C_p$  (wt %)")
+    ax_fp.set_ylabel("ferrite potential  FP")
+    ax_fp.set_xlim(0.0, 0.50)
+    ax_fp.set_ylim(-0.1, 1.4)
+    ax_fp.set_title("Wolf's ferrite potential — the crack band is a carbon\nWINDOW, not 'more carbon is worse'",
+                    fontsize=10.2)
+    ax_fp.legend(fontsize=8.0, loc="upper right")
+    ax_fp.grid(True, alpha=0.25)
+
+    # --- top-right: the hero verdict bars ------------------------------------- #
+    x = np.arange(len(d.heroes))
+    fps = np.array([h[3] for h in d.heroes])
+    cracks = [h[4] for h in d.heroes]
+    ax_bar.axhspan(d.fp_low, d.fp_high, color=warn, alpha=0.10)
+    ax_bar.bar(x, fps, width=0.62, color=[hero_color(c) for c in cracks], edgecolor="0.25", zorder=3)
+    ax_bar.axhline(d.fp_high, color="0.4", ls="--", lw=1.4)
+    ax_bar.axhline(d.fp_low, color="0.4", ls="--", lw=1.4)
+    ax_bar.annotate(f"crack band\nFP {d.fp_low:.2f}–{d.fp_high:.2f}", (0.98, d.fp_high),
+                    xycoords=("axes fraction", "data"), ha="right", va="bottom", fontsize=8.2, color=warn)
+    for xi, (label, _C, _Cp, fp, crack, _regime, _flag) in zip(x, d.heroes):
+        ax_bar.annotate(f"{fp:.2f}\n{'CRACK' if crack else 'sound'}", (xi, fp), textcoords="offset points",
+                        xytext=(0, 4), ha="center", va="bottom", fontsize=9, fontweight="bold",
+                        color=hero_color(crack))
+    ax_bar.set_xticks(x)
+    ax_bar.set_xticklabels([h[0] for h in d.heroes], fontsize=8.4)
+    ax_bar.set_ylabel("ferrite potential  FP")
+    ax_bar.set_ylim(0.0, 1.4)
+    ax_bar.set_title("Hero verdict — carbon decides, non-monotonically\n(only the middle heat is in the band)",
+                     fontsize=10.2)
+    ax_bar.grid(True, axis="y", alpha=0.25)
+
+    # --- bottom-left: the Fe–C lever-rule mechanism --------------------------- #
+    ax_mech.axvspan(lo, hi, color=warn, alpha=0.08)
+    ax_mech.plot(d.c_grid, d.delta_above_curve, color="0.55", lw=2.0, ls="--",
+                 label="δ at the front (just above 1495 °C)")
+    ax_mech.plot(d.c_grid, d.delta_consumed_curve, color=blue, lw=2.8,
+                 label="δ consumed by the peritectic reaction")
+    for C, name in ((d.c_delta, "δ 0.09"), (d.c_gamma, "γ 0.17"), (d.c_liquid, "L 0.53")):
+        ax_mech.axvline(C, color="0.7", ls=":", lw=1.1)
+        ax_mech.annotate(name, (C, 1.0), textcoords="offset points", xytext=(2, -2), fontsize=7.4, color="0.45")
+    peak = float(d.delta_consumed_curve.max())
+    ax_mech.annotate("contraction source peaks\nat the band EDGE (Cγ), not\nthe empirical worst (ceiling)",
+                     (d.c_gamma, peak), textcoords="offset points", xytext=(10, -34), fontsize=7.6, color=blue)
+    ax_mech.set_xlabel("carbon  (wt %)")
+    ax_mech.set_ylabel("mass fraction")
+    ax_mech.set_xlim(0.0, 0.60)
+    ax_mech.set_ylim(0.0, 1.08)
+    ax_mech.set_title("Mechanism — the Fe–C peritectic lever rule\n(by construction, the 'why' behind the band)",
+                      fontsize=10.2)
+    ax_mech.legend(fontsize=8.0, loc="upper right")
+    ax_mech.grid(True, alpha=0.25)
+
+    # --- bottom-right: the alloying lever ------------------------------------- #
+    xa = np.arange(len(d.alloy_pair))
+    cps = np.array([h[2] for h in d.alloy_pair])
+    a_cracks = [h[4] for h in d.alloy_pair]
+    ax_alloy.axhspan(lo, hi, color=warn, alpha=0.10, label=f"crack band ($C_p$ {lo:.2f}–{hi:.2f})")
+    ax_alloy.bar(xa, cps, width=0.5, color=[hero_color(c) for c in a_cracks], edgecolor="0.25", zorder=3)
+    ax_alloy.axhline(hi, color="0.4", ls="--", lw=1.3)
+    ax_alloy.axhline(lo, color="0.4", ls="--", lw=1.3)
+    for xi, (_label, C, Cp, fp, crack) in zip(xa, d.alloy_pair):
+        ax_alloy.annotate(f"$C_p$ {Cp:.2f}\nFP {fp:.2f}\n{'CRACK' if crack else 'sound'}", (xi, Cp),
+                          textcoords="offset points", xytext=(0, 4), ha="center", va="bottom", fontsize=8.4,
+                          fontweight="bold", color=hero_color(crack))
+    ax_alloy.set_xticks(xa)
+    ax_alloy.set_xticklabels([h[0] for h in d.alloy_pair], fontsize=8.4)
+    ax_alloy.set_ylabel("carbon equivalent  $C_p$  (wt %)")
+    ax_alloy.set_ylim(0.0, max(float(cps.max()) * 1.45, hi * 1.6))
+    ax_alloy.set_title("Alloying lever — same carbon (0.20 %), ferrite\nstabilizers pull $C_p$ into the band",
+                       fontsize=10.2)
+    ax_alloy.legend(fontsize=8.0, loc="upper right")
+    ax_alloy.grid(True, axis="y", alpha=0.25)
+
+    fig.suptitle("Peritectic surface cracking — the carbon consequence at casting: carbon decides, "
+                 "non-monotonically (δ→γ contraction)", fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.90, bottom=0.08, wspace=0.24, hspace=0.34)
+    return fig
+
+
 def refining_figure(d):
     """The F2 artifact: the tap-chemistry panel — deoxidation curve, C–O coupling, degassing, propagation.
 

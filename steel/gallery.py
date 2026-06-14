@@ -355,6 +355,24 @@ CATALOG: tuple[Entry, ...] = (
         "there. Stefan match is the validated tooth; the Niyama/hot-spot reads are by-construction.",
         notebook="§F4b",
     ),
+    Entry(
+        "Casting (front-end)", "demo_peritectic", "steel-peritectic.png",
+        "Peritectic surface cracking — carbon decides, non-monotonically",
+        "The carbon-driven sibling of sulfur hot-tearing: the peritectic transformation L + δ → γ is a "
+        "BCC→FCC volume contraction that, concentrated high in the continuous-casting mould, shrinks the thin "
+        "shell off the wall into longitudinal facial cracks — so the hypo-peritectic ~0.10–0.16 %C grades are "
+        "the worst surface-crackers, and counter-intuitively a *leaner* OR a *richer* steel casts more "
+        "soundly. Three plain-carbon heats, carbon the only axis: 0.05 %C (fully δ, sound), 0.11 %C (Wolf's "
+        "ferrite potential in the depression band, cracks), 0.45 %C (austenitic, sound) — *more carbon is "
+        "safer*. The verdict is Wolf's cited FP = 2.5(0.5 − Cp) band (0.8–1.05); the mechanism is the Fe–C "
+        "peritectic lever rule (cited invariants 0.09/0.17/0.53 at 1495 °C, by construction). Reads NOMINAL "
+        "carbon (the shell phenomenon), the *reverse* of hot-tear's last-liquid read. A second lever: same "
+        "0.20 %C, ferrite stabilizers (Si+Cr) pull Cp into the band — alloying decides. No engine, no ADR, and "
+        "**no claimable tooth** (cited classifier + by-construction lever); the soft note is a coherence "
+        "(carefully *not* independent — both rest on the Fe–C peritectic): the lever rule and Wolf's empirical "
+        "FP place the trouble at the same ~0.1 %C window. The consumed-δ peaks at the band edge (Cγ 0.17), not "
+        "the empirical worst — the exact worst-carbon needs δ→γ kinetics + shell mechanics (underdetermined).",
+    ),
 )
 
 

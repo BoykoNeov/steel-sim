@@ -464,7 +464,45 @@ dissolved-gas removal by **Sieverts' law** ([H], [N] ∝ √p).
 >   ~0.1 %C continuous-casting cracking window) is a different mechanism needing δ/γ volumetric thermo the repo
 >   lacks — a named deferral; and the `1.71` is applied to the *final* liquid ratio, ignoring progressive MnS
 >   precipitation during freezing (the same by-construction simplification slag.py makes). **Notebook & app
->   deferred** (as the other front-end phases). **All F2/F4 dissolved-species and casting defects now closed.**
+>   deferred** (as the other front-end phases). The **carbon-peritectic** contribution remained the one named
+>   deferral — now built (next banner).
+
+> **As built — 2026-06-14 (carbon-peritectic surface cracking — closing the hot-tear `carbon-peritectic`
+> deferral, the casting-stage CARBON consequence).** `steel/peritectic.py` (+ `demo_peritectic.py`,
+> `plots.peritectic_figure`, `tests/test_peritectic.py` + `test_demo_peritectic.py`) closes the one named
+> deferral the hot-tear banner left open. Standalone, **no engine touch, no ADR**; suite **+31 tests**, all
+> green; gallery card (Casting section) + root-README tour row.
+> - **A NEW module, the carbon sibling of the sulfur `hot_tear` (advisor-endorsed, not an extension).** Same
+>   casting defect class (solidification / surface cracking), **different mechanism on different chemistry**:
+>   the peritectic transformation `L + δ → γ` is a BCC→FCC **volume contraction** that, concentrated high in
+>   the continuous-casting mould, shrinks the thin shell off the wall → uneven shell → **longitudinal facial
+>   cracks**. The famously worst surface-crackers are the **hypo-peritectic ~0.10–0.16 %C** grades — and,
+>   counter-intuitively, a *leaner* OR a *richer* steel casts more soundly.
+> - **The load-bearing advisor catch — read NOMINAL carbon, NEVER the Scheil last liquid (the *reverse* of
+>   hot-tear).** Peritectic δ→γ is a **primary-solidification / shell** phenomenon on the bulk aim chemistry
+>   (Wolf's FP is computed on ladle carbon; `casting.py` already disowns C-enrichment). So `peritectic` reads
+>   `heat.composition.C`; `hot_tear` reads `casting.scheil_liquid_composition`. A clean stated contrast.
+> - **Verdict = Wolf's cited ferrite-potential band; mechanism = the Fe–C lever rule.** `FP = 2.5·(0.5 − Cp)`
+>   (Wolf; reviewed Azizi-Thomas MMTB 51:1875 2020, ISIJ 55:781 2015) with the crack "depression" band `0.8 < FP < 1.05`
+>   (≈ 0.08–0.18 %C plain) — a **labelled classifier**, like `MIN_MARTENSITE_SPEC`. The δ-fraction lever rule
+>   on the cited invariants `L(0.53) + δ(0.09) → γ(0.17)` at **1495 °C** (web-verified, the same point
+>   `casting.PERITECTIC_C` names) is the by-construction *mechanism* (carbon mass balance) drawn in the figure.
+> - **The carbon equivalent is REPRESENTATIVE (tier-2, the named ceiling, advisor steer).** `Cp` is what lifts
+>   the verdict above a carbon *lookup* — alloying shifts the effective carbon into/out of the band (the "same
+>   C, alloying decides" second lever: same 0.20 %C, ferrite stabilizers Si+Cr pull `Cp` in). The **signs** are
+>   unambiguous (austenite stabilizers ↑, ferrite stabilizers ↓); the **magnitudes** genuinely spread in the
+>   literature and single-`Cp` is itself approximate (ISIJ-2015 multicomponent critique) — so `CE_COEFFS` is a
+>   representative low-alloy set, the same honest tier `casting.py` uses for its ISIJ partition coefficients.
+> - **NO claimable tooth, one soft COHERENCE note (advisor-calibrated).** Verdict = cited classifier, mechanism
+>   = by-construction lever → neither can independently fail (the gas-porosity / hot-tear landing). The note is
+>   a **coherence**, named carefully as **NOT independent** (both rest on the same Fe–C peritectic): the
+>   thermodynamic lever rule and Wolf's *empirical* FP place the trouble at the same ~0.1 %C window — the
+>   mechanism *explains why* the depression band sits there. **The lever "δ consumed by the peritectic reaction"
+>   peaks at the band edge `Cγ = 0.17`, NOT the empirical worst (~0.11) — left unpatched**, named ceiling: the
+>   exact worst-carbon and the crack need δ→γ **kinetics** + **shell mechanics** an equilibrium lever omits
+>   (underdetermined, not wrong-placed — the temper-embrittlement landing). The δ→γ contraction *magnitude* is
+>   illustrative only (the FP band does not use it). **Notebook & app deferred** (as the other front-end
+>   phases). **All F2/F4 dissolved-species and casting defects now closed.**
 
 ### F3 — Ladle / secondary metallurgy + alloy trim (the seam to the back end)
 Trim the heat to a **target grade** by ferroalloy additions with recovery/yield;
