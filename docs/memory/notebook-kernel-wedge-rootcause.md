@@ -48,10 +48,42 @@ metadata:
 >   construction (a warm sync loop hides the suspected idle-after-send stall — the strict cadence
 >   supplies the idle window instead); and POLLIN-never is *consistent with* (not against) a stalled
 >   **shared io_thread**, which is why the iopub firehose was the decisive variant. Pinning the
->   residual locus needs a **kernel-side Rung-2** (instrument ipykernel's send), deferred pending an
->   explicit go-ahead.
+>   residual locus needs a **kernel-side Rung-2** (instrument ipykernel), now done (next bullet).
+> - **Kernel-side RECEIVE path implicated — the "lost reply" is actually an unprocessed REQUEST
+>   (Rung-2 kernel-instrumented reproducer, 2026-06-14). This OVERTURNS the send-path attribution
+>   above.** A `sitecustomize.py` injected into the kernel subprocess via `PYTHONPATH` monkeypatched
+>   ipykernel's reply *and* request path; both client and kernel logs were captured on a wedge.
+>   ipykernel 7's shell socket is read on a dedicated **shell-channel thread** that forwards each
+>   request over an inproc PAIR to the main thread; the main thread runs the cell and sends
+>   `execute_reply` back the same way. On a wedge: (a) the kernel's **reply send path is clean** —
+>   for every cell it processes, `execute_reply` goes main→inproc PAIR→shell-channel-thread→shell
+>   ROUTER and the **ROUTER `send_multipart` completes** (libzmq accepts the bytes); (b) the kernel
+>   produces **exactly N replies for the N code cells *before* the wedged one and NONE for the wedged
+>   cell** — it never runs it; (c) the kernel's shell-channel thread **never delivers the wedged
+>   request to its `on_recv` callback** (no instrumented `RECV_SHELL_REQ` fires after the last
+>   reply); (d) meanwhile the **client successfully flushed that `execute_request` into libzmq** (the
+>   sync DEALER `send_multipart` *and* `Session.send` both returned). By the pre-registered rule +
+>   Rung-1 (the wire reliably moves bytes once a sender's libzmq accepts them), the request **reached
+>   the kernel's libzmq recv queue but the kernel's shell-channel event loop never woke to read it**
+>   = **H-kernel**: a kernel-side **missed inbound FD-readiness** on the shell ROUTER intake — the
+>   *receive-side mirror* of the client-side Proactor `add_reader` miss, on the kernel's shell-channel
+>   thread. This finally explains the old **client POLLIN-never**: no reply was ever sent *because the
+>   request was never picked up*. Evidence: **4 wedges** over two instrumented real-notebook runs (one
+>   count-based 2/2, one full client+kernel 2/6 ≈ the historical ~33% → instrumentation does **not**
+>   suppress it, no Heisenbug); an **uninstrumented** real-notebook control wedged on run 0 (bug
+>   alive); a **trivial-cell** notebook ran **50/50 clean** (the matplotlib/ipywidgets-heavy real
+>   notebook — far more inbound shell traffic incl. widget `comm` messages — is needed to hit the
+>   race; a sterile notebook does not). **Advisor crux:** don't swap one premature attribution
+>   (send-path) for another — the client+recv-callback variant was required to *measure* the side, not
+>   infer it (the very error this banner exists to fix); H-client (client never delivered the request)
+>   stayed live until the client log showed the request's send completing. **NOT established
+>   (Rung-3):** *why* a forced-**Selector** loop (ipykernel's `_init_asyncio_patch`, where `add_reader`
+>   is native) misses an inbound POLLIN on the shell-channel thread; the H-kernel localization rests on
+>   the Rung-1 wire-reliability inference, **not** a direct kernel-side `EVENTS`/POLLIN read (hazardous:
+>   cross-thread `getsockopt` on a wedged-loop socket, and the wedged loop can't schedule the probe).
 > The retry mitigation remains correct. The original paragraph below is the *symptom* record;
-> read its mechanism attribution as superseded.
+> read its mechanism attribution as superseded — and note the Rung-2 refinement: the failure is on
+> the kernel's request-**intake** path, not its reply-send path.
 
 The `slow` `test_steel_notebook` wedge (a cell that runs in <1 s hanging past its
 timeout) was **root-caused 2026-06-10** to an **upstream pyzmq/asyncio-on-Windows

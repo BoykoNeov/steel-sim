@@ -95,9 +95,21 @@ pinning the interpreter won't help).
 > same `add_reader` tornado shim), over loopback TCP, ran **240 runs / 9 600 cells** across three
 > fidelity tiers — up to a figure-sized **iopub firehose** (~0.5–1 MB/cell) on the one shared libzmq
 > io_thread fired right before each shell reply — with **zero** wedges (vs ~33 %/run real). So the
-> loss is **in the kernel/jupyter *application* send path** (ipykernel's ZMQStream/Session), above
-> libzmq transport (Rung-1-exonerated) and above the client recv queue — **not** the client-side
-> selector-shim "dropped notification" described below. The paragraph below is kept
+> loss is **in the kernel/jupyter *application* layer**, above libzmq transport (Rung-1-exonerated)
+> and above the client recv queue — **not** the client-side selector-shim "dropped notification"
+> described below. (g) **The application loss is on the kernel's request-INTAKE path, not its
+> reply-send path (Rung-2 kernel-instrumented reproducer).** Instrumenting ipykernel's request *and*
+> reply path (a `sitecustomize.py` injected into the kernel subprocess via `PYTHONPATH`) and reading
+> both client and kernel logs on a wedge shows: the kernel's **reply send is clean** for every cell
+> it runs (`execute_reply` reaches the shell ROUTER and libzmq accepts it); on a wedge the kernel
+> produces **N replies for the N cells before the wedged one and none for it** — its shell-channel
+> thread **never delivers the wedged cell's `execute_request` to its `on_recv` callback** — while the
+> **client successfully flushed that request into libzmq**. With Rung-1 (wire reliable once libzmq
+> accepts), the request reached the kernel's libzmq but the kernel's shell-channel **event loop never
+> woke to read it** = a kernel-side **missed inbound FD-readiness** (the receive-side mirror of the
+> client `add_reader` miss). This explains the client POLLIN-never: no reply was sent *because the
+> request was never picked up*. **Still open (deeper):** *why* the forced-Selector kernel loop misses
+> the inbound POLLIN. The paragraph below is kept
 > as the original symptom/triage account; treat its *mechanism* as superseded (see
 > `docs/memory/notebook-kernel-wedge-rootcause.md`). **The retry mitigation in §5 is unaffected
 > and remains correct** — it recovers any intermittent lost-reply regardless of the layer.
