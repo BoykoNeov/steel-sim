@@ -34,7 +34,8 @@ _INDEX = _DOCS / "index.html"
 
 # Absolute GitHub base for out-links (Pages serves only /docs, so these can't be relative).
 GH = "https://github.com/BoykoNeov/steel-sim/blob/main"
-NOTEBOOK_URL = f"{GH}/steel/steel.ipynb"
+NOTEBOOK_URL = f"{GH}/steel/steel.ipynb"            # back-end: cooling curve → microstructure
+MAKING_NOTEBOOK_URL = f"{GH}/steel/making.ipynb"    # front-end: ore → billet → and what goes wrong
 ROOT_README_URL = f"{GH}/README.md"
 STEEL_README_URL = f"{GH}/steel/README.md"
 
@@ -179,6 +180,7 @@ CATALOG: tuple[Entry, ...] = (
         "temperature. The carbon→CO line dives under the iron-oxide lines at ~750 °C — where "
         "ironmaking begins — and the oxygen-potential ladder shows why Al and Ca deoxidize a "
         "steel bath that Fe, Mn, Si cannot.",
+        notebook="§F1",
     ),
     Entry(
         "Front-end spine", "demo_heat_state", "steel-heat-state.png",
@@ -188,6 +190,7 @@ CATALOG: tuple[Entry, ...] = (
         "oil quench that through-hardens a proper 4140 leaves a soft, ferrite-dominant core, "
         "flagged on the Heat. Not a scripted failure — the back-end martensite fraction crossing a "
         "spec line.",
+        notebook="§spine",
     ),
     Entry(
         "Refining (front-end)", "demo_refining", "steel-refining.png",
@@ -197,6 +200,7 @@ CATALOG: tuple[Entry, ...] = (
         "over-blow and the same quench leaves a soft core (a real refining mistake, a real downstream "
         "consequence). Alongside, the dissolved O / H / N and inclusion fields the Heat carried empty are "
         "filled: the deoxidation curve with its minimum, the C–O coupling, and Sieverts √p degassing.",
+        notebook="§F2a",
     ),
     Entry(
         "Refining (front-end)", "demo_slag", "steel-slag.png",
@@ -208,6 +212,7 @@ CATALOG: tuple[Entry, ...] = (
         "order. It reproduces the purity-control history: acid Bessemer can't dephosphorize (rails crack), "
         "Thomas' basic lining can, and sulfur only comes out once the heat is killed. P/S are carried but "
         "inert in the back end — the chemistry is benchmarked, the embrittlement consequence deferred.",
+        notebook="§F2b",
     ),
     Entry(
         "Impurity consequences (front-end)", "demo_impurity_window", "steel-impurity-window.png",
@@ -220,6 +225,7 @@ CATALOG: tuple[Entry, ...] = (
         "(Mushet's manganese ties it as benign MnS). Together they bracket the workable temperature "
         "window — the consequence F2's slag partition set as state, now closed: phosphorus by propagation "
         "through the toughness law, sulfur through a new hot-working verdict.",
+        notebook="§D1",
     ),
     Entry(
         "Impurity consequences (front-end)", "demo_temper_embrittlement", "steel-temper-embrittlement.png",
@@ -234,6 +240,7 @@ CATALOG: tuple[Entry, ...] = (
         "strict tooth — the segregation-C-curve-nose gate was run on paper and could not be pinned (a "
         "tractable model is ~100× too fast and underdetermined; the faithful nose needs Fe₃P-cluster "
         "kinetics, out of scope), so the model was not built to manufacture one.",
+        notebook="§D2",
     ),
     Entry(
         "Impurity consequences (front-end)", "demo_tempered_martensite_embrittlement",
@@ -250,6 +257,7 @@ CATALOG: tuple[Entry, ...] = (
         "the trough-from-carbide-kinetics gate was run on paper and failed (the repo carries no stage-III "
         "carbide thermodynamics), so no carbide model was built to manufacture one; the trough window and the "
         "~400 °C recovery are cited, the carbon gate and verdict rule by-construction.",
+        notebook="§D3",
     ),
     Entry(
         "Impurity consequences (front-end)", "demo_hydrogen_flaking", "steel-hydrogen-flaking.png",
@@ -264,6 +272,7 @@ CATALOG: tuple[Entry, ...] = (
         "tooth: the bake time from an independently-pinned lattice D_H reproduces cited practice without "
         "tuning — a 500 mm forging → ~10 days (heavy forgings → days, the load-bearing anchor; the 1 h/inch "
         "thin-section rule is OoM sanity only) — OoM-grade; the L² scaling and verdict are by-construction.",
+        notebook="§D4",
     ),
     Entry(
         "Impurity consequences (front-end)", "demo_gas_porosity", "steel-gas-porosity.png",
@@ -279,6 +288,7 @@ CATALOG: tuple[Entry, ...] = (
         "cited C–O equilibrium against held composition); the soft OoM note is 'high-C must be killed, low-C "
         "can be rimmed' from O_crit ∝ 1/C, no tuning. The solidification CO-margin is a conservative "
         "secondary (Scheil over-predicts carbon), not the verdict.",
+        notebook="§D5",
     ),
     Entry(
         "Impurity consequences (front-end)", "demo_hot_tear", "steel-hot-tear.png",
@@ -296,6 +306,7 @@ CATALOG: tuple[Entry, ...] = (
         "the stoichiometric 1.71 into the tens — reproducing the empirical 'castings need Mn:S ≳ 20' rule "
         "(Toledo 1993) with no tuning, order-robust but cutoff-tuned. The RDG/feeding driver and the "
         "carbon-peritectic contribution are named deferrals.",
+        notebook="§D6",
     ),
     Entry(
         "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",
@@ -305,6 +316,7 @@ CATALOG: tuple[Entry, ...] = (
         "window — F3 flags off-grade — and the same oil quench that through-hardens the on-grade heat leaves "
         "a soft core. One ladle mistake, two flags: the front-end early warning and the validated back-end "
         "consequence — the hero-demo's off-spec input, produced rather than hand-set.",
+        notebook="§F3",
     ),
     Entry(
         "Casting (front-end)", "demo_casting", "steel-casting.png",
@@ -314,6 +326,7 @@ CATALOG: tuple[Entry, ...] = (
         "non-uniformly — the enriched centerline over-hardens into a hard band the bulk never "
         "reaches. A real front-end engine produces the Heat the validated back end consumes. "
         "Chvorinov solidification time alongside.",
+        notebook="§F4a",
     ),
     Entry(
         "Casting (front-end)", "demo_solidification", "steel-solidification.png",
@@ -325,6 +338,7 @@ CATALOG: tuple[Entry, ...] = (
         "2λ√(αt) under grid refinement, conservation exact. The insulated centre freezes last (the "
         "shrinkage hot spot — the same centerline Slice 1 enriches); the cited Niyama criterion collapses "
         "there. Stefan match is the validated tooth; the Niyama/hot-spot reads are by-construction.",
+        notebook="§F4b",
     ),
 )
 
@@ -388,8 +402,11 @@ def _card_html(e: Entry) -> str:
         f'<a href="{src}" target="_blank" rel="noopener">source ↗</a>',
     ]
     if e.notebook:
+        # Front-end topics (all tagged "(front-end)" / "Front-end spine") live in the making
+        # notebook; everything else in the back-end one — so a §-link lands in the right notebook.
+        nb_url = MAKING_NOTEBOOK_URL if "front-end" in e.topic.lower() else NOTEBOOK_URL
         links.append(
-            f'<a href="{NOTEBOOK_URL}" target="_blank" rel="noopener">notebook {_esc(e.notebook)} ↗</a>'
+            f'<a href="{nb_url}" target="_blank" rel="noopener">notebook {_esc(e.notebook)} ↗</a>'
         )
     if e.app:
         links.append(f'<span class="chip">app: {_esc(e.app)}</span>')
@@ -439,10 +456,13 @@ def render_html() -> str:
         '<strong>ore→billet twin</strong> (<code>streamlit run steel/app_making.py</code>), and the '
         '<strong>defect-consequences</strong> app '
         '(<code>streamlit run steel/app_consequences.py</code>).</p></div>\n'
-        f'    <div class="way"><h3>\U0001f4d3 Notebook</h3>'
-        f'<p>The narrative teaching path with sliders. New here? Open the '
-        f'<a href="{NOTEBOOK_URL}" target="_blank" rel="noopener">notebook</a> and read '
-        '"Start here — the 30-second mental model", then go top to bottom.</p></div>\n'
+        f'    <div class="way"><h3>\U0001f4d3 Notebooks</h3>'
+        f'<p>Two narrative teaching paths with sliders. New here? Open the back-end '
+        f'<a href="{NOTEBOOK_URL}" target="_blank" rel="noopener">notebook</a> '
+        '(cooling curve → microstructure), read "Start here — the 30-second mental model", then go '
+        f'top to bottom — or its front-end '
+        f'<a href="{MAKING_NOTEBOOK_URL}" target="_blank" rel="noopener">making notebook</a> '
+        '(ore → billet → and what goes wrong).</p></div>\n'
         '  </div>'
     )
     body = (
@@ -478,6 +498,7 @@ def render_html() -> str:
         'if it drifts — add a demo and its figure, regenerate, and it appears here automatically. '
         f'&nbsp;·&nbsp; <a href="{ROOT_README_URL}" target="_blank" rel="noopener">README</a> '
         f'&nbsp;·&nbsp; <a href="{NOTEBOOK_URL}" target="_blank" rel="noopener">notebook</a> '
+        f'&nbsp;·&nbsp; <a href="{MAKING_NOTEBOOK_URL}" target="_blank" rel="noopener">making notebook</a> '
         f'&nbsp;·&nbsp; <a href="https://github.com/BoykoNeov/steel-sim" target="_blank" '
         'rel="noopener">repository</a>\n'
         '  </footer>\n'

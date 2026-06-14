@@ -59,6 +59,11 @@ sims inherit. Full plan: [`docs/plans/steel-production.md`](../../docs/plans/ste
   `pip install -e .[viz,notebook]`. **Why the direct cells, not interact callbacks:** `interact`
   captures exceptions in an `Output` widget, so a break in an interact callback never reaches the
   test — the validated calls must live in plain cells (verified by deliberate break).
+- **To work on the front-end teaching notebook (plan §7/§9, Slice 2b):** `making.ipynb` +
+  `tests/test_making_notebook.py`. The *ore → billet → and what goes wrong* twin of `steel.ipynb` —
+  same thin-skin discipline, reusing the tested `app_making` / `app_consequences` readout helpers; its
+  test shares the executor + retry-on-wedge harness with `test_steel_notebook.py` via
+  `tests/_notebook_exec.py` (timeouts sized per notebook, since the front-end one is heavier).
 - **To work on the Streamlit app (§9 slice 2):** `app.py` + `tests/test_app.py`. A *thin skin*
   on `sweep` in three layers: **compute helpers** (pure `sweep` re-composition, streamlit/
   matplotlib-free → unit-tested **always-green**), **figure builders** (lazy-import wrappers over
@@ -705,8 +710,19 @@ streamlit run steel/app.py
 > porosity, and hot-tearing — each showing the recurring two-tier shape: a flat upstream **risk** line vs
 > the carbon-/geometry-/segregation-aware **consequence** that sees what it cannot. Same separate-app
 > discipline, run-as-script bootstrap, and three layers; `tests/test_app_consequences.py` exercises every
-> compute helper always-green plus a viz-gated figure build-smoke test per panel. The front-end teaching
-> **notebook** is the remaining Slice 2b.
+> compute helper always-green plus a viz-gated figure build-smoke test per panel.
+
+> **The front-end teaching notebook (`making.ipynb`, plan §7/§9 — Slice 2b, built ✓).** The narrative
+> twin of `steel.ipynb` for the front end: *ore → billet → and what goes wrong* — the making chain
+> (F1 reduction → the `Heat` spine → F2 refining + slag → F3 ladle → F4 casting + solidification) and
+> then the six defect consequences, one make-then-break read. Same thin-skin discipline as
+> `steel.ipynb` (a direct compute cell banks each section's figure; `interact` is sugar) — and it reuses
+> the *same* tested readout helpers `app_making` / `app_consequences` expose, so it turns the validated
+> knobs with no duplicated logic (and inherits e.g. the deliberately-restricted TME grade set). It is a
+> **separate** notebook + test by design so it carries the upstream Windows kernel-wedge flakiness in
+> isolation: `tests/test_making_notebook.py` executes it headless with its own retry-wrapped harness,
+> sharing the executor + retry-on-wedge logic with `test_steel_notebook.py` via `tests/_notebook_exec.py`
+> (timeouts sized per notebook — `making.ipynb` is heavier, ~16 s clean vs ~7 s). Needs `.[viz,notebook]`.
 
 It is laid out in **three layers** so the deliverable is both testable and runnable:
 

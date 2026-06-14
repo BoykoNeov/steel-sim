@@ -625,6 +625,25 @@ porosity (a feeding / Niyama-style proxy), hot-tear susceptibility.
 > (porosity / flaking / hot-tear / cold-short / red-short / temper-embrittlement) and the front-end
 > teaching notebook.
 
+> **As built — 2026-06-14 (notebook/app backfill, Slice 2 — defect-consequences app + front-end notebook).**
+> Slice 2 is closed in two parts. **2a — the defect-consequences app** (`steel/app_consequences.py` +
+> `tests/test_app_consequences.py`): the *third* app of the triptych (*make it* → *here is what goes wrong* →
+> *heat-treat the survivors*), six panels (cold/red-short, reversible + tempered-martensite embrittlement,
+> hydrogen flaking, CO porosity, hot-tear), each the two-tier flat-risk-vs-real-consequence shape; separate,
+> not appended; no engine/ADR. **2b — the front-end teaching notebook** (`steel/making.ipynb` +
+> `tests/test_making_notebook.py`): the *ore → billet → and what goes wrong* twin of `steel.ipynb`, one
+> make-then-break read over the full front end (F1 → spine → F2 refining + slag → F3 → F4 casting +
+> solidification, then the six consequences). Same thin-skin discipline (a direct compute cell banks each
+> section's figure, `interact` is sugar), reusing the *same* tested `app_making` / `app_consequences` readout
+> helpers — no duplicated logic, and the deliberately-restricted TME grade set comes along for free. A
+> **separate** notebook + test by design so it carries the upstream Windows kernel-wedge flakiness in
+> isolation; its retry-wrapped harness shares the executor + retry-on-wedge logic with
+> `test_steel_notebook.py` via `tests/_notebook_exec.py` (timeouts parametrized per notebook — `making.ipynb`
+> is heavier, ~16 s clean vs ~7 s). Gallery wired (front-end cards now §-link the making notebook; both
+> READMEs surface it; drift-guard regenerated/green). No engine touch, no ADR, no constant. **The §7
+> notebook/app backfill is complete; the one-`Heat`-through-the-whole-run integration capstone stays the
+> separate larger item.**
+
 **Hand-off.** After F4 the `Heat` is a real cast billet; it flows into the back
 end's grain → heat-treatment → properties chain, and the loop is **end-to-end**.
 
