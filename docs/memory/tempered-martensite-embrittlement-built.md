@@ -14,7 +14,7 @@ named as the back-end `properties.toughness_index` ceiling but never modelled. N
 → the **`tempered-martensite-embrittled`** flag (mirrors `heat_treat`/`hot_work`/`temper_embrittlement`).
 Tempering as-quenched martensite in **260–370 °C** precipitates cementite as **films** on interlath /
 prior-austenite boundaries (Horn–Ritchie 1978: fed by interlath retained-austenite decomposition) → toughness
-trough. Suite **741 green / 2 skipped** (+19), NO engine touch, NO ADR. Demo+figure+gallery card+README row.
+trough. Suite **742 green / 2 skipped** (+20), NO engine touch, NO ADR. Demo+figure+gallery card+README row.
 
 **The slice = the FOIL that completes the pair — opposite on every axis:** TME is **carbon-driven** (not
 impurity — a *clean* medium-carbon steel still embrittles, the headline distinction from reversible TE which
@@ -42,8 +42,17 @@ immune — no tempered martensite to embrittle; un-hardened 1045 at oil-10mm M=0
    *computed bulk retained austenite* (mechanistically the interlath-film source). But bulk RA ranks eutectoid
    **1080 (~0.18 RA, plate martensite)** as the worst victim — where the interlath-film mechanism does NOT apply
    — vs the textbook medium-C low-alloy (4140/4340/300M). → RA cited as **mechanism only**, **CARBON drives the
-   gate**. Discriminating check run before committing: flags 4140 (0.40C), 1080 (0.80C); **8620 (0.20 %C) immune
+   gate**. Discriminating check run before committing: flags 4140 (0.40C); **8620 (0.20 %C) immune
    even fully hardened** (M=0.98) — the low-carbon lath-martensite exemption.
+3. **(post-commit final review) the carbon gate's HIGH end re-opens the same trap — MECHANISM not ranking.**
+   Catch #2 fixed the *ranking*; the un-fixed half is attributing the *interlath-RA-film mechanism* to a
+   structure it doesn't describe. The carbon gate has no upper bound, so it flagged **1080 (0.80C, plate/twinned
+   martensite)** — which IS embrittled at 300 °C but by a *related* cementite-on-twin/PAG-boundary path, NOT the
+   interlath-film one the slice narrates (a lath-martensite, ≲0.5%C phenomenon). The flag isn't false; the
+   *attribution* over-reached. **Fix: dropped 1080 from the demo discriminator** (the demo's own test had
+   *codified* the over-reach — a self-check can't catch this, it only confirms the code does what the code does)
+   + a no-upper-bound caveat in the docstring. Discriminator kept to lath grades: 4140 hero, 8620 carbon-gate
+   miss, 1045-mild martensitic-gate miss.
 
 Registry has no 4340 → used **4140** (0.40C Cr-Mo) as the registry-grounded classic victim. Deferrals: absolute
 trough depth (no Charpy-J — back-end ceiling stands), P-aggravation magnitude, explicit ε→Fe₃C carbide sequence.

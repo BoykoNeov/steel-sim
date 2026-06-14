@@ -19,10 +19,11 @@ def test_axis_map_embrittles_exactly_in_the_cited_trough():
 
 
 def test_two_gates_medium_carbon_embrittles_low_carbon_and_unhardened_do_not():
+    # Kept to lath-martensite grades the interlath-film mechanism describes (1080 plate-martensite deliberately
+    # not shown — it embrittles by a related path the panel must not attribute to this mechanism).
     d = compute()
     by_label = {lab.split(chr(10))[0]: emb for lab, _C, _M, emb in d.discriminator}
-    assert by_label["4140 hardened"] is True       # medium-carbon, hardened → embrittled
-    assert by_label["1080 hardened"] is True        # high-carbon, hardened → embrittled
+    assert by_label["4140 hardened"] is True       # medium-carbon, hardened → embrittled (the hero)
     assert by_label["8620 hardened"] is False       # low carbon (0.20 %C) → immune even fully hardened
     assert by_label["1045 mild quench"] is False    # un-hardened → no tempered martensite to embrittle
 

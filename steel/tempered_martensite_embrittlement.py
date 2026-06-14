@@ -62,7 +62,10 @@ martensite to embrittle and TME falls out as immune, while a fully-hardened medi
 severity driver: *bulk* RA fraction ranks eutectoid (high-C **plate**-martensite) steels highest, where the
 interlath-film mechanism does not apply — the "looks faithful, physically inverted" trap. Carbon drives the
 gate; the demonstrator confirms low-carbon martensite (e.g. case-hardening 8620 at 0.20 %C) is immune even when
-fully hardened. **Named deferrals:** the absolute toughness-trough depth (no Charpy-J — the back-end
+fully hardened. The carbon gate itself carries **no upper bound** — very-high-carbon *plate* martensite
+(eutectoid 1080) tempered in the trough also embrittles, but by a *related* cementite-on-twin / prior-austenite-
+boundary path, **not** the interlath-RA-film mechanism this slice narrates; so the demonstrator stays on the
+lath-martensite (≲ 0.5 %C) grades the mechanism actually describes. **Named deferrals:** the absolute toughness-trough depth (no Charpy-J — the back-end
 ``toughness_index`` ceiling stands), the P-aggravation magnitude, and the explicit ε→Fe₃C carbide sequence.
 Units: wt % for composition, °C for temperature.
 """
@@ -134,6 +137,8 @@ class TemperedMartensiteEmbrittlement:
             return "low-carbon martensite — too little carbon to form the embrittling cementite films"
         if self.recovered:
             return "over-tempered above the trough — tough, and immune to re-entering it (one-way)"
+        if self.peak_temper_C > TME_WINDOW_C[1]:
+            return "tempered just above the trough — recovering (tough)"
         return "tempered below the trough — no cementite films (yet)"
 
 

@@ -39,6 +39,13 @@ def test_above_the_recovery_is_tough_and_recovered():
     assert a.recovered and (not a.in_trough) and (not a.embrittled)
 
 
+def test_just_above_the_trough_reads_recovering_not_below():
+    # The (370, 400) band: above the trough, not yet at the recovery threshold — the verdict string must say
+    # "recovering", not "below the trough" (the flag is correctly tough either way).
+    a = tme.tempered_martensite_embrittlement_assessment(VICTIM, HARD, peak_temper_C=385.0)
+    assert (not a.embrittled) and (not a.recovered) and ("recovering" in a.verdict)
+
+
 def test_the_trough_edges_match_the_cited_window():
     lo, hi = tme.TME_WINDOW_C
     assert tme.tempered_martensite_embrittlement_assessment(VICTIM, HARD, peak_temper_C=lo).embrittled

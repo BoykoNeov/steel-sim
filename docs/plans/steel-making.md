@@ -738,8 +738,8 @@ deferred state extensions (P/S on `Steel`) — then **`game/` last**, on the pro
 > the *mechanism* only and **carbon drives the gate** (8620 at 0.20 %C confirms the low-carbon exemption even when
 > fully hardened — the discriminating check, run before committing). **Demo + figure + gallery card:**
 > `demo_tempered_martensite_embrittlement` — the trough on the temper axis, the two gates (carbon +
-> hardenability), the irreversibility cycle, and the reversible↔irreversible contrast. Suite **741 green / 2
-> skipped** (+19), no engine touch, no ADR. **Deferrals:** the absolute trough depth (no Charpy-J — the back-end
+> hardenability), the irreversibility cycle, and the reversible↔irreversible contrast. Suite **742 green / 2
+> skipped** (+20), no engine touch, no ADR. **Deferrals:** the absolute trough depth (no Charpy-J — the back-end
 > ceiling stands), the P-aggravation magnitude, and the explicit ε→Fe₃C carbide sequence.
 
 **The reframe that makes it useful.** The originally-named tramp axes

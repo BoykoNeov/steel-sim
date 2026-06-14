@@ -57,9 +57,12 @@ RECOVERY_TEMPER = 450.0                        # above the ~400 °C recovery —
 REVERSIBLE_WINDOW_C = (375.0, 575.0)           # the SIBLING trough (reversible TE) — marked for orientation only
 
 # Panel-2 discriminator: (label, steel, quench medium, diameter) — the two gates, each on a real quench.
+# Kept to the lath-martensite (≤ ~0.5 %C) grades the interlath-film mechanism describes: 4140 is the embrittled
+# hero, 8620 the carbon-gate miss, 1045-mild the martensitic-gate miss. High-carbon *plate*-martensite (1080)
+# also embrittles in the trough but by a related cementite-on-twin-boundary path — deliberately not shown, so
+# the panel does not attribute the interlath-film mechanism to a structure it does not describe.
 DISCRIMINATOR_CASES: tuple[tuple[str, Steel, str, float], ...] = (
     ("4140 hardened\n(0.40 %C)", STEELS["4140"], "oil", 0.010),
-    ("1080 hardened\n(0.80 %C)", STEELS["1080"], "water", 0.005),
     ("8620 hardened\n(0.20 %C — low C)", STEELS["8620"], "water", 0.005),
     ("1045 mild quench\n(un-hardened)", STEELS["1045"], "oil", 0.010),
 )
