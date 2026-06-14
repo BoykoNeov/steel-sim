@@ -14,22 +14,31 @@
 > exact zmqstream line that loses the edge) — please treat them differently. The reply-send trigger,
 > earlier "strongly-suggested", is now **confirmed** by the fix experiment (§4).
 >
-> **Dup-search (done 2026-06-14).** No existing report pins this root cause (the ipykernel-7
-> dual-use shell ROUTER: an out-of-band reply send drains the `ZMQ_FD` read edge and the shell
-> `ZMQStream` is never re-armed). **File as a NEW `ipython/ipykernel` issue**, cross-referencing:
+> **Dup-search (done 2026-06-14, via `gh` against the trackers — not just a web index).** No existing
+> report pins this root cause (the ipykernel-7 dual-use shell ROUTER: an out-of-band reply send drains
+> the `ZMQ_FD` read edge and the shell `ZMQStream` is never re-armed), and it is **not fixed upstream**:
+> `SubshellManager._send_on_shell_channel` on `main` is still a bare `send_multipart` with **no re-arm**
+> (verified verbatim), and the fix site is byte-identical in the latest release (**v7.3.0**, 2026-06-10)
+> — so the patch below is not superseded. **File as a NEW `ipython/ipykernel` issue**, cross-referencing:
 > - **`ipython/ipykernel#1438`** — the official "report problems with 7.0.0" hub; post a pointer
 >   comment there too so it's discoverable.
 > - **`microsoft/vscode-jupyter#17228`** + its WIP **PR #17411** — the downstream user-visible hang
 >   ("ipykernel 7 causes notebook execution to hang", Windows 11, restart-only recovery): the symptom
 >   this root cause explains. The PR stalled with no root cause identified.
+> - **`zeromq/pyzmq#2173`** (closed 2026-04) — *"`getsockopt(zmq.EVENTS)` drains signaler, can cause
+>   `zmq.asyncio` recv to miss wakeups"*: the **same edge/signaler-drain family**, independently
+>   documented upstream — but a *different layer* (`zmq.asyncio` `_future.py` speculative `getsockopt`
+>   drain, **not** the tornado-`ZMQStream`/ROUTER out-of-band *send* we hit; its fix doesn't touch our
+>   path). Strong corroboration of §1, not a dup of the trigger.
 > - **`ipython/ipykernel#1469`** (PR, from issue **#1468**) — Windows `ProactorEventLoop` enablement;
 >   a commenter flagged it as "probably relevant" to #17228. Adjacent (same Windows + ZMQ-FD area) but
 >   a *different* mechanism (Proactor lacks `add_reader`), **not** this edge-drain — cite to disambiguate.
 > - **`ipython/ipykernel#307`** (minrk, 2018; the 4.8.2 fix "ensure zmq streams start in a clean
->   state") — prior art for the *same bug class* (edge-triggered `ZMQ_FD` missed events) at an earlier
->   site; shows maintainers already accept and fix this family.
-> - **pyzmq:** no open dup; `zmqstream.py::_update_handler` (cited in §Mechanism) is the relevant code.
->   `zeromq/libzmq#3641` and `#2941` are background on `ZMQ_FD` edge semantics, not dups.
+>   state") and **PR #1432** (closed 2025-09, "always use ZMQ stream not socket in dispatch_shell") —
+>   prior art for this *bug class* / the stream-vs-raw-socket cleanup on the shell path; neither fixes
+>   the reply-send edge-drain.
+> - **`zeromq/pyzmq`** `zmqstream.py::_update_handler` (cited in §Mechanism) is the relevant code;
+>   `zeromq/libzmq#3641` / `#2941` are background on `ZMQ_FD` edge semantics, not dups.
 
 ---
 
