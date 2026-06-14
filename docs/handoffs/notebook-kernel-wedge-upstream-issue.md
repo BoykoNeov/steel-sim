@@ -334,11 +334,34 @@ timeout-length stall on every run. Not a fix.
    +            self._shell_channel_io_loop.add_callback(
    +                lambda: stream._handle_events(stream.socket, 0)
    +            )
+   --- a/ipykernel/shellchannel.py
+   +++ b/ipykernel/shellchannel.py
+   @@ def __init__(self, context, shell_socket, **kwargs):
+            self._shell_socket = shell_socket
+   +        # Set by kernelapp.init_kernel after it builds the ZMQStream (this thread
+   +        # predates the stream). Threaded into SubshellManager for the post-send re-arm.
+   +        self.shell_stream = None
+   @@ def manager(self) -> SubshellManager:
+                self._manager = SubshellManager(
+                    self._zmq_context,
+                    self.io_loop,
+                    self._shell_socket,
+   +                self.shell_stream,
+                )
+   --- a/ipykernel/kernelapp.py
+   +++ b/ipykernel/kernelapp.py
+   @@ def init_kernel(self):
+            if self.shell_channel_thread:
+                shell_stream = ZMQStream(self.shell_socket, self.shell_channel_thread.io_loop)
+   +            # Hand the stream to the shell-channel thread so SubshellManager can re-arm
+   +            # the read after each out-of-band reply send (the wedge fix).
+   +            self.shell_channel_thread.shell_stream = shell_stream
+            else:
+                shell_stream = ZMQStream(self.shell_socket)
    ```
 
-   plus the two wiring lines (`ShellChannelThread.__init__` gains a `shell_stream` attr passed into
-   `SubshellManager(...)`; `kernelapp.init_kernel` sets `self.shell_channel_thread.shell_stream =
-   shell_stream` after building it). The validated re-arm is `_handle_events(socket, 0)` —
+   All three hunks above are the exact edits validated as the real diff in §4 (minus a test-only
+   `_WEDGEFIX` counter that is not shown). The validated re-arm is `_handle_events(socket, 0)` —
    `_update_handler`'s own reschedule moved to the post-send site (what ran 0/20 in §4, both as the
    effect and as the real diff). **`shell_stream.flush(zmq.POLLIN)`** (a *public* ZMQStream method
    ipykernel already calls in `kernelbase.py`) is a plausible public-API alternative maintainers may
