@@ -696,7 +696,17 @@ streamlit run steel/app.py
 > stay focused. Its figure builders wrap the banked `demo_*.compute()` + the front-end `plots.*` figures
 > (no figure invented); the one heavy compute (the latent-heat solidification field) is memoized in
 > `main()`. Per-stage panels only — chaining one `Heat` through the whole run is the deferred integration
-> capstone, not this. Defect-consequence panels + the front-end notebook are Slice 2.
+> capstone, not this.
+
+> **The defect-consequences app (`app_consequences.py`, plan §14 — Slice 2a).** The *third* panel of the
+> triptych: *make it* (`app_making`) → *here is what goes wrong* (`app_consequences`) → *heat-treat the
+> survivors* (`app`). Six panels turn the knobs on each consequence — cold/red-short (the impurity window),
+> reversible temper embrittlement, irreversible tempered-martensite embrittlement, hydrogen flaking, CO
+> porosity, and hot-tearing — each showing the recurring two-tier shape: a flat upstream **risk** line vs
+> the carbon-/geometry-/segregation-aware **consequence** that sees what it cannot. Same separate-app
+> discipline, run-as-script bootstrap, and three layers; `tests/test_app_consequences.py` exercises every
+> compute helper always-green plus a viz-gated figure build-smoke test per panel. The front-end teaching
+> **notebook** is the remaining Slice 2b.
 
 It is laid out in **three layers** so the deliverable is both testable and runnable:
 

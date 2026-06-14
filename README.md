@@ -35,6 +35,7 @@ pip install -e ".[viz]"                 # compute + figures
 python steel/demo_jominy.py             # any demo prints its validation table + banks a figure
 streamlit run steel/app.py              # the back-end what-if app (needs .[viz,app])
 streamlit run steel/app_making.py       # the front-end (ore→billet) what-if twin (needs .[viz,app])
+streamlit run steel/app_consequences.py # the defect-consequences app (needs .[viz,app])
 jupyter lab steel/steel.ipynb           # the teaching notebook (needs .[viz,notebook])
 ```
 
@@ -85,6 +86,9 @@ Three ways into the same validated core (install + launch commands are in
   section size and watch the microstructure and hardness move.
 - **Making app** (`steel/app_making.py`) — the front-end (ore→billet) twin: walk reduction → refining
   → slag → ladle trim → casting and watch an upstream mistake propagate to a downstream soft core.
+- **Consequences app** (`steel/app_consequences.py`) — the third panel of the triptych: turn the
+  knobs on each defect (cold/red-short, temper & tempered-martensite embrittlement, hydrogen flaking,
+  CO porosity, hot-tearing) and see the flat upstream risk line disagree with the real consequence.
 
 The table is ordered as a suggested path — top rows first. Every demo is its own
 `python -m steel.<name>`; the *Also interactive* column points to where the same idea lives in
