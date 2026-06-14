@@ -1,6 +1,9 @@
 # Upstream issue draft: intermittent lost `execute_request` on the shell channel (Windows)
 
-> **Status:** draft, ready to file. **Where to file:** primarily **ipykernel**
+> **Status: FILED as a PR — [`ipython/ipykernel#1529`](https://github.com/ipython/ipykernel/pull/1529) (2026-06-14).**
+> This doc is the long-form rationale behind that PR; the applicable patch is
+> [`ipykernel-shell-wedge-rearm.patch`](./ipykernel-shell-wedge-rearm.patch). Original filing notes
+> below. **Where filed:** primarily **ipykernel**
 > (`ipython/ipykernel`) — that is where the user-visible hang occurs and where the cleanest
 > fix lives — with a **cross-reference to pyzmq** (`zeromq/pyzmq`), since the layer that loses
 > the message is `zmq.eventloop.zmqstream.ZMQStream`'s edge-trigger handling. Trim the
