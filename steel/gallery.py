@@ -281,6 +281,23 @@ CATALOG: tuple[Entry, ...] = (
         "secondary (Scheil over-predicts carbon), not the verdict.",
     ),
     Entry(
+        "Impurity consequences (front-end)", "demo_hot_tear", "steel-hot-tear.png",
+        "Hot-tearing — same sulfur, the Mn:S decides (segregation)",
+        "What residual sulfur does at the *casting* stage — the segregation-amplified sibling of forging-stage "
+        "red-shortness. Slag flags a flat, Mn-blind risk (S > 0.040 %); whether a *casting* grows a Fe–FeS "
+        "interdendritic film and hot-tears is set by the Mn:S in the **last liquid to freeze**, which is "
+        "Scheil-enriched — sulfur piles up ~10× faster than manganese, so the film Mn:S is ~10× poorer than "
+        "the bath. Two heats, same sulfur (both within spec, both clearing bulk MnS stoichiometry): the "
+        "lower-Mn one (Mn:S 10) tears because its film falls to ~1.2, the higher-Mn one (Mn:S 22) stays sound "
+        "— the Mushet lever again, only the threshold is in the *tens*. Distinct from red-short by **phase + "
+        "time** (interdendritic liquid during freezing vs bulk solid at the forge — castability ≠ "
+        "forgeability), not duplicated. No engine, no ADR, and **no claimable tooth** (the verdict is cited "
+        "Scheil partition feeding cited MnS stoichiometry); the soft OoM note is that segregation amplifies "
+        "the stoichiometric 1.71 into the tens — reproducing the empirical 'castings need Mn:S ≳ 20' rule "
+        "(Toledo 1993) with no tuning, order-robust but cutoff-tuned. The RDG/feeding driver and the "
+        "carbon-peritectic contribution are named deferrals.",
+    ),
+    Entry(
         "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",
         "Alloy to grade — where the composition is finalized (and missed)",
         "The seam to the back end: trim an alloy-lean tap up to a grade by ferroalloy additions, sized for "

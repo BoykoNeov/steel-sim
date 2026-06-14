@@ -428,6 +428,44 @@ dissolved-gas removal by **Sieverts' law** ([H], [N] ∝ √p).
 >   feeding problem) stays the F4-Slice-2 deferral. Suite **+23 tests**, all green; no engine touch, no ADR.
 > **Notebook & app deferred** (as the other front-end phases). Hot-tear remains the last open F4/F2 defect.
 
+> **As built — 2026-06-14 (hot-tearing — closing the last F4/F2 defect, the casting-stage sulfur consequence).**
+> `steel/hot_tear.py` (+ `demo_hot_tear.py`, `plots.hot_tear_figure`, `tests/test_hot_tear.py`) closes the §6
+> row "under-desulfurization → hot-tear susceptibility" and the last open casting defect. Standalone, **no
+> engine touch, no ADR**; suite **+18 tests**, all green; gallery card + root-README tour row.
+> - **The two-tier seam:** slag's flat, Mn-blind **`high-sulfur`** risk (S > 0.040 %) → the new **`hot-tear`**
+>   consequence — the casting-stage *sibling* of forging-stage red-shortness (`hot_work.py`). Both close the
+>   sulfur consequence F2 Slice 2 set up; this one reads it during **solidification**.
+> - **What makes it NOT red-short restated — segregation, and the load-bearing phase + time distinction
+>   (advisor catch).** Hot-tearing happens in the **last liquid to freeze**, which is **Scheil-enriched**: the
+>   model reads the interdendritic **liquid** Mn:S (`casting.scheil_liquid_composition` for *both* solutes —
+>   never `centerline_enriched_composition`, which returns the depleted *solid* and drops S). Sulfur (small
+>   `k`) piles up ~10× faster than manganese, so the film Mn:S is ~10× *poorer* than the bath → a bulk-clear
+>   heat can still grow a Fe–FeS film and tear. The honest distinction from red-short is **phase + time**
+>   (transient interdendritic *liquid* during freezing vs *bulk solid* at the forging reheat — castability ≠
+>   forgeability), **not** homogenization (which is shaky for S). A heat can legitimately fail one gate and
+>   pass the other.
+> - **Hero = same sulfur, the Mn:S decides.** Two heats, same S (both within the 0.040 % spec, both clearing
+>   *bulk* MnS stoichiometry): the low-Mn one (Mn:S 10) tears (film Mn:S ~1.2), the higher-Mn one (Mn:S 22) is
+>   sound — the **Mushet lever** again, threshold now in the *tens*. A third (S over spec, Mn:S 25) is sound —
+>   so the flat risk line both **under-** and **over-warns**. Same disagreement shape as gas-porosity.
+> - **NO claimable tooth — by construction + cited inputs (the red-short / gas-porosity landing).** The verdict
+>   *is* the cited Scheil partition (Won & Thomas `k`) feeding the cited MnS stoichiometry (`1.71 = M_Mn/M_S`,
+>   reused wholesale from `slag.manganese_sulfide` on the film) — it cannot independently fail. The one soft
+>   **OoM-coherence note** (advisor-verified by web search, not memory): `critical_bulk_mn_s` — the bulk Mn:S
+>   the *amplified* film needs to clear stoichiometry — lands in the **tens** (≈9 at f_s 0.90, ≈14 at 0.95, ≈45
+>   at 0.99), reproducing from the stoichiometric 1.71 with **no tuning** the empirical "sound castings need
+>   Mn:S in the tens" rule (Toledo 1993: below ~20, carbon steels show intergranular embrittlement in
+>   continuous casting; the literature band runs ~6–36, sulfur-dependent — and the attribution is genuinely
+>   hot-ductility, *not* primarily inclusion morphology). The **order** is cutoff-robust; the specific value is
+>   **cutoff-tuned** (`f_s*` is a free knob). Really by-construction.
+> - **Ceiling:** the S-film *sub-mechanism* only — the RDG / Clyne–Davies feeding-strain driver (the
+>   freezing-range / vulnerable mushy-span *magnitude*) lives illustratively already in
+>   `steel.solidification`, referenced not duplicated; the **carbon-peritectic** δ→γ contraction (the famous
+>   ~0.1 %C continuous-casting cracking window) is a different mechanism needing δ/γ volumetric thermo the repo
+>   lacks — a named deferral; and the `1.71` is applied to the *final* liquid ratio, ignoring progressive MnS
+>   precipitation during freezing (the same by-construction simplification slag.py makes). **Notebook & app
+>   deferred** (as the other front-end phases). **All F2/F4 dissolved-species and casting defects now closed.**
+
 ### F3 — Ladle / secondary metallurgy + alloy trim (the seam to the back end)
 Trim the heat to a **target grade** by ferroalloy additions with recovery/yield;
 inclusion control. **This is where the composition vector the back end consumes

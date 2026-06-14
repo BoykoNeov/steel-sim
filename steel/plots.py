@@ -2437,6 +2437,132 @@ def gas_porosity_figure(d):
     return fig
 
 
+def hot_tear_figure(d):
+    """The hot-tear artifact: same sulfur, the Mn:S decides — the segregation-amplified film criterion.
+
+    ``d`` is a :class:`~steel.demo_hot_tear.HotTearDemo` (precomputed arrays — this layer only draws, ADR
+    0002). Four panels:
+
+    * **top-left — the segregation map (the centerpiece).** Film (last-liquid) Mn:S vs bulk Mn:S. The steep
+      dashed 1:1 line is what the bath reads (no segregation — the forge needs only Mn:S 1.71); the shallow
+      solid line is the actual film, suppressed by the Scheil enrichment of the last liquid, so it does not
+      reach stoichiometry until a *bulk* Mn:S in the tens. The band below the critical bulk Mn:S is hot-tear
+      prone; the three heats are plotted, coloured by verdict.
+    * **top-right — the hero verdict.** Film Mn:S of the three heats against the stoichiometric 1.71 line:
+      the low-Mn in-spec heat falls below (tears); more Mn (same sulfur) and the over-spec high-Mn heat clear
+      it (sound).
+    * **bottom-left — same sulfur, the manganese decides.** The two same-sulfur heats' bulk Mn:S against the
+      segregation-amplified critical line: the low-Mn bar sits under it (tears), the Mushet-lifted bar over it
+      (sound) — the fix is manganese, the threshold is in the tens.
+    * **bottom-right — the OoM-coherence note (NOT a tooth).** The critical bulk Mn:S vs the last-liquid
+      cutoff ``f_s``: segregation amplifies the stoichiometric 1.71 into the tens, landing in the empirical
+      band (~6–36, ~20 typical). The order is robust; the specific value is cutoff-tuned — really
+      by-construction.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ((ax_map, ax_bar), (ax_lever, ax_oom)) = plt.subplots(2, 2, figsize=(13.6, 9.6))
+    warn, good, blue, spec = "#c0392b", "#1f6f3c", "#2471a3", "#8e44ad"
+    stoich, crit = d.mn_s_stoich, d.critical_bulk
+
+    # --- top-left: the segregation map ---------------------------------------- #
+    ax_map.axvspan(0.0, crit, color=warn, alpha=0.07)
+    ax_map.axvspan(crit, 40.0, color=good, alpha=0.07)
+    ax_map.plot(d.bulk_grid, np.minimum(d.bulk_grid, 6.5), color="0.5", ls="--", lw=1.6,
+                label="no segregation (the bath reading)")
+    ax_map.plot(d.bulk_grid, d.film_curve, color=blue, lw=2.8,
+                label=f"film Mn:S = bath × {d.seg_factor:.2f} (segregation)")
+    ax_map.axhline(stoich, color="0.2", lw=1.8, label=f"MnS stoichiometry (Mn:S = {stoich:.2f})")
+    ax_map.axvline(crit, color=warn, ls=":", lw=1.5)
+    ax_map.annotate(f"casting needs\nbulk Mn:S ≳ {crit:.0f}", (crit, 4.6), textcoords="offset points",
+                    xytext=(6, 0), fontsize=8.2, color=warn)
+    ax_map.annotate(f"forge needs\nonly {stoich:.2f}", (stoich, stoich), textcoords="offset points",
+                    xytext=(10, 18), fontsize=8.0, color="0.4")
+    for label, _S, bulk, film, tear, _risk in d.heats:
+        ax_map.plot([bulk], [film], "o", ms=11, color=warn if tear else good, mec="0.2", mew=1.2, zorder=5)
+        ax_map.annotate(label.replace("\n", " "), (bulk, film), textcoords="offset points", xytext=(8, -10),
+                        fontsize=7.6, color=warn if tear else good)
+    ax_map.set_xlabel("bulk (bath) Mn:S")
+    ax_map.set_ylabel("interdendritic film Mn:S")
+    ax_map.set_xlim(0.0, 40.0)
+    ax_map.set_ylim(0.0, 6.5)
+    ax_map.set_title("Segregation amplifies the threshold: the last liquid's\nMn:S is ~10× poorer than the bath's",
+                     fontsize=10.2)
+    ax_map.legend(fontsize=8.0, loc="upper left")
+    ax_map.grid(True, alpha=0.25)
+
+    # --- top-right: the hero verdict (film Mn:S bars) ------------------------- #
+    x = np.arange(len(d.heats))
+    films = np.array([h[3] for h in d.heats])
+    tears = [h[4] for h in d.heats]
+    ax_bar.bar(x, films, width=0.62, color=[warn if t else good for t in tears], edgecolor="0.25", zorder=3)
+    ax_bar.axhline(stoich, color="0.3", ls="--", lw=1.6, zorder=2)
+    ax_bar.annotate(f"MnS stoichiometry ({stoich:.2f})", (0.98, stoich), xycoords=("axes fraction", "data"),
+                    ha="right", va="bottom", fontsize=8.4, color="0.3")
+    for xi, (label, _S, _bulk, film, tear, _risk) in zip(x, d.heats):
+        ax_bar.annotate(f"{film:.2f}\n{'TEAR' if tear else 'sound'}", (xi, film), textcoords="offset points",
+                        xytext=(0, 4), ha="center", va="bottom", fontsize=9, fontweight="bold",
+                        color=warn if tear else good)
+    ax_bar.set_xticks(x)
+    ax_bar.set_xticklabels([h[0] for h in d.heats], fontsize=8.4)
+    ax_bar.set_ylabel("interdendritic film Mn:S")
+    ax_bar.set_ylim(0.0, max(float(films.max()) * 1.25, stoich * 1.6))
+    ax_bar.set_title("Hero verdict — film Mn:S decides\n(below stoichiometry → Fe–FeS film → tear)",
+                     fontsize=10.2)
+    ax_bar.grid(True, axis="y", alpha=0.25)
+
+    # --- bottom-left: same sulfur, the manganese decides (the Mushet lever) ---- #
+    same_s = d.heats[:2]
+    xs = np.arange(2)
+    bulks = np.array([h[2] for h in same_s])
+    tear_s = [h[4] for h in same_s]
+    ax_lever.bar(xs, bulks, width=0.5, color=[warn if t else good for t in tear_s], edgecolor="0.25", zorder=3)
+    ax_lever.axhline(crit, color=warn, ls="--", lw=1.7, zorder=2)
+    ax_lever.annotate(f"segregation-amplified threshold (bulk Mn:S ≈ {crit:.0f})", (0.98, crit),
+                      xycoords=("axes fraction", "data"), ha="right", va="bottom", fontsize=8.0, color=warn)
+    ax_lever.axhline(stoich, color="0.55", ls=":", lw=1.4, zorder=2)
+    ax_lever.annotate(f"forge / red-short threshold ({stoich:.2f})", (0.02, stoich),
+                      xycoords=("axes fraction", "data"), ha="left", va="bottom", fontsize=8.0, color="0.5")
+    for xi, (_label, _S, bulk, _film, tear, _risk) in zip(xs, same_s):
+        ax_lever.annotate(f"Mn:S {bulk:.0f}\n{'TEAR' if tear else 'sound'}", (xi, bulk),
+                          textcoords="offset points", xytext=(0, -26), ha="center", fontsize=8.8,
+                          fontweight="bold", color="w")
+    ax_lever.set_xticks(xs)
+    ax_lever.set_xticklabels([f"S {same_s[0][1]:.3f} %\nlow Mn", f"S {same_s[1][1]:.3f} %\n+ Mushet Mn"],
+                             fontsize=8.4)
+    ax_lever.set_ylabel("bulk Mn:S")
+    ax_lever.set_ylim(0.0, max(float(bulks.max()) * 1.2, crit * 1.4))
+    ax_lever.set_title(f"Same sulfur ({same_s[0][1]:.3f} %, both within spec) —\nthe Mn:S decides (the Mushet lever)",
+                       fontsize=10.2)
+    ax_lever.grid(True, axis="y", alpha=0.25)
+
+    # --- bottom-right: the OoM-coherence note (cutoff-dependence) -------------- #
+    lo, hi = d.empirical_band
+    ax_oom.fill_between(d.fs_grid, lo, hi, color=spec, alpha=0.10,
+                        label=f"empirical casting band (~{lo:.0f}–{hi:.0f})")
+    ax_oom.axhline(d.empirical_mn_s, color=spec, ls="--", lw=1.6,
+                   label=f"Mn:S ≳ {d.empirical_mn_s:.0f} (Toledo 1993)")
+    ax_oom.axhline(stoich, color="0.4", ls=":", lw=1.4)
+    ax_oom.annotate(f"stoichiometry {stoich:.2f}", (0.855, stoich), textcoords="offset points",
+                    xytext=(0, 4), fontsize=8.0, color="0.4")
+    ax_oom.plot(d.fs_grid, d.critical_curve, color=blue, lw=2.8, label="critical bulk Mn:S (segregation)")
+    ax_oom.plot([d.fs], [crit], "o", ms=10, color=blue, mec="0.2", mew=1.2, zorder=5)
+    ax_oom.annotate(f"f_s = {d.fs:.2f}\n→ {crit:.0f}", (d.fs, crit), textcoords="offset points",
+                    xytext=(-38, 2), fontsize=8.0, color=blue)
+    ax_oom.set_xlabel("last-liquid cutoff  $f_s$")
+    ax_oom.set_ylabel("critical bulk Mn:S for a sound casting")
+    ax_oom.set_ylim(0.0, 60.0)
+    ax_oom.set_title("Soft OoM coherence (NOT a tooth): 1.71 amplified into\nthe tens — order robust, value cutoff-tuned",
+                     fontsize=10.2)
+    ax_oom.legend(fontsize=8.0, loc="upper left")
+    ax_oom.grid(True, alpha=0.25)
+
+    fig.suptitle("Hot-tearing — the sulfur consequence at casting: same sulfur, the Mn:S decides (segregation)",
+                 fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.90, bottom=0.08, wspace=0.24, hspace=0.34)
+    return fig
+
+
 def refining_figure(d):
     """The F2 artifact: the tap-chemistry panel — deoxidation curve, C–O coupling, degassing, propagation.
 
