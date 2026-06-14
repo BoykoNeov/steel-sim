@@ -111,8 +111,32 @@ pinning the interpreter won't help).
 > request was never picked up*. This does **not** contradict Rung-1's clean Selector receiver: that
 > was a raw `zmq.asyncio` recv on the main thread, whereas the real kernel's intake is tornado
 > `ZMQStream` (`add_reader`) on a dedicated shell-channel thread forwarding via inproc PAIR — machinery
-> Rung-1 never replicated. **Still open (deeper):** *which* of that machinery drops the inbound wakeup,
-> and why. The paragraph below is kept
+> Rung-1 never replicated. **(h) The drop is a MISSED EDGE on a still-REGISTERED fd of the kernel's
+> NATIVE selector loop (Rung-3 passive stack+selector probe, 2026-06-14).** A PYTHONPATH-injected
+> `sitecustomize.py` added a *passive* observer (advisor crux: an on-loop heartbeat or a
+> `getsockopt(EVENTS)` probe would *rescue* the wedge — a timer bounds the `select()` timeout so the
+> loop drains; reading `EVENTS` re-arms the edge — so it must only stack-sample + read asyncio
+> internals, never poke the loop or the socket). Verified at runtime: ipykernel's
+> `_init_asyncio_patch` forces `WindowsSelectorEventLoopPolicy`, so the shell-channel thread is a
+> **native `_WindowsSelectorEventLoop`/`SelectSelector` — no kernel-side tornado `add_reader` shim**
+> (that shim is client-only; this corrects the "mirror of the client `add_reader` miss" wording
+> above). On 4 wedges (~29–67%/run *with* instrumentation = no Heisenbug) every sample shows the
+> **Shell-channel thread parked in `select.select()`** (loop alive, 0.0 % CPU, no lock → **A
+> confirmed; B/C refuted**), the client's `execute_request` _N send **completed** while kernel
+> `on_recv #N` **never fired**, and the shell ROUTER fd **still registered** in the selector read-set
+> (`get_map()`) while `select([fd])`=False (rules out lost registration). The queued-vs-arrival-loss
+> question is then settled by **one DELIBERATE reading the advisor forced** (my passive split was a
+> false dichotomy that omitted "bytes never reached the recv queue", which Rung-1's *null* can't
+> exclude): a single `getsockopt(EVENTS)&POLLIN` on the ROUTER **at** the wedge, run on the OWNING
+> thread via `call_soon_threadsafe` (the parked loop still services its level-triggered self-pipe).
+> Both wedges: **`POLLIN=True` (EVENTS=3)** → the request is genuinely **queued-but-unread** ⇒
+> **arrival-loss refuted, A sub-flavor (b) MISSED/COALESCED EDGE confirmed by measurement** — the
+> libzmq `ZMQ_FD` edge-trigger trap (a request whose edge was consumed by a prior drain sits unread on
+> a registered fd the loop still polls). The lone `getsockopt` did **not** recover it (POLLIN stayed
+> set, `select([fd])` stayed False, no `on_recv`) — the OS edge is genuinely lost. The kernel already
+> runs a Selector loop and still loses it, so forcing the Selector policy can't fix the kernel side.
+> **Still open (Rung-4):** *why* the edge coalesces, and what DOES recover it (on-loop `EVENTS`-drain
+> that re-runs the read handler = candidate fix; bare wake-timer should not). The paragraph below is kept
 > as the original symptom/triage account; treat its *mechanism* as superseded (see
 > `docs/memory/notebook-kernel-wedge-rootcause.md`). **The retry mitigation in §5 is unaffected
 > and remains correct** — it recovers any intermittent lost-reply regardless of the layer.
