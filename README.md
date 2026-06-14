@@ -33,7 +33,8 @@ docs/figures/        # banked figures (steel-*.png)
 ```powershell
 pip install -e ".[viz]"                 # compute + figures
 python steel/demo_jominy.py             # any demo prints its validation table + banks a figure
-streamlit run steel/app.py              # the what-if app (needs .[viz,app])
+streamlit run steel/app.py              # the back-end what-if app (needs .[viz,app])
+streamlit run steel/app_making.py       # the front-end (ore→billet) what-if twin (needs .[viz,app])
 jupyter lab steel/steel.ipynb           # the teaching notebook (needs .[viz,notebook])
 ```
 
@@ -80,8 +81,10 @@ Three ways into the same validated core (install + launch commands are in
 - **Notebook** (`steel/steel.ipynb`) — the narrative teaching path with sliders. New to heat
   treatment? Open it and read the **"Start here — the 30-second mental model"** cell, then go
   top to bottom.
-- **App** (`steel/app.py`) — the interactive what-if: pick a grade, quench medium, and section
-  size and watch the microstructure and hardness move.
+- **App** (`steel/app.py`) — the interactive back-end what-if: pick a grade, quench medium, and
+  section size and watch the microstructure and hardness move.
+- **Making app** (`steel/app_making.py`) — the front-end (ore→billet) twin: walk reduction → refining
+  → slag → ladle trim → casting and watch an upstream mistake propagate to a downstream soft core.
 
 The table is ordered as a suggested path — top rows first. Every demo is its own
 `python -m steel.<name>`; the *Also interactive* column points to where the same idea lives in

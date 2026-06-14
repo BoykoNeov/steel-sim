@@ -687,6 +687,17 @@ pip install -e .[viz,app]                 # matplotlib (viz) + streamlit (app)
 streamlit run steel/app.py
 ```
 
+> **The front-end twin (`app_making.py`, plan §7).** A **separate** Streamlit app — the *"ore → billet"*
+> companion to this *"cooling curve in, microstructure out"* one — covering the steel-**making** chain
+> (reduction → spine → refining + slag → ladle trim → casting + solidification). Same three-layer
+> discipline and run-as-script bootstrap (verify with `python steel/app_making.py` — it must die only at
+> `import streamlit` inside `main()`); `tests/test_app_making.py` exercises every compute helper
+> always-green. It is *separate, not appended*: the two narratives, test surfaces, and `main()` bodies
+> stay focused. Its figure builders wrap the banked `demo_*.compute()` + the front-end `plots.*` figures
+> (no figure invented); the one heavy compute (the latent-heat solidification field) is memoized in
+> `main()`. Per-stage panels only — chaining one `Heat` through the whole run is the deferred integration
+> capstone, not this. Defect-consequence panels + the front-end notebook are Slice 2.
+
 It is laid out in **three layers** so the deliverable is both testable and runnable:
 
 - **Compute helpers** (`single_steel_outcomes` / `evaluate_one` / `comparison_grid` /

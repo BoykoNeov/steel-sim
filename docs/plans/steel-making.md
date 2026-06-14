@@ -603,6 +603,28 @@ porosity (a feeding / Niyama-style proxy), hot-tear susceptibility.
 >   regime than mold-diffusion `B`). **Notebook & app deferred** (as F1/spine/F4 Slice 1). Hot-tear and a
 >   defect-feeding model remain deferred.
 
+> **As built — 2026-06-14 (notebook/app backfill, Slice 1 — the making-chain app).** The front-end
+> interactive surface F1/spine/F4 each deferred is now built as a **separate** Streamlit app,
+> `steel/app_making.py` (+ `tests/test_app_making.py`), the *"ore → billet"* twin of the back-end
+> *"cooling curve in, microstructure out"* `app.py`. **Separate, not appended** (advisor): the two
+> narratives, the two always-green test surfaces, and the two paper-thin `main()` bodies stay focused,
+> and the front-end notebook (deferred to Slice 2) can carry the kernel-wedge risk in isolation. Same
+> three-layer ADR-0002 discipline as `app.py` — **headless compute helpers** (one per stage: reduction,
+> spine, deox, slag partition, ladle trim, casting; unit-tested always-green, no Streamlit/matplotlib),
+> **figure builders** wrapping the banked `demo_*.compute()` + `plots.*` (no figure invented), and
+> **`main()`** as the lone `import streamlit`. **Per-stage panels** (advisor's option A), *not*
+> "follow one heat" — that would bump the unwired `from_hot_metal`/`from_tap` seam and slide into the
+> integration capstone. Each stage exposes its natural knob (furnace T → the 746 °C C/FeO crossover;
+> Cr/Mo dose → the emergent soft core; deox element/level → the Al–O minimum; the reference slags → the
+> acid-vs-basic L_P gap; recovery shortfall → the off-grade + soft-core double flag; casting modulus →
+> the enriched centerline band) over the *validated* models — **reach, not physics**. The one heavy
+> compute (the latent-heat solidification field) is memoized in `main()`, the `app.py`-residual pattern.
+> Adds no engine touch, no ADR, no constant; suite **+15 → 798 green / 2 skipped** (8 headless helper/
+> guard tests + 7 viz-gated figure-build smoke tests, mirroring `test_app.py`'s three layers); README +
+> gallery Experiments card wired (drift-guard regenerated). **Slice 2 deferred:** the defect-consequence panels
+> (porosity / flaking / hot-tear / cold-short / red-short / temper-embrittlement) and the front-end
+> teaching notebook.
+
 **Hand-off.** After F4 the `Heat` is a real cast billet; it flows into the back
 end's grain → heat-treatment → properties chain, and the loop is **end-to-end**.
 
