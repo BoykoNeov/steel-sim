@@ -236,6 +236,22 @@ CATALOG: tuple[Entry, ...] = (
         "kinetics, out of scope), so the model was not built to manufacture one.",
     ),
     Entry(
+        "Impurity consequences (front-end)", "demo_tempered_martensite_embrittlement",
+        "steel-tempered-martensite-embrittlement.png",
+        "Tempered-martensite embrittlement — the other trough, irreversible",
+        "Reversible temper embrittlement has a sibling on the SAME tempering axis — and the two are opposites. "
+        "Temper as-quenched martensite in 260–370 °C and cementite precipitates as films along the interlath / "
+        "grain boundaries (fed by retained-austenite decomposition); toughness drops into a trough. It is "
+        "carbon-driven, not impurity-driven — so a *clean* medium-carbon steel still embrittles, where the "
+        "reversible one needs phosphorus — and it is ONE-WAY: temper above ~400 °C and it recovers, but "
+        "re-entering the trough cannot restore the film (the carbide morphology is set by the peak temper). Two "
+        "gates, on the same frozen quench the spine uses: 4140 embrittles, 8620 (0.20 %C) is immune even fully "
+        "hardened, and a section that did not harden has no tempered martensite to embrittle. No strict tooth — "
+        "the trough-from-carbide-kinetics gate was run on paper and failed (the repo carries no stage-III "
+        "carbide thermodynamics), so no carbide model was built to manufacture one; the trough window and the "
+        "~400 °C recovery are cited, the carbon gate and verdict rule by-construction.",
+    ),
+    Entry(
         "Impurity consequences (front-end)", "demo_hydrogen_flaking", "steel-hydrogen-flaking.png",
         "Hydrogen flaking — same ladle hydrogen, the section decides",
         "What dissolved hydrogen finally does — and why it is a *geometric* consequence, not a number. "

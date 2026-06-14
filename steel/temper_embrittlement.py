@@ -43,8 +43,9 @@ below the 0.5 % suppression level, so the model never marks them Mo-protected. M
 and the demo proves it on the genuinely-susceptible J ≈ 225 victim — it just isn't what makes the registry
 grades safe here. The classic *victims* are clean-looking Ni–Cr steels merely slow-cooled with a little
 residual phosphorus. **Named deferrals:** the absolute ΔFATT magnitude (scattered, calibration-heavy);
-the full Guttmann co-segregation kinetics / the Fe₃P-cluster C-curve; tempered-martensite embrittlement (the
-*irreversible* ~260–370 °C cementite-film one — a different mechanism). Units: wt % for composition, °C for
+the full Guttmann co-segregation kinetics / the Fe₃P-cluster C-curve. The *irreversible* sibling on the
+tempering axis — tempered-martensite embrittlement (260–370 °C cementite films, a different mechanism) — is now
+its own consumer (:mod:`steel.tempered_martensite_embrittlement`). Units: wt % for composition, °C for
 temperature.
 """
 from __future__ import annotations

@@ -603,9 +603,10 @@ is *not* returned (Tabor's `H≈3σ` is flow stress, not yield — reporting it 
 **Toughness** is a deliberately **rough, relative** dimensionless direction opposite to hardness —
 **no Charpy-J is invented** because real impact toughness is steel/heat-specific and **non-monotone**
 through the **tempered-martensite (~260–370 °C)** and **temper-embrittlement (~375–575 °C, alloy)**
-troughs (the named scope ceiling — *this* back-end `toughness_index` is unchanged; the *reversible*
-temper-embrittlement trough is now addressed separately, as a front-end susceptibility consumer
-`steel.temper_embrittlement`, not as a back-end toughness curve — `steel-making.md` §14).
+troughs (the named scope ceiling — *this* back-end `toughness_index` is unchanged; **both** troughs are now
+addressed separately, as front-end susceptibility consumers — the reversible one in
+`steel.temper_embrittlement`, the irreversible tempered-martensite one in
+`steel.tempered_martensite_embrittlement` — not as back-end toughness curves — `steel-making.md` §14).
 Tempering is **martensite-only** (pearlite barely tempers; a mixed
 Jominy traverse would temper per-constituent — deferred). **The triad's benchmark leg (advisor):**
 the plain-carbon bands are self-consistency (they were calibrated to), so the *independent* benchmark

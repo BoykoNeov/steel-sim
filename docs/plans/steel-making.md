@@ -707,9 +707,40 @@ deferred state extensions (P/S on `Steel`) — then **`game/` last**, on the pro
 > gallery card:** `demo_temper_embrittlement` — one dirty Ni-Cr forging, four
 > levers (fast cool / Mo / clean heat / reheat) each save it; the reversibility cycle. Suite **685 green /
 > 2 skipped** (+17), no engine touch, no ADR. **Deferrals:** absolute ΔFATT (scattered), the full Guttmann
-> co-segregation / Fe₃P-cluster C-curve, and *tempered-martensite* embrittlement (the irreversible
-> ~260–370 °C cementite-film one — a different mechanism). **Phosphorus' coverage is now complete** (ferritic
-> cold-short + martensitic temper-embrittlement).
+> co-segregation / Fe₃P-cluster C-curve. (The irreversible *tempered-martensite* embrittlement — the
+> 260–370 °C cementite-film one, a different mechanism — is now BUILT; see the next banner.) **Phosphorus'
+> coverage is now complete** (ferritic cold-short + martensitic temper-embrittlement).
+
+> **BUILT ✓ 2026-06-14 — tempered-martensite embrittlement closes the OTHER tempering-axis trough (the
+> irreversible one).** Reversible temper embrittlement closed phosphorus' *segregation* path; this closes the
+> *microstructural* one — the trough `steel-production.md` §11 named as the back-end `toughness_index` ceiling
+> but never modelled. `tempered_martensite_embrittlement.py` → the **`tempered-martensite-embrittled`** flag.
+> Tempering as-quenched martensite in **260–370 °C** precipitates cementite as **films** along the interlath /
+> prior-austenite boundaries (Horn–Ritchie: fed by interlath retained-austenite decomposition) and toughness
+> troughs. The slice is the **foil** that completes the pair, opposite on every axis: TME is **carbon-driven**
+> (not impurity — a *clean* medium-carbon steel still embrittles, the headline distinction), **microstructural**
+> (not equilibrium segregation), and **irreversible** — modelled as a **one-way verdict keyed on the *peak*
+> temper reached** (temper 300 → embrittled, temper 450 → recovered, re-enter 300 → *stays tough*, the direct
+> foil to reversible TE's re-embrittling cycle). **NO claimable tooth — the gate was run before coding (the
+> discipline, symmetric with reversible TE):** the tempting tooth — "the 260–370 °C trough *emerges* from
+> ε→cementite / interlath-RA kinetics without tuning" — fails the same way the reversible-TE nose did (the repo
+> carries no stage-III carbide thermodynamics → the trough onset is underdetermined here), so **no carbide model
+> was built to manufacture one**. The trough window, the ~400 °C recovery, and the cementite-film mechanism are
+> **cited inputs**; the carbon gate (`MIN_CARBON_FOR_TME`) and the verdict rule are **by construction**. **The
+> faithful part is architecture, not a tooth:** the check runs the **same frozen back-end quench** the spine uses
+> (`sweep.evaluate`) and gates on its **martensite fraction**, so the verdict composes with hardenability (a
+> soft-core section is immune — no tempered martensite to embrittle). **Two advisor catches, both durable:** (1)
+> the irreversibility I first stated **backwards** (I had the >600 °C reheat *failing* to clear TME and
+> re-austenitization *clearing* it — the reverse: the reheat is above recovery so it *relieves* TME, and
+> re-austenitizing *restores* susceptibility; the genuine distinction is the **cycling toggle**, not a failed
+> reset); (2) the RA-as-severity-driver **inverted trap** — *bulk* retained austenite ranks high-carbon
+> *plate*-martensite (eutectoid 1080) worst, where the interlath-film mechanism does not apply, so RA is cited as
+> the *mechanism* only and **carbon drives the gate** (8620 at 0.20 %C confirms the low-carbon exemption even when
+> fully hardened — the discriminating check, run before committing). **Demo + figure + gallery card:**
+> `demo_tempered_martensite_embrittlement` — the trough on the temper axis, the two gates (carbon +
+> hardenability), the irreversibility cycle, and the reversible↔irreversible contrast. Suite **741 green / 2
+> skipped** (+19), no engine touch, no ADR. **Deferrals:** the absolute trough depth (no Charpy-J — the back-end
+> ceiling stands), the P-aggravation magnitude, and the explicit ε→Fe₃C carbide sequence.
 
 **The reframe that makes it useful.** The originally-named tramp axes
 (hardenability/Jominy, CCT kinetics, residual stress) are the *weakest* for our

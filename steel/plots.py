@@ -2785,6 +2785,110 @@ def temper_embrittlement_figure(d):
     return fig
 
 
+def tempered_martensite_embrittlement_figure(d):
+    """The tempered-martensite-embrittlement artifact: the OTHER tempering trough — carbon-driven, irreversible.
+
+    ``d`` is a :class:`~steel.demo_tempered_martensite_embrittlement.TMEDemo` (precomputed — this layer only
+    draws, ADR 0002). Four panels:
+
+    * **top-left — the trough on the temper axis.** The hardened victim's verdict across temper temperature: the
+      cited TME trough (260–370 °C) shaded red, the > ~400 °C recovery green, and the *sibling* reversible-TE
+      window (375–575 °C) marked amber for orientation. The verdict step fills exactly the trough — the model
+      tracks the cited window (by construction, not a tooth).
+    * **top-right — the two gates.** At a 300 °C temper: 4140 / 1080 embrittle; 8620 (0.20 %C) stays tough even
+      fully hardened (carbon gate); a plain-carbon section that did not harden is immune (martensitic gate).
+    * **bottom-left — irreversibility.** Temper 300 → embrittled, temper 450 → recovered, re-enter 300 → stays
+      tough. One-way: the carbide morphology is set by the peak temper.
+    * **bottom-right — reversible ↔ irreversible.** The contrast table: the sibling re-embrittles on cycling,
+      this does not — same axis, opposite character.
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyArrowPatch
+
+    fig, ((ax_axis, ax_disc), (ax_cyc, ax_con)) = plt.subplots(2, 2, figsize=(13.5, 9.6))
+    warn = "#c0392b"
+    good = PHASE_COLORS["martensite"]
+    amber = "#d68910"
+
+    # --- top-left: the trough on the temper axis ------------------------------------------------ #
+    Ts = [T for T, _ in d.axis_map]
+    emb = [1.0 if e else 0.0 for _, e in d.axis_map]
+    ax_axis.axvspan(d.window[0], d.window[1], color="#fadbd8", zorder=0)
+    ax_axis.axvspan(d.recovery_T, Ts[-1], color="#d5f5e3", zorder=0)
+    ax_axis.axvspan(d.reversible_window[0], d.reversible_window[1], facecolor="#fdebd0", zorder=0, hatch="//",
+                    edgecolor="#e8c39e")
+    ax_axis.fill_between(Ts, emb, step="mid", color=warn, alpha=0.85, zorder=3, label="TME — embrittled")
+    ax_axis.step(Ts, emb, where="mid", color=warn, lw=1.6, zorder=4)
+    ax_axis.annotate(f"TME trough\n{d.window[0]:.0f}–{d.window[1]:.0f} °C\n(irreversible)",
+                     (sum(d.window) / 2, 0.55), ha="center", va="center", fontsize=8.2, color=warn,
+                     fontweight="bold")
+    ax_axis.annotate(f"recovered\n> {d.recovery_T:.0f} °C", ((d.recovery_T + Ts[-1]) / 2, 0.22), ha="center",
+                     va="center", fontsize=8.0, color=good)
+    ax_axis.annotate("reversible-TE\nwindow (sibling —\ndifferent mechanism)", (sum(d.reversible_window) / 2, 0.80),
+                     ha="center", va="center", fontsize=7.2, color="#9c640c")
+    ax_axis.set_xlim(Ts[0], Ts[-1])
+    ax_axis.set_ylim(0.0, 1.15)
+    ax_axis.set_yticks([0.0, 1.0])
+    ax_axis.set_yticklabels(["tough", "embrittled"], fontsize=8.4)
+    ax_axis.set_xlabel("temper temperature (°C)")
+    ax_axis.set_title(f"Hardened {d.victim_name} ({d.victim_C:.2f} %C) — the trough on the temper axis",
+                      fontsize=10.0)
+    ax_axis.grid(True, axis="x", alpha=0.2)
+
+    # --- top-right: the two gates (carbon + hardenability) -------------------------------------- #
+    dl = d.discriminator
+    dy = np.arange(len(dl))[::-1]                       # first case on top
+    for y, (lab, C, M, e) in zip(dy, dl):
+        ax_disc.barh(y, 1.0, color=warn if e else good, edgecolor="0.3", zorder=3)
+        ax_disc.annotate(("EMBRITTLED" if e else "tough") + f"\n{M:.0%} M", (0.5, y), ha="center", va="center",
+                         fontsize=8.4, color="white", fontweight="bold")
+    ax_disc.set_yticks(dy)
+    ax_disc.set_yticklabels([lab for lab, *_ in dl], fontsize=8.0)
+    ax_disc.set_xlim(0.0, 1.0)
+    ax_disc.set_xticks([])
+    ax_disc.set_title("Two gates at a 300 °C temper — carbon AND a hardened structure", fontsize=10.0)
+
+    # --- bottom-left: the irreversibility cycle ------------------------------------------------- #
+    ax_cyc.set_xlim(0.0, 1.0)
+    ax_cyc.set_ylim(0.0, 1.0)
+    ax_cyc.axis("off")
+    ax_cyc.set_title("Irreversible — the peak temper sets it (one-way)", fontsize=10.0)
+    xs = [0.18, 0.5, 0.82]
+    ys = [0.74, 0.30, 0.74]
+    for (lab, e), x, y in zip(d.cycle, xs, ys):
+        ax_cyc.annotate(("EMBRITTLED\n" if e else "TOUGH\n") + lab, (x, y), ha="center", va="center",
+                        fontsize=8.0, color="white", fontweight="bold",
+                        bbox=dict(boxstyle="round,pad=0.4", fc=warn if e else good, ec="0.3"))
+    for (x0, y0), (x1, y1) in (((xs[0], ys[0]), (xs[1], ys[1])), ((xs[1], ys[1]), (xs[2], ys[2]))):
+        ax_cyc.add_patch(FancyArrowPatch((x0, y0 - 0.12), (x1, y1 + 0.12), arrowstyle="-|>",
+                                         mutation_scale=16, color="0.4", lw=1.8,
+                                         connectionstyle="arc3,rad=-0.2"))
+    ax_cyc.annotate("over-temper\n> 400 °C", (0.34, 0.50), fontsize=7.8, color=good, ha="center")
+    ax_cyc.annotate("re-enter trough\n→ stays tough", (0.66, 0.50), fontsize=7.8, color=good, ha="center")
+
+    # --- bottom-right: reversible ↔ irreversible contrast --------------------------------------- #
+    ax_con.set_xlim(0.0, 1.0)
+    ax_con.set_ylim(0.0, 1.0)
+    ax_con.axis("off")
+    ax_con.set_title("Reversible (sibling)  vs  tempered-martensite (here)", fontsize=10.0)
+    x_aspect, x_rev, x_tme = 0.02, 0.40, 0.74
+    y0, dyrow = 0.86, 0.135
+    ax_con.text(x_rev, y0 + 0.07, "reversible TE", fontsize=8.4, fontweight="bold", color="#9c640c", ha="left")
+    ax_con.text(x_tme, y0 + 0.07, "TME", fontsize=8.4, fontweight="bold", color=warn, ha="left")
+    for i, (aspect, rev, tme_) in enumerate(d.contrast):
+        y = y0 - i * dyrow
+        ax_con.text(x_aspect, y, aspect, fontsize=7.8, color="0.25", ha="left", fontweight="bold")
+        ax_con.text(x_rev, y, rev, fontsize=7.6, color="0.2", ha="left")
+        ax_con.text(x_tme, y, tme_, fontsize=7.6, color="0.2", ha="left")
+        if i:
+            ax_con.axhline(y + 0.5 * dyrow, xmin=0.0, xmax=1.0, color="0.85", lw=0.7)
+
+    fig.suptitle("Tempered-martensite embrittlement — the irreversible, carbon-driven tempering trough",
+                 fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.17, right=0.975, top=0.92, bottom=0.08, hspace=0.32, wspace=0.30)
+    return fig
+
+
 def ladle_figure(d):
     """The F3 artifact: alloy to grade — the trim, the recovery shortfall, and the front-to-back verdict.
 

@@ -470,7 +470,9 @@ conversion (an interpolated table like the E140 one, valid ~150–550 HV — it 
 deliberately **rough, relative** direction opposite to hardness — *no Charpy-J is invented*,
 because real impact toughness is steel/heat-specific and **non-monotone** through the
 tempered-martensite (~260–370 °C) and temper-embrittlement (~375–575 °C, alloy) troughs (the
-named scope ceiling). Tempering is **martensite-only** here (pearlite barely tempers; a mixed
+named scope ceiling; both troughs are now addressed as front-end susceptibility consumers —
+`steel.tempered_martensite_embrittlement` and `steel.temper_embrittlement` — not as back-end
+toughness curves). Tempering is **martensite-only** here (pearlite barely tempers; a mixed
 traverse would temper per-constituent — **promoted in §16 below**, built 2026-06-11). No new
 figure: 3b is a `properties.py` extension validated by the test triad.
 
