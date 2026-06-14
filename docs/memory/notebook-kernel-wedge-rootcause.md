@@ -7,6 +7,23 @@ metadata:
   originSessionId: 1c1b85d3-9634-464d-982b-28a8a3fb21a9
 ---
 
+> **CORRECTION 2026-06-14 (direct measurement revised the *mechanism*, not the symptom).**
+> A follow-up dug in with client-side bridge tracing (`select()` entry/return on the tornado
+> selector thread + a safe main-loop `getsockopt(EVENTS)` probe per socket) and kernel-CPU
+> sampling, on an isolated venv. Findings, in order of confidence:
+> - **No version fixes it** — identical ~33 % on tornado **6.5.5 *and* 6.5.7**; pyzmq's async
+>   path is byte-frozen since 27.1.0; jupyter_client/ipykernel bumps are off the path.
+> - **tornado is exonerated** — at a wedge its selector thread is *correctly blocked* in
+>   `select()` on the shell fd for the full 45 s; it isn't dropping a wake, it never gets one.
+> - **The "missed FD-readiness one layer below nbclient" (client-side pyzmq/tornado) claim is
+>   NOT supported.** A probe read `getsockopt(EVENTS)` 318× across the silence and saw POLLIN
+>   **never** — the reply is *not sitting at the client socket*; there is no edge to lose.
+> - **"kernel idle (0 % CPU)" is CONFIRMED.** So the loss is **between the idle kernel's send
+>   and the client recv queue** — at/below the kernel's message-send path or the transport —
+>   *not* the client asyncio/FD layer. Deeper and less tractable; still no clean in-code fix.
+> The retry mitigation remains correct. The original paragraph below is the *symptom* record;
+> read its mechanism attribution as superseded.
+
 The `slow` `test_steel_notebook` wedge (a cell that runs in <1 s hanging past its
 timeout) was **root-caused 2026-06-10** to an **upstream pyzmq/asyncio-on-Windows
 lost-`execute_reply`**: the kernel finishes the cell and goes **idle (0 % CPU)** but the

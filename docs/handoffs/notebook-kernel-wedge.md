@@ -79,6 +79,20 @@ pinning the interpreter won't help).
 
 ## 3. Root cause (one paragraph)
 
+> **CAVEAT — 2026-06-14 (direct measurement revised this mechanism).** A follow-up traced both
+> sides of the bridge (`select()` entry/return on the tornado selector thread + a safe main-loop
+> `getsockopt(EVENTS)` probe per client socket) plus kernel-CPU sampling. It found: (a) **no
+> version fixes it** (same ~33 % on tornado 6.5.5 *and* 6.5.7; pyzmq async path frozen); (b)
+> **tornado's selector is faithful** — it sits *correctly blocked* in `select()` on the shell fd
+> the whole time; (c) the reply is **not at the client socket at all** — `getsockopt(EVENTS)`
+> never shows POLLIN across the silence, so there is **no dropped readability notification** to
+> drop; (d) the kernel is **confirmed idle (0 % CPU)**. So the loss is *between the idle kernel's
+> send and the client recv queue* — at/below the kernel send path or the transport — **not** the
+> client-side selector-shim "dropped notification" described below. The paragraph below is kept
+> as the original symptom/triage account; treat its *mechanism* as superseded (see
+> `docs/memory/notebook-kernel-wedge-rootcause.md`). **The retry mitigation in §5 is unaffected
+> and remains correct** — it recovers any intermittent lost-reply regardless of the layer.
+
 The kernel finishes a cell, emits `execute_reply` on the shell channel, and goes idle. The client
 reads zmq sockets over asyncio. On Windows the default **Proactor** event loop cannot drive zmq's
 `add_reader` directly, so pyzmq bridges it through an extra tornado **selector thread** — and that
