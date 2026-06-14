@@ -135,8 +135,20 @@ pinning the interpreter won't help).
 > a registered fd the loop still polls). The lone `getsockopt` did **not** recover it (POLLIN stayed
 > set, `select([fd])` stayed False, no `on_recv`) — the OS edge is genuinely lost. The kernel already
 > runs a Selector loop and still loses it, so forcing the Selector policy can't fix the kernel side.
-> **Still open (Rung-4):** *why* the edge coalesces, and what DOES recover it (on-loop `EVENTS`-drain
-> that re-runs the read handler = candidate fix; bare wake-timer should not). The paragraph below is kept
+> **(i) Rung-4 — answered (on-loop watchdog in the real kernel, 2026-06-14).** *Why the edge
+> coalesces* (NAILED, isolated raw-pyzmq): `getsockopt(ZMQ_EVENTS)` drains the edge-triggered `ZMQ_FD`,
+> and while a backlog is pending a fresh arrival does not re-edge (only `EVENTS`→0 re-arms) — so a
+> formed strand is terminal on a registered fd `select()` forever reports non-readable. The shell
+> intake is a tornado `ZMQStream` on the kernel's native selector loop (no Proactor shim), whose own
+> `_update_handler` reschedule is the edge-trap defense the strand slips; the exact formation race is
+> not isolable (Rung-1 raw rig: zero strands). *What recovers it* (MEASURED, three arms × 20 real
+> runs): **bare** wake-timer **8/20** ≈ **control 6/20** ⇒ waking `select()` does not recover; **drain**
+> (re-fire the registered reader via `reader._run()` = tornado
+> `_handle_events`→`ZMQStream._handle_events`, not a side-channel recv) **0/20**, with **6 strands
+> caught and all 6 recovered** — each showing a lone `getsockopt` ×3 fails (POLLIN persists, `on_recv`
+> unchanged) then `reader._run()` fires `on_recv`. Candidate / upstream-exhibit only (reaches into
+> asyncio/pyzmq private internals) = a periodic unconditional `ZMQStream._update_handler` reschedule;
+> **retry-on-wedge stays the mitigation.** The paragraph below is kept
 > as the original symptom/triage account; treat its *mechanism* as superseded (see
 > `docs/memory/notebook-kernel-wedge-rootcause.md`). **The retry mitigation in §5 is unaffected
 > and remains correct** — it recovers any intermittent lost-reply regardless of the layer.

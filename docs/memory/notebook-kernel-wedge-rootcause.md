@@ -121,11 +121,65 @@ metadata:
 >   STILL loses it**, so "force `WindowsSelectorEventLoopPolicy`" (the client-side §4 trap) **cannot**
 >   fix the kernel side. Note the lone `getsockopt(EVENTS)` did **not** recover the wedge (POLLIN
 >   stayed set, `select([fd])` stayed False, no `on_recv`) — the OS edge is genuinely lost, not merely
->   un-rechecked. **NOT established (Rung-4):** *why* the edge coalesces (libzmq ROUTER `ZMQ_FD`
->   re-signalling vs pyzmq's `_AsyncSocket`/`add_reader` drain loop), and what DOES recover it — the
->   advisor-pre-registered perturbations (an on-loop periodic `EVENTS`-**drain that re-runs the read
->   handler** as a candidate in-kernel fix; a bare wake-timer that should *not* recover, ruling out a
->   merely stale `select()`).
+>   un-rechecked. **Rung-4 target (pre-registered, ANSWERED below):** *why* the edge coalesces (libzmq
+>   ROUTER `ZMQ_FD` re-signalling vs pyzmq's `_AsyncSocket`/`add_reader` drain loop), and what DOES
+>   recover it — the advisor-pre-registered perturbations (an on-loop periodic `EVENTS`-**drain that
+>   re-runs the read handler** as a candidate in-kernel fix; a bare wake-timer that should *not*
+>   recover, ruling out a merely stale `select()`).
+> - **Rung-4 ANSWERED — the wedge is the libzmq `ZMQ_FD` edge-trigger trap, and re-running the
+>   registered read handler recovers it where merely waking `select()` does not (on-loop watchdog in
+>   the real kernel, 2026-06-14).**
+>   **(why — NAILED, isolated/loop-independent):** the `ZMQ_FD` re-signalling rule, measured on raw
+>   pyzmq (no Jupyter): **`getsockopt(ZMQ_EVENTS)` itself drains the edge-triggered fd** — after one
+>   read, `select([fd])`=False while `EVENTS&POLLIN`=True with messages *queued and un-recv'd*; and
+>   **while a backlog is pending (`EVENTS` already nonzero) a fresh arrival does NOT re-edge** (a 3rd
+>   send leaves `select([fd])`=False; a recv-drain confirms all three actually arrived — "no re-edge",
+>   not "not here yet"); only once recv drives `EVENTS`→0 does the *next* arrival re-edge. So a formed
+>   strand is **terminal**: the request sits `EVENTS&POLLIN`-True on a registered fd `select()` reports
+>   non-readable forever, and no later shell traffic can re-arm it (the synchronous client sends none —
+>   sharpens the "0% CPU idle" fingerprint). This **resolves the Rung-2/Rung-3 wording**: the shell
+>   intake is a tornado **`ZMQStream`** (`add_reader`) on the kernel's **native**
+>   `_WindowsSelectorEventLoop` (verified in-kernel: shell socket is `ROUTER`, its `ZMQ_FD` is in the
+>   loop's selector `get_map()`) — *no* Proactor selector-thread shim (that's client-only).
+>   `ZMQStream._handle_events` reads `socket.EVENTS` (drains the edge), recvs ONE multipart, then
+>   `_update_handler` re-reads `socket.events` and *conditionally* reschedules via `add_callback` "to
+>   avoid missing events due to edge-triggered FDs" — ZMQStream already carries an edge-trap defense,
+>   and the strand is a **hole in it**.
+>   **(why — INFERRED, not isolable):** the exact `_update_handler` × libzmq `activate_read`/signaler
+>   interleaving that *forms* the strand is below observation — Rung-1's 9,600-message raw rig produced
+>   zero strands, so it does not reproduce at the transport level; the watchdog sees the **aftermath**
+>   (queued-but-unread), not the formation instant. Not trace-claimed.
+>   **(what recovers — MEASURED, real `steel.ipynb`, this session):** a PYTHONPATH-`sitecustomize`
+>   installed a self-rescheduling watchdog on the shell-channel asyncio loop (advisor crux: an on-loop
+>   timer was *forbidden* in Rung-3 because it would rescue/contaminate the passive null — here rescue
+>   IS the goal, and a loop callback runs on the *owning* thread so `getsockopt`/`select`/`reader._run`
+>   are thread-safe by construction, no cross-thread `call_soon_threadsafe`). Three arms × **20** runs
+>   each, rates read against each other this session (the timer is more invasive than Rung-2/3 passive
+>   sampling): **control** (no timer) **6/20** wedged (≈ historical ~33%); **bare** (timer reschedules
+>   only — wakes `select()` every 0.2 s, never touches the socket) **8/20** wedged ⇒ **merely waking
+>   `select()` does NOT recover** (and does not suppress the race — refutes the "stale `select()` / a
+>   wake-timer bounds the timeout so it drains" hypothesis); **drain** (on a >3 s on_recv gap, re-fire
+>   the **registered** reader the missed edge would have fired — `reader._run()` pulled from
+>   `loop._selector.get_map()[fd]`, verified to be tornado's
+>   `BaseAsyncIOLoop._handle_events`→`ZMQStream._handle_events`, NOT a side-channel recv that would
+>   leave ipykernel's future unresolved) **0/20** wedged, **6 strands caught and all 6 recovered**.
+>   (The watchdog did not *manufacture* the strands it fixes: its **6** caught strands sit squarely in
+>   the natural wedge band — control **6**, bare **8** — not inflated above it, and by the safety
+>   invariant below the formation window is never poked, so it is catching the natural strand
+>   population.) Per-strand within-event ladder (the smoking gun, same strand): `EVENTS=3` (POLLIN),
+>   `fd_readable=False` → a **lone `getsockopt(EVENTS)` repeated ×3 leaves POLLIN set / fd non-readable
+>   / `on_recv` unchanged** (Rung-3's lone-getsockopt-fails reproduced on the same strand) → **then
+>   `reader._run()` fires `on_recv`** (count +≥2 — the stranded request plus its coalesced backlog
+>   drain together, corroborating "multiple messages behind one lost edge"; confirmed at a +0.3 s poll,
+>   so the latency is sub-0.3 s, not measured finer). **Delta over Rung-3:** EVENTS-read alone failed;
+>   EVENTS-read **+ re-run-handler** succeeds — the active ingredient is **re-running the read
+>   handler**. Safety invariant (avoids *inducing* strands — the confounded-`peek` trap): the watchdog
+>   never reads `EVENTS` without immediately following, same tick, with `reader._run()`, and only acts
+>   after a multi-second gap, so normal traffic is untouched.
+>   **Scope:** `reader._run()` is a **candidate / proof-of-mechanism + upstream bug-report exhibit, NOT
+>   shippable** (reaches into asyncio `_selector` internals and tornado/pyzmq private `Handle` objects,
+>   version-coupled); cleanly framed it is a **periodic, unconditional `ZMQStream._update_handler`
+>   reschedule**. The **retry-on-wedge mitigation stays** the shipped fix. Rung ladder 0→4 complete.
 > The retry mitigation remains correct. The original paragraph below is the *symptom* record;
 > read its mechanism attribution as superseded — and note the Rung-2 refinement: the failure is on
 > the kernel's request-**intake** path, not its reply-send path.
