@@ -992,6 +992,43 @@ deferred state extensions (P/S on `Steel`) — then **`game/` last**, on the pro
 >   stay spherical) — narrative, not resolved. Suite **+21 tests**, all green; gallery card + root-README tour
 >   row. **Notebook & app deferred** (as the other front-end consequences).
 
+> **BUILT ✓ 2026-06-15 — Wootz / Damascus carbide banding closes §14.5 / §15.4: the one genuine front-end
+> physics gap, the signed *good*-impurity foil.** `steel/wootz.py` (+ `demo_wootz.py`, `plots.wootz_figure`,
+> `tests/test_wootz.py` 19 + `test_demo_wootz.py` 6, +25; **no engine touch, no ADR**). It is the **mirror image
+> of every other impurity story** (P cold-short, S red-short, MnS anisotropy): here a trace carbide-forming
+> "impurity" — chiefly **vanadium** — that a modern clean-steel spec would reject is the one the wootz smith
+> *requires*. So §14.5's framing nuance ("bad steel is really off-spec composition, signed either way") is now
+> an engine, not a side note.
+> - **Three gates, all required (Verhoeven & Pendray 1998, JOM 50(9):58) — by-construction cited lines.**
+>   (1) **Hypereutectoid carbon** (~1.5 %, above the eutectoid) → a proeutectoid Fe₃C network to band, reused
+>   from `fe_c.equilibrium_constituents`'s lever rule; (2) a **trace former above threshold** — **V ≥ 40 ppmw**
+>   (the cited "quite effective" line; ~100 ppm acts as the nucleation agent), or the weaker **Mn ≥ 200 ppmw**;
+>   (3) **cyclic forging 50–100 °C below A_cm** (the cementite solvus `fe_c.Acm`), ≥6 cycles — hotter than that
+>   and the carbide dissolves. The relative former effectiveness (Mn at ~0.2× V) is read **straight off the two
+>   cited thresholds**, NOT derived from segregation coefficients (advisor catch: effectiveness is
+>   carbide-forming thermodynamics, not microsegregation strength — Mn's `k` is unremarkable).
+> - **The reuse beat — the same Scheil engine, opposite sign (by construction).** The interdendritic
+>   carbide-former enrichment that aligns the bands is the *same* `casting.segregation_ratio` that, applied at
+>   the centerline, makes segregation a hardenability **defect**. One engine, two signs — read in the **γ** phase
+>   because hypereutectoid wootz (C ≫ the 0.53 % peritectic) solidifies as primary austenite. Shown via the
+>   repo's already-pinned former (Mo, `k_γ` = 0.70) as the exemplar; representative, not a benchmarked contrast.
+> - **The flag is gated on INTENT — off-spec by *lacking* a good impurity.** A heat **forged as wootz**
+>   (hypereutectoid *and* correctly cycled) that comes out plain because its trace former fell short raises
+>   **`wootz-pattern-failed`** ("the smith did everything right; the ore lacked the vanadium"). A plain bar
+>   never forged as wootz reads **clean** (the intent gate, modelled on `sulfide_morphology`'s plain heat); a
+>   too-hot heat is a technique miss, not the impurity miss, so it raises no flag either. Gating on the trace
+>   threshold is correct here — unlike the sulfur case it collapses into no other flag (genuinely novel physics).
+>   Inert in the back end (trace V/Mo are not even in the `Steel` vector — keyword inputs here).
+> - **NO claimable tooth, and the band-spacing coherence DECLINED (advisor).** The gates are cited lines, the
+>   cementite is `fe_c`'s lever rule, the enrichment is `casting`'s Scheil. The measured band spacing (30–70 µm)
+>   and the fact it traces the interdendritic / secondary-dendrite-arm spacing are reported as **two consistent
+>   cited facts** — the module does **not** compute a spacing from a solidification time and call the match a
+>   prediction. That would be a **manufactured coherence**: the cake modulus, Chvorinov `B`, and the SDAS
+>   correlation are all soft knobs aimed at a target already 2× wide — unlike the hydrogen-flaking tooth (one
+>   pinned `D_H` → a single cited bake, zero freedom). Hero = the *same* 1.5 %C steel forged the *same* the way,
+>   the V-bearing cake patterns and the clean twin does not. Suite **+25 tests**, all green; gallery card +
+>   root-README tour row. **Notebook & app deferred** (as the other front-end consequences).
+
 **The reframe that makes it useful.** The originally-named tramp axes
 (hardenability/Jominy, CCT kinetics, residual stress) are the *weakest* for our
 verified engines. A two-turn scan of the archaeometallurgy literature showed the
@@ -1104,14 +1141,19 @@ located, for whoever picks this up:
 - **"Iron–phosphorus–carbon system"** (Stewart / Charles / Wallach) —
   controlled-lab composition → property data + the Stead's/ghost-line
   metallography for theme E.
-- **The inverse "good impurity" caveat (wootz / Damascus):** trace **V > ~0.03%**
-  and **Mo < ~100 ppm** are *necessary-good* impurities (carbide banding) — so
-  "bad steel" is really "**off-spec composition**," signed either way. Keep this
-  as the honest framing nuance.
+- **The inverse "good impurity" caveat (wootz / Damascus) — NOW BUILT (2026-06-15,
+  the banner above).** Trace carbide-formers (chiefly **V ≥ ~40 ppmw** — the
+  earlier "V > 0.03 %" was snippet-level and too high; Verhoeven & Pendray's
+  effective line is 0.004 %; Mn ≥ ~200 ppmw) are *necessary-good* impurities
+  (carbide banding) — so "bad steel" is really "**off-spec composition**," signed
+  either way. This is now `steel/wootz.py`, the signed-good-impurity foil; the
+  framing nuance became the engine. *(The P → DBTT slope above remains the one
+  still-unpinned future-research piece.)*
 
-**Status: folded as a research record, assess-only.** No engine, no notebook
-cell, no F-phase started. Sources are listed in the session and in the
-[[historical-impurity-pedagogy]] memory.
+**Status: the wootz caveat is BUILT** (see the 2026-06-15 banner); the rest of
+this section (the P → DBTT slope sourcing) **remains a research record,
+assess-only** — no engine, no notebook cell. Sources are listed in the session and
+in the [[historical-impurity-pedagogy]] memory.
 
 ---
 
@@ -1160,7 +1202,7 @@ through built engines; the *process feel* is game-layer by design.**
 | **Finery / puddling** | early-modern | decarburize pig iron by oxidation | F2 C–O endpoint **built** |
 | **Cementation / blister** | 1600s | solid-state carburization of wrought bars | **`carburize.py` BUILT** — essentially free |
 | **Crucible (Huntsman)** | 1740s | melt + homogenize + slag flotation | homogenization = preset (composition averaging) |
-| **Wootz / Damascus** | ancient | trace V/Mo → carbide banding | **future-research gap** (§14.5) — beyond P/S |
+| **Wootz / Damascus** | ancient | trace V/Mo → carbide banding | **`wootz.py` BUILT** (2026-06-15) — the signed good-impurity foil; three cited gates over `fe_c` + `casting` Scheil |
 | **Acid Bessemer** | 1856 | air-blow decarb; **can't** remove P; N pickup | F2 decarb **built**; dephos (acid L_P≈1) **built (Slice 2)**; N pickup = flavor |
 | **Thomas (basic Bessemer)** | 1879 | basic slag removes P (L_P vs basicity) | **F2 Slice 2 BUILT** — basic L_P~400 vs acid ≈1, the dephos advantage |
 | **Siemens–Martin open hearth** | 1860s+ | same endpoints, slower; basic P/S removal | endpoints **built**; P/S **built (Slice 2)**; time = flavor |
@@ -1206,10 +1248,15 @@ Thomas (dephos) → BOF (low N) → ladle (desulf).
    extension, with the opposite-oxygen coupling reading the kill state. It was the
    single highest-leverage front-end build for *historical* coverage. (Benchmarked
    physics, not a propagation — P/S inert downstream; consequence deferred.)
-2. **Wootz / Damascus carbide banding — beyond P/S.** The signature V/Mo-driven
-   carbide banding is **future research** (§14.5), not a recombination of existing
-   endpoints. So not *every* experientially-distinctive method reduces to a built
-   engine — this one has a real physics gap of its own.
+2. **Wootz / Damascus carbide banding — beyond P/S. ✓ BUILT 2026-06-15
+   (`steel/wootz.py`).** The signature V/Mo-driven carbide banding was the one gap
+   that is **not** a recombination of existing endpoints — genuinely new cited
+   physics (the Verhoeven & Pendray V ≥ 40 ppmw banding threshold + the
+   50–100 °C-below-A_cm forging window). Now closed as the signed-good-impurity
+   foil: three cited gates over `fe_c` (hypereutectoid cementite + A_cm) and
+   `casting` (the interdendritic Scheil enrichment, same engine opposite sign). So
+   even the one method with a physics gap of its own now has its engine — both §15.4
+   gaps are built.
 
 ### 15.5 Where it would surface (placement, not a build)
 
@@ -1225,8 +1272,9 @@ mechanic, no scripted failure branch. Pedagogy-side it pairs naturally with the
 **Status: folded as a feasibility assessment, plan-only.** No engine, no preset,
 no `game/` package started. The verdict: **chemistry of nearly every method = a
 path over built engines (Tier 1); the historically richest distinctions need one
-named, scoped extension (P/S partition, Tier 2); one method (wootz) has a physics
-gap beyond that; process *feel* is game-layer by design (Tier 3).**
+named, scoped extension (P/S partition, Tier 2 — **built**); the one method with a
+physics gap beyond that (wootz carbide banding) is now **built too** (`wootz.py`,
+2026-06-15); process *feel* is game-layer by design (Tier 3).**
 
 ---
 

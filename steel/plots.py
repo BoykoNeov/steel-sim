@@ -3641,3 +3641,128 @@ def _machinability_at_floor(d):
     return 1.0 + 0.0 if d.machinability_curve.size == 0 else float(
         np.interp(d.free_machining_floor_volpct, d.volpct_grid, d.machinability_curve)
     )
+
+
+def wootz_figure(d):
+    """The wootz / Damascus artifact: same ultra-high-carbon steel, the trace vanadium decides the pattern.
+
+    ``d`` is a :class:`~steel.demo_wootz.WootzDemo` (precomputed — this layer only draws, ADR 0002). Four panels:
+
+    * **top-left — the hero, same steel the trace V decides.** The genuine (V-bearing) and clean (V-poor) cakes,
+      same carbon, same forging: effective carbide-former vs the cited V banding threshold. The V-bearing cake
+      patterns (green); the clean one, forged identically, fails and raises the flag (red).
+    * **top-right — three gates, all required.** A check grid over the four cases (hypereutectoid C • V ≥ 40 ppm
+      • forged in the A_cm window) → patterned. Drop any one and the pattern fails.
+    * **bottom-left — the forging window.** A_cm (the cementite solvus) and the 50–100 °C-below band: the genuine
+      cyclic-forging peak sits inside it; the too-hot peak is above A_cm, where the cementite dissolves.
+    * **bottom-right — the same Scheil engine, opposite sign.** ``casting.segregation_ratio`` vs solid fraction:
+      the carbide-former enrichment that *aligns the bands* (the asset) is the same interdendritic ratio that
+      makes centerline segregation a hardenability *defect*. One engine, two signs.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ((ax_hero, ax_gates), (ax_window, ax_scheil)) = plt.subplots(2, 2, figsize=(13.6, 9.6))
+    warn, good, blue, spec = "#c0392b", "#1f6f3c", "#2471a3", "#8e44ad"
+    genuine, clean, plain, too_hot = d.readings
+
+    # --- top-left: the hero — same steel, the trace V decides --------------------- #
+    pair = [genuine, clean]
+    xh = np.arange(len(pair))
+    formers = [r[3] for r in pair]
+    cols = [good if r[4] else warn for r in pair]
+    ax_hero.bar(xh, formers, width=0.55, color=cols, edgecolor="0.25", zorder=3)
+    ax_hero.axhline(d.v_threshold_ppm, color="0.3", ls="--", lw=1.6, zorder=2)
+    ax_hero.annotate(f"V banding threshold ({d.v_threshold_ppm:.0f} ppm)", (0.98, d.v_threshold_ppm),
+                     xycoords=("axes fraction", "data"), ha="right", va="bottom", fontsize=8.6, color="0.3")
+    for xi, r in zip(xh, pair):
+        verdict = "PATTERNS" if r[4] else "FAILED\n→ flag"
+        ax_hero.annotate(f"{r[3]:.0f} ppm\n{verdict}", (xi, r[3]), textcoords="offset points",
+                         xytext=(0, 4), ha="center", va="bottom", fontsize=9, fontweight="bold",
+                         color=good if r[4] else warn)
+    ax_hero.set_xticks(xh)
+    ax_hero.set_xticklabels([f"{r[0]}\n(1.5 %C, V {r[2]:.0f} ppm)" for r in pair], fontsize=8.4)
+    ax_hero.set_ylabel("effective carbide-former  (ppm, V-equivalent)")
+    ax_hero.set_ylim(0.0, max(formers) * 1.30)
+    ax_hero.set_title("Same steel, same forging — the trace vanadium decides\nthe pattern (off-spec by lacking a "
+                      "good impurity)", fontsize=10.2)
+    ax_hero.grid(True, axis="y", alpha=0.25)
+
+    # --- top-right: three gates, all required ------------------------------------- #
+    ax_gates.axis("off")
+    gate_names = ["hyper-\neutectoid C", f"V ≥ {d.v_threshold_ppm:.0f}\nppm", "forged in\nA_cm window", "→ PATTERN"]
+    # per case, the three gate booleans + the final verdict
+    rows = []
+    for r in d.readings:
+        name, C, v, eff, patterned, failed, hyper, intent = r
+        g_carbon = hyper
+        g_former = eff >= d.v_threshold_ppm
+        g_forge = intent  # forged_as_wootz already requires hypereutectoid + in-window; show the forging leg
+        rows.append((name, [g_carbon, g_former, g_forge], patterned, failed))
+    ncol = len(gate_names)
+    nrow = len(rows)
+    x0, y0, dx, dy = 0.30, 0.82, 0.165, 0.165
+    for j, gn in enumerate(gate_names):
+        ax_gates.text(x0 + j * dx, y0 + 0.10, gn, ha="center", va="center", fontsize=8.0, fontweight="bold")
+    for i, (name, gates, patterned, failed) in enumerate(rows):
+        yy = y0 - i * dy
+        ax_gates.text(x0 - 0.04, yy, name, ha="right", va="center", fontsize=8.2)
+        for j, g in enumerate(gates):
+            ax_gates.text(x0 + j * dx, yy, "✓" if g else "✗", ha="center", va="center",
+                          fontsize=13, color=good if g else warn, fontweight="bold")
+        tag = "PATTERN" if patterned else ("flag" if failed else "—")
+        col = good if patterned else (warn if failed else "0.45")
+        ax_gates.text(x0 + 3 * dx, yy, tag, ha="center", va="center", fontsize=8.6,
+                      color=col, fontweight="bold")
+    ax_gates.set_xlim(0, 1)
+    ax_gates.set_ylim(0, 1)
+    ax_gates.set_title("Three gates, all required — drop any one and the\npattern fails (the plain bar raises no "
+                       "flag: no intent)", fontsize=10.2)
+
+    # --- bottom-left: the forging window ----------------------------------------- #
+    lo, hi = d.window
+    ax_window.axhspan(lo, hi, color=good, alpha=0.16, zorder=1, label="carbide-stable forging window")
+    ax_window.axhline(d.acm_C, color=warn, ls="--", lw=1.8, zorder=2)
+    ax_window.annotate(f"A_cm = {d.acm_C:.0f} °C (cementite solvus)", (0.5, d.acm_C),
+                       xycoords=("axes fraction", "data"), ha="center", va="bottom", fontsize=8.4, color=warn)
+    ax_window.annotate(f"50–100 °C below A_cm\n({lo:.0f}–{hi:.0f} °C)", (0.04, (lo + hi) / 2),
+                       xycoords=("axes fraction", "data"), ha="left", va="center", fontsize=8.4, color=good)
+    ax_window.plot([1], [d.genuine_peak_C], "o", ms=12, color=good, zorder=4)
+    ax_window.annotate(f"genuine peak {d.genuine_peak_C:.0f} °C\n→ pattern develops", (1, d.genuine_peak_C),
+                       textcoords="offset points", xytext=(-12, 0), ha="right", va="center", fontsize=8.2,
+                       color=good, fontweight="bold")
+    ax_window.plot([1], [d.too_hot_peak_C], "X", ms=13, color=warn, zorder=4)
+    ax_window.annotate(f"too hot {d.too_hot_peak_C:.0f} °C\n→ cementite dissolves", (1, d.too_hot_peak_C),
+                       textcoords="offset points", xytext=(-12, 0), ha="right", va="center", fontsize=8.2,
+                       color=warn, fontweight="bold")
+    ax_window.set_xlim(0, 2)
+    ax_window.set_ylim(lo - 60, d.too_hot_peak_C + 50)
+    ax_window.set_xticks([])
+    ax_window.set_ylabel("forging peak temperature  (°C)")
+    ax_window.set_title("Gate 3 — cyclic forging 50–100 °C below A_cm\n(forge too hot and the carbide dissolves)",
+                        fontsize=10.2)
+    ax_window.legend(fontsize=7.8, loc="lower left")
+    ax_window.grid(True, axis="y", alpha=0.22)
+
+    # --- bottom-right: the same Scheil engine, opposite sign --------------------- #
+    ax_scheil.plot(d.fs_grid, d.former_enrichment_curve, color=good, lw=2.8,
+                   label="carbide former (interdendritic) — the ASSET")
+    ax_scheil.plot(d.fs_grid, d.centerline_defect_curve, color=warn, lw=2.2, ls="--",
+                   label="centerline segregation — the DEFECT")
+    ax_scheil.axhline(1.0, color="0.4", lw=1.0)
+    ax_scheil.axvline(d.interdendritic_fs, color="0.3", lw=1.1, alpha=0.6)
+    ax_scheil.plot([d.interdendritic_fs], [d.former_enrichment_at_band], "o", ms=9, color=good, zorder=5)
+    ax_scheil.annotate(f"×{d.former_enrichment_at_band:.1f} in the bands\n(f_s = {d.interdendritic_fs:.2f})",
+                       (d.interdendritic_fs, d.former_enrichment_at_band), textcoords="offset points",
+                       xytext=(-10, 6), ha="right", va="bottom", fontsize=8.4, color=good, fontweight="bold")
+    ax_scheil.set_xlabel("solid fraction  f_s")
+    ax_scheil.set_ylabel("Scheil solid-segregation ratio  (C_s / C₀)")
+    ax_scheil.set_xlim(0, 1.0)
+    ax_scheil.set_title("The same Scheil engine, opposite sign — the enrichment\nthat bands the carbide is the "
+                        "centerline defect's twin", fontsize=10.2)
+    ax_scheil.legend(fontsize=7.8, loc="upper left")
+    ax_scheil.grid(True, alpha=0.22)
+
+    fig.suptitle("Wootz / Damascus carbide banding — the signed good-impurity foil: the trace vanadium that "
+                 "makes the pattern", fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.95, top=0.90, bottom=0.08, wspace=0.26, hspace=0.30)
+    return fig

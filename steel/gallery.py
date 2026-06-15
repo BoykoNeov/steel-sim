@@ -329,6 +329,30 @@ CATALOG: tuple[Entry, ...] = (
         "toughness proxy or DBTT). Stringer aspect ratio (∝ rolling reduction) is a named ceiling.",
     ),
     Entry(
+        "Impurity consequences (front-end)", "demo_wootz", "steel-wootz.png",
+        "Wootz / Damascus carbide banding — the signed good-impurity foil",
+        "The mirror image of every other impurity story: the watered Damascus pattern needs a trace "
+        "carbide-forming **\"impurity\"** — chiefly **vanadium** — that a modern clean-steel spec would reject as "
+        "off-spec pickup, yet the wootz smith *requires*. So \"bad steel\" and \"good steel\" are the same "
+        "statement, signed either way — the one genuine front-end physics gap (`steel-making.md` §14.5 / §15.4), "
+        "now filled. The carbide banding develops only through **three gates, all required** (Verhoeven & Pendray "
+        "1998): **hypereutectoid carbon** (~1.5 %, so a proeutectoid Fe₃C network exists to band — `fe_c` lever "
+        "rule); a **trace former above threshold** (**V ≥ 40 ppm**, or the weaker Mn ≥ 200 ppm); and **cyclic "
+        "forging 50–100 °C below A_cm** (the cementite solvus — forge hotter and it dissolves). The hero: the "
+        "*same* 1.5 %C steel forged the *same* way — the V-bearing cake waters into Damascus; the clean modern "
+        "twin, forged identically, comes out plain and raises **`wootz-pattern-failed`** (\"the smith did "
+        "everything right; the ore lacked the vanadium\"). A plain bar never forged as wootz raises no flag — the "
+        "flag is gated on **intent**. The reuse beat: the interdendritic former enrichment that aligns the bands "
+        "is the *same* Scheil solid-segregation ratio (`casting.segregation_ratio`) that makes centerline "
+        "segregation a hardenability *defect* — one engine, two signs (γ coefficients, since hypereutectoid wootz "
+        "solidifies as primary austenite). No engine, no ADR, and **no claimable tooth**: the three gates are "
+        "cited threshold lines, the cementite is `fe_c`'s lever rule, the enrichment is `casting`'s Scheil. The "
+        "band spacing (30–70 µm) is a **cited observation** (it traces the interdendritic spacing), **not** "
+        "computed — that would be a manufactured coherence (cake modulus, Chvorinov B, and the SDAS law are all "
+        "soft knobs aimed at a 2×-wide target). The enrichment ratio is representative (the pinned Mo former as "
+        "the exemplar). The verdict is yes/no, not a rendered etch — a named ceiling.",
+    ),
+    Entry(
         "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",
         "Alloy to grade — where the composition is finalized (and missed)",
         "The seam to the back end: trim an alloy-lean tap up to a grade by ferroalloy additions, sized for "
