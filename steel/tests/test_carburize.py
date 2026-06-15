@@ -391,3 +391,36 @@ def test_inverse_rejects_nonphysical_inputs():
         cb.carburize_temperature_for_case_depth(0.5e-3, 0.0)           # zero time
     with pytest.raises(ValueError):
         cb.carburize_time_for_case_depth(0.5e-3, C_surface=0.2, C_core=0.2)   # Cs ≤ C0
+
+
+def test_inverse_round_trips_at_nondefault_carbon_levels():
+    # The machine-precision headline is a property of the closed form, not of the default
+    # carbon set — the erfc level set r = (C_th − C0)/(Cs − C0) is the ONLY way the carbon
+    # potentials enter, and it round-trips for any r ∈ (0, 1). Pin that with a fully
+    # non-default carbon span (high-potential 1.0 %C surface, low 0.15 %C core, a 0.5 %C
+    # effective-case threshold) so the claim is "round-trips for arbitrary carbon levels",
+    # not "round-trips at 0.8/0.2/0.4".
+    T, t = 940.0, 6.0 * 3600.0
+    Cs, C0, Cth = 1.0, 0.15, 0.5
+    D = cb.carbon_diffusivity(T)
+    x = cb.analytic_case_depth(t, D, Cs, C0, Cth)
+    assert math.isfinite(x) and x > 0.0
+    t_back = cb.carburize_time_for_case_depth(x, T_celsius=T, C_surface=Cs, C_core=C0, C_threshold=Cth)
+    assert t_back == pytest.approx(t, rel=1e-12)
+    T_back = cb.carburize_temperature_for_case_depth(x, t, C_surface=Cs, C_core=C0, C_threshold=Cth)
+    assert T_back == pytest.approx(T, abs=1e-9)
+
+
+def test_inverse_temperature_surfaces_out_of_window_values_not_clamped():
+    # The documented "surface, don't clamp" contract: a target that can only be met outside
+    # the practical ~815–1050 °C carburizing window returns the EXACT analytic temperature —
+    # never nan, never clamped to a window edge — so the caller (e.g. demo_carburize) can flag
+    # it as not-achievable-by-a-sane-cycle. Pin BOTH directions of the contract:
+    #   * deep case in a short time ⇒ a temperature ABOVE the window (needs faster diffusion);
+    #   * shallow case in a long time ⇒ a temperature BELOW the window (needs slower diffusion).
+    T_hot = cb.carburize_temperature_for_case_depth(2.5e-3, 0.1 * 3600.0)   # 2.5 mm in 6 min
+    assert math.isfinite(T_hot) and T_hot > 1050.0                          # surfaced, above window
+    assert T_hot != pytest.approx(1050.0)                                   # NOT clamped to the edge
+    T_cold = cb.carburize_temperature_for_case_depth(0.05e-3, 200.0 * 3600.0)  # 0.05 mm in 200 h
+    assert math.isfinite(T_cold) and T_cold < 815.0                         # surfaced, below window
+    assert T_cold != pytest.approx(815.0)                                   # NOT clamped to the edge
