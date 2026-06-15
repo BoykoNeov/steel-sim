@@ -1568,6 +1568,36 @@ search returns, so it cannot share a recipe); **yield-target** and **case-depth*
 different process axis) inversions named as separate future inversions, not v1 knobs; **no
 continuous-composition optimisation** (the `Mn=0` trap — registry grades only).
 
+> **Phase 7 v2 — the yield + case-depth inversions (BUILT ✓ 2026-06-15).** The two future inversions
+> the v1 ceiling named are now built, **still no physics** (each inverts an already-validated forward
+> model; same harness-only posture, +12 solver tests / +2 demo tests, full suite **930 passed /
+> 2 skipped**). Each over its **own process axis** — the load-bearing reason they are *separate*
+> surfaces, not v1 co-targets:
+> - **Yield-target inversion — `design.find_yield_recipes` (+ `YieldRecipe`/`YieldDesignResult` +
+>   `_austenitize_to_yield`).** It fits `design.py`'s outer-enumerate × inner-bisect shape, but in the
+>   **ferrite-pearlite slow-cool regime where yield is defined** (the martensitic regime returns `nan`,
+>   which is *why* it can't share a recipe): enumerate grade, bisect the **austenitizing temperature**
+>   (monotone — hotter → coarser PAGS → coarser ferrite → lower yield) over
+>   `grain.coupled_grain_properties`. A `YieldRecipe` is *grade + austenitize T/t under a normalized
+>   cool* — **no quench medium, no temper, no Biot** (a separate recipe space; a test asserts those
+>   fields are absent, the regime-separation guard). The cooling rate is **not** a knob (baked into the
+>   calibrated `grain.FERRITE_PAGS_RATIO`) — fewer knobs, honest. It carries the **DBTT co-property** for
+>   free (the §5b foil: grain refinement raises yield *and* lowers DBTT), so the demo shows the toughness
+>   the alloy-cost sort ignores (1045 hits 370 MPa at +80 °C DBTT; alloyed 8620 the same yield at −35 °C).
+> - **Case-depth inversion — `carburize.carburize_time_for_case_depth` /
+>   `…_temperature_for_case_depth`.** A different process axis (carburising), so it lives in
+>   `carburize.py` next to its forward `analytic_case_depth` — a **closed-form** inverse of
+>   `x = 2·erfc⁻¹(r)·√(Dt)` (solve time-at-T, or temperature-at-t via Arrhenius inversion), **not**
+>   forced into `design.py`'s enumeration shape (no grade axis, reuses none of its machinery). Being an
+>   exact inverse, the round-trip test recovers the target to **machine precision** — the strongest
+>   harness check in the project. Named ceilings carried forward: the **D(C) Tibbetts** leg is not
+>   closed-form invertible (would need a numeric outer loop), and a **hardness-based** effective case
+>   depth would couple back into the quench model (a different regime). `r ∉ (0,1)` → honest `nan`; an
+>   inverted temperature outside the practical ~815–1050 °C window is surfaced, not masked.
+>
+> Catalogued in `docs/plans/next-directions.md` §A3. No engine touch, no ADR, no new source
+> (re-composition + closed-form inverse only).
+
 **Incidental fix banked alongside (user-approved):** the **`parents[2]` repo-root regression** the
 "flatten to standalone steel-sim layout" left behind — files directly under `steel/` (the 9 demos,
 `app.py`, `calphad_backend.py`) used `parents[2]`, which overshoots one level in the flattened

@@ -340,3 +340,54 @@ def test_dofC_traverse_runs_and_keeps_the_case_gradient():
     tr = cb.carburized_traverse(p)
     assert tr.HV[0] > tr.HV[-1]                          # case still harder than core
     assert 62.0 <= tr.HRC[0] <= 67.0                     # hard martensite case (carbon-set)
+
+
+# --------------------------------------------------------------------------- #
+# 6. Phase 7 v2 — the case-depth INVERSION (closed-form inverse of analytic_case_depth)
+# --------------------------------------------------------------------------- #
+# No new physics — these invert analytic_case_depth, so they test the SOLVER. The headline is the
+# strongest test the project can have: an EXACT closed-form inverse round-trips to machine precision.
+
+def test_inverse_time_round_trips_to_machine_precision():
+    # Forward: a known 925 °C / 8 h cycle → a case depth. Invert for the time → recover 8 h exactly.
+    T, t = 925.0, 8.0 * 3600.0
+    D = cb.carbon_diffusivity(T)
+    x = cb.analytic_case_depth(t, D, cb.DEFAULT_CARBON_POTENTIAL, cb.DEFAULT_CORE_CARBON)
+    t_back = cb.carburize_time_for_case_depth(x, T_celsius=T)
+    assert t_back == pytest.approx(t, rel=1e-12)
+
+
+def test_inverse_temperature_round_trips_to_machine_precision():
+    # Same cycle, invert for the TEMPERATURE at fixed time → recover 925 °C exactly (Arrhenius inverse).
+    T, t = 925.0, 8.0 * 3600.0
+    D = cb.carbon_diffusivity(T)
+    x = cb.analytic_case_depth(t, D, cb.DEFAULT_CARBON_POTENTIAL, cb.DEFAULT_CORE_CARBON)
+    T_back = cb.carburize_temperature_for_case_depth(x, t)
+    assert T_back == pytest.approx(T, abs=1e-9)
+
+
+def test_inverse_is_monotone_a_deeper_case_costs_more_time_and_heat():
+    # Deeper target ⇒ longer time (at fixed T) and hotter (at fixed t) — the √(Dt) monotonicity.
+    t_shallow = cb.carburize_time_for_case_depth(0.4e-3, T_celsius=925.0)
+    t_deep = cb.carburize_time_for_case_depth(0.8e-3, T_celsius=925.0)
+    assert t_deep > t_shallow
+    T_shallow = cb.carburize_temperature_for_case_depth(0.4e-3, 8.0 * 3600.0)
+    T_deep = cb.carburize_temperature_for_case_depth(0.8e-3, 8.0 * 3600.0)
+    assert T_deep > T_shallow
+
+
+def test_inverse_returns_nan_when_threshold_outside_carbon_span():
+    # r = (C_th − C0)/(Cs − C0) ∉ (0, 1): the case-depth carbon level is above the surface potential
+    # (or below the core) ⇒ no depth ever reaches it ⇒ the honest nan, mirroring analytic_case_depth.
+    assert math.isnan(cb.carburize_time_for_case_depth(0.5e-3, C_threshold=0.9))      # 0.9 > Cs=0.8
+    assert math.isnan(cb.carburize_temperature_for_case_depth(0.5e-3, 8.0 * 3600.0, C_threshold=0.9))
+    assert math.isnan(cb.carburize_time_for_case_depth(0.5e-3, C_threshold=0.1))      # 0.1 < C0=0.2
+
+
+def test_inverse_rejects_nonphysical_inputs():
+    with pytest.raises(ValueError):
+        cb.carburize_time_for_case_depth(-1.0e-3)                       # negative case depth
+    with pytest.raises(ValueError):
+        cb.carburize_temperature_for_case_depth(0.5e-3, 0.0)           # zero time
+    with pytest.raises(ValueError):
+        cb.carburize_time_for_case_depth(0.5e-3, C_surface=0.2, C_core=0.2)   # Cs ≤ C0

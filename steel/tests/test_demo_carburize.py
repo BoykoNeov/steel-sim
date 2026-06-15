@@ -13,7 +13,7 @@ The figure itself is **not** in the correctness path (ADR 0002): rendering is ch
 import numpy as np
 import pytest
 
-from steel.demo_carburize import compute, PUBLISHED_SURFACE_HRC
+from steel.demo_carburize import compute, print_case_depth_inversion, PUBLISHED_SURFACE_HRC
 
 
 def test_demo_pipeline_hard_case_over_soft_core():
@@ -37,6 +37,15 @@ def test_demo_published_surface_band_sane():
     # facts) — a regression guard that the demo carries a sane band for the figure.
     lo, hi = PUBLISHED_SURFACE_HRC
     assert 55.0 < lo < hi < 67.0
+
+
+def test_demo_case_depth_inversion_runs_and_round_trips(capsys):
+    # The v2 case-depth inversion section runs clean and reports both round-trips landing on target
+    # (the demo IS the wiring check; the exactness itself is pinned in test_carburize.py).
+    print_case_depth_inversion(target_case_mm=0.5)
+    out = capsys.readouterr().out
+    assert "Case-depth inversion" in out
+    assert out.count("0.5000 mm") == 2                     # both forward re-evals recover the target
 
 
 def test_carburize_figure_builds():

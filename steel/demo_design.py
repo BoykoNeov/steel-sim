@@ -45,6 +45,13 @@ TOL_HRC = 2.0
 DIAMETER_M = 0.010                 # a 10 mm section (the part geometry — a constraint, not swept)
 TEMPER_HOURS = 1.0
 
+# The v2 yield-inversion worked spec — a normalized (slow-cool) target in the regime where yield is
+# defined. 370 MPa is reachable by several registry grades at once (1045/4140/8620 austenitizing
+# windows bracket it), so the cost sort has something to order.
+TARGET_YIELD_MPA = 370.0
+YIELD_TOL_MPA = 15.0
+AUSTENITIZE_HOURS = 1.0
+
 # Repo root = the parent of the ``steel`` package (``…/steel-sim``) — ``parents[1]`` in the
 # standalone layout (the pre-flatten ``parents[2]`` overshot one level; corrected repo-wide).
 _REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -92,6 +99,45 @@ def print_summary(result, target_HRC: float = TARGET_HRC, tol_HRC: float = TOL_H
           "recommended). (Cost ordering is a transparent convenience, not a validated model.)")
 
 
+def compute_yield(
+    target_MPa: float = TARGET_YIELD_MPA, tol_MPa: float = YIELD_TOL_MPA,
+    t_hours: float = AUSTENITIZE_HOURS,
+):
+    """Run the v2 yield-target inversion (the FP slow-cool regime); return the feasible recipe set."""
+    return design.find_yield_recipes(target_MPa, tol_MPa=tol_MPa, t_hours=t_hours)
+
+
+def print_yield_summary(result, target_MPa: float = TARGET_YIELD_MPA,
+                        tol_MPa: float = YIELD_TOL_MPA) -> None:
+    """Print the yield spec and the feasible *normalized* recipes (grade + austenitizing schedule).
+
+    The point of contrast with the hardness inversion above: a *different regime* (slow-cool
+    ferrite-pearlite, where yield is defined), a *different recipe* (no quench, no temper — just an
+    austenitizing schedule under a normalized cool), and the DBTT co-property carried for free (grain
+    refinement is the lone lever that raises yield *and* lowers DBTT — the §5b foil).
+    """
+    lo, hi = result.target_band
+    print(f"\nYield inversion (v2) — target {target_MPa:.0f} ± {tol_MPa:.0f} MPa, normalized cool\n")
+    if not result.feasible:
+        print("  No grade reaches this yield by normalizing in the 850–1100 °C austenitizing window "
+              "— the honest infeasible (a higher target needs a leaner-grain route, a lower one a "
+              "coarser grade).")
+        return
+    hdr = f"{'#':>2}  {'recipe':<52} {'yield':>6} {'DBTT':>6} {'ferrite':>8} {'cost':>5}"
+    print(hdr)
+    print("-" * len(hdr))
+    for i, r in enumerate(result.recipes, 1):
+        star = "★" if r is result.recommended else " "
+        print(f"{star}{i:>1}  {r.label():<52} {r.yield_MPa:5.0f}  {r.dbtt_C:5.0f}  "
+              f"{r.ferrite_um:6.1f}µm {r.cost:5.2f}")
+    rec = result.recommended
+    print(f"\nRecommended (leanest alloy / coolest austenitize that hits spec): {rec.label()} "
+          f"→ {rec.yield_MPa:.0f} MPa, DBTT {rec.dbtt_C:.0f} °C.")
+    print("Yield is the property the hardness chain refuses to give (Tabor's H≈3σ is flow stress, "
+          "not yield); the inverse recovers it in the slow-cool regime — no physics added, the "
+          "validated Phase-5 model run backwards.")
+
+
 def save_figure(result, grid) -> Path:
     """Render and save the inverse-design artifact (needs the optional ``viz`` extra)."""
     import matplotlib
@@ -112,6 +158,7 @@ def main() -> None:
 
     result, grid = compute()
     print_summary(result)
+    print_yield_summary(compute_yield())              # the v2 yield-target inversion (FP regime)
     try:
         saved = save_figure(result, grid)
         print(f"\nFigure saved → {saved.relative_to(_REPO_ROOT)}")

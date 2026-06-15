@@ -117,6 +117,33 @@ def print_dofC_comparison(t_hours: float = T_HOURS) -> None:
           "the √(t) case-depth scaling survives.")
 
 
+def print_case_depth_inversion(target_case_mm: float = 0.5) -> None:
+    """The v2 case-depth INVERSION — *target a case depth, get a schedule* — and its exact round trip.
+
+    The forward demo above gives a case depth from a (time, temperature) cycle; this inverts it
+    closed-form (no root-find): solve the **time** at the standard 925 °C, and the **temperature**
+    at the standard 8 h. Re-running :func:`~steel.carburize.analytic_case_depth` on each recovers the
+    target to machine precision — the strongest harness check the project has.
+    """
+    x = target_case_mm / 1000.0
+    t_at_T = cb.carburize_time_for_case_depth(x, T_celsius=T_CARBURIZE)
+    T_at_t = cb.carburize_temperature_for_case_depth(x, T_HOURS * 3600.0)
+    # Round-trip both back through the forward case depth.
+    x_from_t = cb.analytic_case_depth(t_at_T, cb.carbon_diffusivity(T_CARBURIZE),
+                                      CARBON_POTENTIAL, CORE_CARBON) * 1000.0
+    x_from_T = cb.analytic_case_depth(T_HOURS * 3600.0, cb.carbon_diffusivity(T_at_t),
+                                      CARBON_POTENTIAL, CORE_CARBON) * 1000.0
+    print(f"\nCase-depth inversion (v2) — target {target_case_mm:.2f} mm effective case (0.4 %C)")
+    print(f"  solve time @ {T_CARBURIZE:.0f} °C:   {t_at_T / 3600.0:6.2f} h   "
+          f"(forward re-eval → {x_from_t:.4f} mm)")
+    print(f"  solve temperature @ {T_HOURS:.0f} h:  {T_at_t:6.1f} °C  "
+          f"(forward re-eval → {x_from_T:.4f} mm)")
+    practical = "in the practical 815–1050 °C window" if 815.0 <= T_at_t <= 1050.0 else \
+                "OUTSIDE the practical 815–1050 °C window — not achievable in this time by a sane cycle"
+    print(f"  closed-form inverse of x = 2·erfc⁻¹(r)·√(Dt) — recovers the target exactly; "
+          f"the temperature is {practical}.")
+
+
 def save_figure(profile, traverse) -> Path:
     """Render and save the carburized-gradient artifact (needs the optional ``viz`` extra)."""
     import matplotlib
@@ -138,6 +165,7 @@ def main() -> None:
     profile, traverse = compute()
     print_summary(profile, traverse)
     print_dofC_comparison()
+    print_case_depth_inversion()                      # the v2 case-depth inversion + round trip
     try:
         saved = save_figure(profile, traverse)
         print(f"\nFigure saved → {saved.relative_to(_REPO_ROOT)}")

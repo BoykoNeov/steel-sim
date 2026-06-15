@@ -22,8 +22,10 @@ import pytest
 
 from steel import design
 from steel import sweep
+from steel import grain
 from steel import properties as prop
 from steel.design import find_recipes, find_recipes_for_HRC, Recipe, _temper_to_target
+from steel.design import find_yield_recipes, YieldRecipe, _austenitize_to_yield
 
 
 # Re-evaluate a recipe through the FORWARD model — the independent check that a recipe really does
@@ -301,3 +303,82 @@ def test_find_recipes_for_HRC_rejects_unconvertible_band():
     # (the honest "give the target in HV for soft material"), not a nan-poisoned search.
     with pytest.raises(ValueError):
         find_recipes_for_HRC(10.0, tol_HRC=2.0, diameter=0.010)
+
+
+# =========================================================================== #
+# 7. PHASE 7 v2 — the yield-target inversion (FP slow-cool regime)
+# =========================================================================== #
+# Same harness posture: no new physics (this inverts grain.coupled_grain_properties), so these test
+# the SOLVER, not metallurgy. The lead invariant is again "no recipe re-evaluates out of band"; the
+# bisection tests carry the only real solver content; infeasible is first-class.
+
+def _forward_yield(rec: YieldRecipe) -> float:
+    """Re-run the FORWARD Phase-5 model on a yield recipe — the independent check it does what it claims."""
+    return grain.coupled_grain_properties(
+        rec.austenitize_T, rec.austenitize_t, rec.steel.C, comp=rec.steel.minor()).yield_MPa
+
+
+# A target 370 MPa is feasible for several registry grades at once (1045/4140/8620 windows bracket
+# it; 1080 sits entirely above), so it exercises multiple recipes and the cost sort.
+def test_every_yield_recipe_reevaluates_in_band():
+    result = find_yield_recipes(370.0, tol_MPa=15.0)
+    lo, hi = result.target_band
+    assert result.feasible
+    for rec in result.recipes:
+        assert lo <= rec.yield_MPa <= hi, f"reported {rec.yield_MPa:.1f} MPa out of band: {rec.label()}"
+        # ... AND the forward Phase-5 model independently confirms the reported yield (no plumbing drift).
+        assert rec.yield_MPa == pytest.approx(_forward_yield(rec), abs=0.5), rec.label()
+
+
+def test_yield_bisection_recovers_interior_target():
+    s = sweep.STEELS["1045"]                       # a clean FP-yield grade
+    Y_hi = grain.coupled_grain_properties(design._AUSTENITIZE_T_LO, 1.0, s.C, comp=s.minor()).yield_MPa
+    Y_lo = grain.coupled_grain_properties(design._AUSTENITIZE_T_HI, 1.0, s.C, comp=s.minor()).yield_MPa
+    target = 0.5 * (Y_hi + Y_lo)                    # strictly interior
+    T = _austenitize_to_yield(s, target, t_hours=1.0, N_free_pct=grain.DEFAULT_N_FREE_PCT, P_pct=0.0)
+    assert T is not None
+    got = grain.coupled_grain_properties(T, 1.0, s.C, comp=s.minor()).yield_MPa
+    assert got == pytest.approx(target, abs=0.5)
+    assert design._AUSTENITIZE_T_LO < T < design._AUSTENITIZE_T_HI
+
+
+def test_yield_bisection_is_monotone_inverse():
+    # yield(T) decreasing ⇒ a HIGHER yield target needs a LOWER (cooler, finer-grain) austenitize.
+    s = sweep.STEELS["1045"]
+    kw = dict(t_hours=1.0, N_free_pct=grain.DEFAULT_N_FREE_PCT, P_pct=0.0)
+    T_strong = _austenitize_to_yield(s, 430.0, **kw)
+    T_weak = _austenitize_to_yield(s, 370.0, **kw)
+    assert T_strong is not None and T_weak is not None
+    assert T_strong < T_weak
+
+
+def test_yield_target_outside_every_grade_envelope_is_infeasible():
+    # Above the strongest grade's finest-grain ceiling (1080 ≈ 519 MPa) ⇒ empty; and below the
+    # weakest grade's coarsest-grain floor (8620 ≈ 298 MPa) ⇒ empty. Honest infeasible, not a miss.
+    assert find_yield_recipes(600.0, tol_MPa=15.0).recipes == ()
+    assert find_yield_recipes(250.0, tol_MPa=15.0).recipes == ()
+
+
+def test_yield_recipe_carries_no_quench_regime_fields():
+    # The regime-separation guard: a yield recipe is grade + austenitize under a normalized cool —
+    # it must NOT carry the martensitic Recipe's quench medium / temper / Biot (conflating the two
+    # regimes is the one way this surface would lie about what it solved).
+    rec = find_yield_recipes(370.0).recipes[0]
+    assert isinstance(rec, YieldRecipe) and not isinstance(rec, Recipe)
+    for absent in ("medium", "temper_C", "biot", "HV", "HRC"):
+        assert not hasattr(rec, absent), f"yield recipe should not carry quench-regime field {absent!r}"
+
+
+def test_yield_recommended_is_cheapest_feasible():
+    result = find_yield_recipes(370.0, tol_MPa=15.0)
+    assert result.feasible
+    assert result.recommended is result.recipes[0]                 # cost-sorted head
+    assert all(result.recommended.cost <= r.cost for r in result.recipes)
+
+
+def test_yield_dbtt_co_property_is_the_same_phase5_call():
+    # The carried DBTT is exactly the coupled forward call's DBTT (the §5b foil reported for free).
+    rec = find_yield_recipes(370.0).recipes[0]
+    gp = grain.coupled_grain_properties(rec.austenitize_T, rec.austenitize_t, rec.steel.C,
+                                        comp=rec.steel.minor())
+    assert rec.dbtt_C == pytest.approx(gp.dbtt_C, abs=1e-6)

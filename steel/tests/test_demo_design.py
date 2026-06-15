@@ -11,7 +11,8 @@ The figure itself is **not** in the correctness path (ADR 0002): rendering is ch
 """
 import pytest
 
-from steel.demo_design import compute, TARGET_HRC, TOL_HRC, DIAMETER_M
+from steel.demo_design import (compute, compute_yield, print_yield_summary,
+                               TARGET_HRC, TOL_HRC, DIAMETER_M, TARGET_YIELD_MPA, YIELD_TOL_MPA)
 
 
 def test_demo_pipeline_recommends_oil_quench_and_temper():
@@ -35,6 +36,19 @@ def test_demo_spec_is_the_canonical_quench_and_temper_problem():
     assert TARGET_HRC == 45.0
     assert DIAMETER_M == pytest.approx(0.010)
     assert 0.0 < TOL_HRC <= 3.0
+
+
+def test_demo_yield_inversion_pipeline(capsys):
+    # The v2 yield inversion wires through the demo: feasible, and every recipe lands in band when
+    # re-checked — the end-to-end harness invariant for the FP-regime surface (no quench/temper).
+    result = compute_yield()
+    assert result.feasible
+    lo, hi = result.target_band
+    assert all(lo <= r.yield_MPa <= hi for r in result.recipes)
+    rec = result.recommended
+    assert rec is result.recipes[0] and not hasattr(rec, "medium")     # cheapest, FP-regime recipe
+    print_yield_summary(result)                                        # runs clean on a feasible set
+    assert "Yield inversion" in capsys.readouterr().out
 
 
 def test_design_figure_builds():

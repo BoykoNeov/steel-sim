@@ -46,13 +46,28 @@ Honest edges (named, the project signature)
   band. The cost-sorted "recommended" recipe is **labelled convenience, not a claim**: a transparent
   "leaner alloy + milder quench + no extra temper step" sort, *not* a validated cost model.
 
-Scope ceiling (named)
----------------------
-**Hardness-only target in v1.** Yield is incoherent as a co-target — :func:`grain.coupled_grain_properties`
-returns ``nan`` yield for the martensitic structures an inverse-hardness search returns — so a
-yield target lives in a *different* (slow-cool FP) regime and cannot share a recipe. Yield-target
-inversion and case-depth inversion (carburising — a different process axis) are named as separate
-future inversions, not v1 knobs.
+Scope ceiling (named) — and the v2 inversions that close it
+-----------------------------------------------------------
+**The hardness inversion above is martensitic-quench-regime only.** Yield is incoherent as a
+*co-target* of it — :func:`grain.coupled_grain_properties` returns ``nan`` yield for the martensitic
+structures an inverse-hardness search returns — so a yield target lives in a *different* (slow-cool
+ferrite-pearlite) regime and **cannot share a recipe**. Phase-7 v2 (2026-06-15) builds the two
+inversions the v1 record named as future, each over its own process axis, **still inventing no
+physics** (they invert already-validated forward models, same posture):
+
+* **Yield-target inversion — :func:`find_yield_recipes`, here.** It fits this module's
+  outer-enumerate × inner-bisect shape, but in the **FP slow-cool regime where yield is defined**:
+  enumerate grade, bisect the *austenitizing temperature* (monotone — hotter → coarser PAGS →
+  coarser ferrite → lower yield) over :func:`~steel.grain.coupled_grain_properties`. A
+  :class:`YieldRecipe` is *grade + austenitize T/t under a normalized cool* — **no quench medium,
+  no temper, no Biot** (a separate recipe space, by design). The cooling rate is **baked into**
+  :data:`~steel.grain.FERRITE_PAGS_RATIO` (calibrated at one rate), so it is *not* a free knob —
+  fewer knobs, honest.
+* **Case-depth inversion — :func:`steel.carburize.carburize_time_for_case_depth` /
+  :func:`~steel.carburize.carburize_temperature_for_case_depth`.** A different process axis
+  (carburising), so it lives in :mod:`steel.carburize` next to its forward
+  :func:`~steel.carburize.analytic_case_depth` — a **closed-form** inverse of ``x = 2·erfc⁻¹(r)·√(Dt)``
+  (no grade enumeration, none of this module's machinery), *not* forced into the shape here.
 """
 from __future__ import annotations
 
@@ -61,6 +76,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from . import sweep
+from . import grain
 from . import properties as prop
 from .cooling import STANDARD_DIAMETER
 
@@ -277,9 +293,13 @@ def _recipe_cost(steel: sweep.Steel, medium: str, temper_C: float | None) -> flo
     feasible set; every recipe it ranks already meets the spec.
     """
     quench = QUENCH_COST_WEIGHT * MEDIUM_SEVERITY.get(medium, 1.0)
-    alloy = sum(ALLOY_COST_WEIGHT[el] * steel.minor()[el] for el in ALLOY_COST_WEIGHT)
     temper = TEMPER_STEP_COST if temper_C is not None else 0.0
-    return quench + alloy + temper
+    return quench + _alloy_cost(steel) + temper
+
+
+def _alloy_cost(steel: sweep.Steel) -> float:
+    """The rough relative alloy-cost penalty (:data:`ALLOY_COST_WEIGHT`) — shared by both inversions' sorts."""
+    return sum(ALLOY_COST_WEIGHT[el] * steel.minor()[el] for el in ALLOY_COST_WEIGHT)
 
 
 def _is_temperable(outcome: sweep.Outcome) -> bool:
@@ -399,3 +419,205 @@ def _build_recipe(
         HV=float(HV), HRC=float(prop.vickers_to_rockwell_c(HV)), martensite=float(martensite),
         biot=float(biot), cost=_recipe_cost(steel, medium, temper_C),
     )
+
+
+# =========================================================================== #
+# Phase 7 v2 — the yield-target inversion (the ferrite-pearlite slow-cool regime)
+# =========================================================================== #
+# The hardness inversion above is the martensitic quench-and-temper regime; this is its
+# slow-cool sibling. Yield strength is the property the hardness chain deliberately refuses to give
+# (properties.py returns UTS from hardness, not yield — Tabor's H≈3σ is flow stress), and Phase 5
+# supplies it for the FERRITE-PEARLITE structure only: austenitize (T, t) → PAGS → ferrite grain →
+# Hall–Petch/Pickering yield. That law returns nan for a martensitic structure, so a yield target
+# CANNOT live in the quench regime the hardness search returns — it is a separate recipe space, and
+# this is why yield was named a *separate* future inversion, not a v1 co-target.
+#
+# The knob is the AUSTENITIZING TEMPERATURE. Within a grade, %pearlite and the minor-alloy solutes
+# are fixed (equilibrium from carbon), so yield varies only through ferrite grain size: hotter
+# austenitize → coarser PAGS → coarser ferrite → LOWER yield (the d^(−½) Hall–Petch term). So
+# yield(T) is strictly monotone-decreasing across the practical austenitizing window — the same
+# clean "bisect the public forward function" inner problem the temper inversion uses. The cooling
+# rate is NOT a knob: grain.FERRITE_PAGS_RATIO is calibrated at one (normalized) rate, so a yield
+# recipe is grade + austenitize (T, t) under a normalized cool — fewer knobs, honestly fewer.
+
+# The practical austenitizing window the inner bisection brackets (°C). The floor sits above the
+# Ac3 of these registry grades (full austenitization; representative, not a per-grade computed Ac3);
+# the ceiling is a grain-coarsening / over-austenitizing limit. Named as a stated constraint — a
+# yield target outside [yield(T_hi), yield(T_lo)] for every grade is the honest "infeasible".
+_AUSTENITIZE_T_LO = 850.0
+_AUSTENITIZE_T_HI = 1100.0
+
+# Default half-width of the yield target band (MPa) — a spec is a band, not a point, as with HV.
+DEFAULT_YIELD_TOL_MPA = 15.0
+
+# The yield-recipe convenience cost (same posture as _recipe_cost — labelled, not validated): the
+# alloy-cost penalty (no quench/temper here) plus a small austenitizing-energy term so that, at
+# equal alloy, the cheaper/cooler austenitize (which also gives the finer grain) sorts first. Round
+# and editable; nothing validated rides on it.
+AUSTENITIZE_COST_WEIGHT = 0.002   # per °C above the window floor
+
+
+@dataclass(frozen=True)
+class YieldRecipe:
+    """One normalized-and-austenitized recipe that meets a **yield** spec — the FP-regime analogue of :class:`Recipe`.
+
+    A yield recipe is *grade + austenitizing schedule under a normalized (slow) cool* — there is
+    deliberately **no quench medium, no temper, and no Biot flag** (those are the martensitic
+    :class:`Recipe`'s; mixing them here would conflate the two regimes). ``yield_MPa`` is the
+    **predicted** lower yield this recipe delivers (re-checked against the target band);
+    ``dbtt_C`` is the co-property the same Phase-5 call returns — carried because grain refinement
+    is the lone lever that improves *both* (yield ↑, DBTT ↓), the §5b foil, so a yield recipe can
+    show its toughness cost for free. ``pags_um`` / ``ferrite_um`` are the grain sizes the schedule
+    produces; ``cost`` is the convenience-sort key (lower = leaner alloy / cooler austenitize).
+    """
+
+    steel: sweep.Steel
+    austenitize_T: float     # °C
+    austenitize_t: float     # h
+    yield_MPa: float
+    dbtt_C: float
+    pags_um: float
+    ferrite_um: float
+    cost: float
+
+    def label(self) -> str:
+        """A one-line human description — grade, the normalized cool, and the austenitizing schedule."""
+        return (f"{self.steel.label()}, normalized — austenitize "
+                f"{self.austenitize_T:.0f} °C/{self.austenitize_t:g} h")
+
+
+@dataclass(frozen=True)
+class YieldDesignResult:
+    """The outcome of a yield-recipe search: the feasible set (cost-sorted) for one yield target.
+
+    ``recipes`` is **every** grade whose austenitizing window can hit ``target_MPa ± tol_MPa``,
+    sorted by :attr:`YieldRecipe.cost` (leaner/cooler first) — possibly **empty** when the target is
+    outside every grade's achievable yield band (the honest "infeasible"). ``t_hours`` is the
+    austenitizing hold the inner bisection held fixed while solving for temperature.
+    """
+
+    target_MPa: float
+    tol_MPa: float
+    t_hours: float
+    recipes: tuple[YieldRecipe, ...]
+
+    @property
+    def feasible(self) -> bool:
+        """Whether any recipe meets the spec (``False`` ⇒ target outside every grade's envelope)."""
+        return len(self.recipes) > 0
+
+    @property
+    def recommended(self) -> YieldRecipe | None:
+        """The recommended recipe: the cheapest feasible one (leanest alloy / coolest austenitize), or ``None``.
+
+        Unlike the hardness :class:`DesignResult`, there is no Biot validity to weigh — every recipe
+        here is a normalized cool the lumped grain-growth model is posed for — so the recommendation
+        is simply the cost-sorted head of the feasible set.
+        """
+        return self.recipes[0] if self.recipes else None
+
+    @property
+    def target_band(self) -> tuple[float, float]:
+        """The feasible yield band ``(low, high)`` in MPa."""
+        return self.target_MPa - self.tol_MPa, self.target_MPa + self.tol_MPa
+
+
+def _yield_at(
+    steel: sweep.Steel, T_austenitize: float, t_hours: float, N_free_pct: float, P_pct: float,
+) -> grain.GrainProperties:
+    """The Phase-5c coupled result for one grade at one austenitizing schedule (the forward call)."""
+    return grain.coupled_grain_properties(
+        T_austenitize, t_hours, steel.C, comp=steel.minor(),
+        N_free_pct=N_free_pct, P_pct=P_pct,
+    )
+
+
+def _austenitize_to_yield(
+    steel: sweep.Steel, target_MPa: float, t_hours: float, N_free_pct: float, P_pct: float,
+    tol_MPa: float = 0.05, max_iter: int = 80,
+) -> float | None:
+    """Find the austenitizing ``T`` (°C, at fixed ``t_hours``) giving ``target_MPa`` yield for ``steel`` — or ``None``.
+
+    Within a grade the yield depends on the austenitizing temperature **only** through the ferrite
+    grain size (``%pearlite`` and the solutes are carbon-/composition-fixed), and grain size grows
+    monotonically with ``T`` while the Hall–Petch term *falls* with grain size, so ``yield(T)`` is
+    **strictly monotone-decreasing** between the finest-grain ceiling ``Y_hi`` (at the cool window
+    floor :data:`_AUSTENITIZE_T_LO`) and the coarsest-grain floor ``Y_lo`` (at the hot ceiling
+    :data:`_AUSTENITIZE_T_HI`). The target has a unique solution iff ``Y_lo ≤ target ≤ Y_hi`` —
+    found by bisecting the **public** forward function (decoupled from Phase-5's internal shape, as
+    the temper inversion is from the master curve). Returns ``None`` when the target is above the
+    finest-grain ceiling (can't strengthen further inside the window) or below the coarsest-grain
+    floor (can't soften further) — the honest infeasible, never a silent nearest-miss.
+    """
+    def f(T: float) -> float:
+        return _yield_at(steel, T, t_hours, N_free_pct, P_pct).yield_MPa
+
+    Y_hi = f(_AUSTENITIZE_T_LO)   # finest grain (coolest austenitize) ⇒ highest yield (ceiling)
+    Y_lo = f(_AUSTENITIZE_T_HI)   # coarsest grain (hottest austenitize) ⇒ lowest yield (floor)
+    if not (np.isfinite(Y_hi) and np.isfinite(Y_lo)):
+        return None               # martensitic / out-of-table grade — not an FP yield candidate
+    if not (Y_lo - tol_MPa <= target_MPa <= Y_hi + tol_MPa):
+        return None
+
+    lo, hi = _AUSTENITIZE_T_LO, _AUSTENITIZE_T_HI
+    # f decreasing: f(lo) ≈ Y_hi ≥ target ≥ Y_lo ≈ f(hi). Bisect on the sign of (f(mid) − target).
+    for _ in range(max_iter):
+        mid = 0.5 * (lo + hi)
+        if f(mid) > target_MPa:    # yield still too high → coarser grain → hotter → raise T
+            lo = mid
+        else:                       # too low → finer grain → cooler → lower T
+            hi = mid
+        if hi - lo < 1e-3:
+            break
+    T = 0.5 * (lo + hi)
+    return T if abs(f(T) - target_MPa) <= max(tol_MPa, 1.0) else None
+
+
+def find_yield_recipes(
+    target_MPa: float,
+    tol_MPa: float = DEFAULT_YIELD_TOL_MPA,
+    t_hours: float = 1.0,
+    grades=None,
+    N_free_pct: float = grain.DEFAULT_N_FREE_PCT,
+    P_pct: float = 0.0,
+) -> YieldDesignResult:
+    """Search the grade × austenitizing space for normalized recipes hitting ``target_MPa ± tol_MPa`` yield.
+
+    The slow-cool (ferrite-pearlite) sibling of :func:`find_recipes`. For each registry grade (the
+    outer enumeration) bisect the austenitizing temperature that brings the **Phase-5c coupled
+    yield** (:func:`~steel.grain.coupled_grain_properties`) into band — a feasible grade is one whose
+    practical austenitizing window :data:`_AUSTENITIZE_T_LO`–:data:`_AUSTENITIZE_T_HI` brackets the
+    target. Returns the feasible set cost-sorted (leaner alloy / cooler austenitize first),
+    **empty if none** — the honest "no grade reaches this yield by normalizing in the window".
+
+    No quench, no temper: the recipe is a normalized cool, and the cooling rate is folded into the
+    calibrated :data:`~steel.grain.FERRITE_PAGS_RATIO`, so the only knobs are grade and the
+    austenitizing schedule. ``grades`` defaults to all of :data:`~steel.sweep.STEELS` (accepts
+    :class:`~steel.sweep.Steel` objects or registry keys); ``t_hours`` is the austenitizing hold;
+    ``N_free_pct`` / ``P_pct`` thread the free-nitrogen and phosphorus terms into the yield/DBTT laws
+    (``P_pct`` is the signed-impurity foil — it raises yield *and* DBTT).
+
+    **No new physics, no validation triad** (the :mod:`sweep`/:func:`find_recipes` posture): this
+    inverts the validated Phase-5 forward model faithfully and says "infeasible" honestly.
+    """
+    resolved = (list(sweep.STEELS.values()) if grades is None
+                else [sweep.STEELS[g] if isinstance(g, str) else g for g in grades])
+    lo, hi = target_MPa - tol_MPa, target_MPa + tol_MPa
+
+    recipes: list[YieldRecipe] = []
+    for steel in resolved:
+        T = _austenitize_to_yield(steel, target_MPa, t_hours, N_free_pct, P_pct)
+        if T is None:
+            continue
+        gp = _yield_at(steel, T, t_hours, N_free_pct, P_pct)
+        if lo <= gp.yield_MPa <= hi:            # re-validate through the forward model
+            cost = (_alloy_cost(steel)
+                    + AUSTENITIZE_COST_WEIGHT * (T - _AUSTENITIZE_T_LO))
+            recipes.append(YieldRecipe(
+                steel=steel, austenitize_T=float(T), austenitize_t=t_hours,
+                yield_MPa=float(gp.yield_MPa), dbtt_C=float(gp.dbtt_C),
+                pags_um=float(gp.pags_um), ferrite_um=float(gp.ferrite_um), cost=float(cost),
+            ))
+
+    recipes.sort(key=lambda r: r.cost)
+    return YieldDesignResult(target_MPa, tol_MPa, t_hours, tuple(recipes))

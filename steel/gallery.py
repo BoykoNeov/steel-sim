@@ -157,14 +157,16 @@ CATALOG: tuple[Entry, ...] = (
         "Case hardening", "demo_carburize", "steel-carburize-gradient.png",
         "Carburizing",
         "A carburized gear tooth: carbon diffused in at the surface, case hardness profiled out "
-        "— the same sealed engine as Jominy, a mass-diffusion face.",
+        "— the same sealed engine as Jominy, a mass-diffusion face. Now inverts closed-form too: "
+        "target a case depth, get the cycle (time or temperature).",
         notebook="§8", app="carburizing",
     ),
     Entry(
         "Inverse design", "demo_design", "steel-design.png",
         "Inverse design",
         "Run the simulator backwards: name a target hardness, get a feasible recipe — grade, "
-        "quench medium, and temper.",
+        "quench medium, and temper. v2 also inverts for a target yield (the normalized, slow-cool "
+        "regime) and a target case depth.",
         notebook="§7", app="§7",
     ),
     Entry(

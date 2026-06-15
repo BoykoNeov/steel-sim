@@ -299,6 +299,93 @@ def analytic_case_depth(
 
 
 # --------------------------------------------------------------------------- #
+# 2c. The case-depth INVERSION (Phase 7 v2) — target a case depth, get a schedule
+# --------------------------------------------------------------------------- #
+# The forward :func:`analytic_case_depth` gives a depth from a (time, temperature) cycle; this
+# inverts it — the engineer's actual question, *"what cycle gives me 0.5 mm of effective case?"*.
+# Because the constant-D erfc case depth is **exactly** ``x = 2·erfc⁻¹(r)·√(Dt)`` (the level set of
+# the erfc profile), the inverse is **closed form** — no root-find, recovering the input to machine
+# precision. Two natural unknowns:
+#   * solve the **time** at a chosen temperature  (t = (x / k)² / D,                  k = 2·erfc⁻¹(r))
+#   * solve the **temperature** at a chosen time  (D = (x / k)² / t, then invert Arrhenius for T).
+#
+# Scope — what is and is NOT inverted (named, mirroring the forward split):
+#   * **The constant-D erfc leg only** — the *validated analytical limit*. The concentration-
+#     dependent D(C) (Tibbetts / the Boltzmann self-similar profile) is **not closed-form invertible**
+#     (D depends on the carbon field being solved for); inverting it would need a numeric outer loop
+#     over :func:`boltzmann_case_depth`, named as a ceiling, not built here. The erfc inverse slightly
+#     UNDER-predicts the depth a real D(C) cycle reaches — the same direction the forward erfc leg is
+#     conservative, carried forward honestly.
+#   * **The carbon-level case depth** (:data:`CASE_DEPTH_CARBON`, 0.40 wt%, the conventional
+#     *effective case depth*) — a *hardness*-based effective case (e.g. depth to 50 HRC) would couple
+#     back into the quench/martensite-potential model (a different regime), named as an extension.
+
+def carburize_time_for_case_depth(
+    target_case_m: float,
+    T_celsius: float = DEFAULT_T_CARBURIZE,
+    C_surface: float = DEFAULT_CARBON_POTENTIAL,
+    C_core: float = DEFAULT_CORE_CARBON,
+    C_threshold: float = CASE_DEPTH_CARBON,
+) -> float:
+    """Carburizing **time** (s) to reach ``target_case_m`` at ``T_celsius`` — the exact inverse of ``2·erfc⁻¹(r)·√(Dt)``.
+
+    Closed form ``t = (x / k)² / D`` with ``k = 2·erfc⁻¹(r)``, ``r = (C_th − C0)/(Cs − C0)`` the erfc
+    level set and ``D = D(T)`` the constant Callister diffusivity — so a round trip through
+    :func:`analytic_case_depth` recovers ``target_case_m`` to machine precision. Returns **nan** when
+    ``r ∉ (0, 1)`` (threshold outside the core/surface carbon span — no depth reaches it, the honest
+    infeasible). ``target_case_m`` and the returned time are SI (m, s); higher ``T`` cuts the time
+    (Arrhenius ``D``). The D(C)/hardness-based ceilings in the section note above apply.
+    """
+    if target_case_m <= 0.0:
+        raise ValueError(f"target case depth must be > 0 m, got {target_case_m}")
+    denom = C_surface - C_core
+    if denom <= 0.0:
+        raise ValueError("C_surface must exceed C_core (carbon flows inward)")
+    r = (C_threshold - C_core) / denom
+    if not (0.0 < r < 1.0):
+        return float("nan")            # threshold outside (C_core, C_surface) — unreachable
+    D = carbon_diffusivity(T_celsius)
+    k = 2.0 * float(erfcinv(r))
+    return (target_case_m / k) ** 2 / D
+
+
+def carburize_temperature_for_case_depth(
+    target_case_m: float,
+    t_seconds: float,
+    C_surface: float = DEFAULT_CARBON_POTENTIAL,
+    C_core: float = DEFAULT_CORE_CARBON,
+    C_threshold: float = CASE_DEPTH_CARBON,
+) -> float:
+    """Carburizing **temperature** (°C) reaching ``target_case_m`` in ``t_seconds`` — inverts the Arrhenius ``D``.
+
+    From the same closed form: the depth fixes the required diffusivity ``D = (x / k)² / t``
+    (``k = 2·erfc⁻¹(r)``), then the Callister Arrhenius ``D = D₀·exp(−Q/RT)`` inverts to
+    ``T = −Q / (R·ln(D/D₀))`` (kelvin → °C). A round trip through :func:`carbon_diffusivity` +
+    :func:`analytic_case_depth` recovers ``target_case_m`` to machine precision. Returns **nan** when
+    ``r ∉ (0, 1)`` (threshold unreachable). The **practical carburizing window is ~815–1050 °C**
+    (austenitic, below grain-coarsening); a returned temperature outside it means the target is not
+    achievable in that time by a sane cycle — surfaced to the caller (this function returns the exact
+    analytic value rather than masking it), not silently clamped. The D(C)/hardness ceilings apply.
+    """
+    if t_seconds <= 0.0:
+        raise ValueError(f"time must be > 0 s, got {t_seconds}")
+    if target_case_m <= 0.0:
+        raise ValueError(f"target case depth must be > 0 m, got {target_case_m}")
+    denom = C_surface - C_core
+    if denom <= 0.0:
+        raise ValueError("C_surface must exceed C_core (carbon flows inward)")
+    r = (C_threshold - C_core) / denom
+    if not (0.0 < r < 1.0):
+        return float("nan")            # threshold outside (C_core, C_surface) — unreachable
+    k = 2.0 * float(erfcinv(r))
+    D_required = (target_case_m / k) ** 2 / t_seconds
+    if D_required <= 0.0:
+        return float("nan")
+    T_K = -Q_CARBON_AUSTENITE / (R_GAS * math.log(D_required / D0_CARBON_AUSTENITE))
+    return T_K - ABS_ZERO
+
+
+# --------------------------------------------------------------------------- #
 # 2b. The Boltzmann self-similar reference for D(C) — the D(C) analytical leg
 # --------------------------------------------------------------------------- #
 def boltzmann_carbon_profile(
