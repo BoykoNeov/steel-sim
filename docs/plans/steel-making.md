@@ -542,13 +542,51 @@ is finalized** — so its *failure* output is the hero-demo input.
 >   off-grade fires *before* soft-core (the window is the conservative early warning) — but the ordering is
 >   **section-dependent** (a thicker section can soft-core an *on-grade* heat: the chemistry-spec ≠ H-band
 >   point, the same "in-band but still soft" subtlety deferred above).
-> - **Named deferrals (not built).** **Carbon carry-in** — high-carbon ferrochrome/ferromanganese carry
->   ~6–8 % C, so the 4140 trim *would* add **+0.18 %C** (~45 % of the grade's carbon — quantified by
->   `carbon_pickup_pct`, the reason low-carbon ferroalloys exist); held off F2's carbon axis here. The
->   deox-state-dependent recovery coupling (F2 → F3). **P/S residual bands and desulf/dephos** stay out of
->   the window — the `Steel`/`Heat` vector carries no P/S (the same state gap as F2 Slice 2).
+> - **Named deferrals.** **Carbon carry-in** — high-carbon ferrochrome/ferromanganese carry ~6–8 % C, so the
+>   4140 trim *would* add **+0.18 %C** (~45 % of the grade's carbon — quantified by `carbon_pickup_pct`, the
+>   reason low-carbon ferroalloys exist); held off F2's carbon axis here → **now built** (`demo_carbon_carry_in`).
+>   The **deox-state-dependent recovery coupling (F2 → F3)** → **now built** (next banner). **P/S residual
+>   bands and desulf/dephos** stay out of the window — the `Steel`/`Heat` vector carries no P/S (the same
+>   state gap as F2 Slice 2).
 > - **Notebook & app deferred** (heat-treatment-framed, as F1/spine/F2/F4). Gallery "Ladle trim" card
 >   inserted before Casting (chain-forward); both READMEs updated.
+
+> **As built — 2026-06-15 (the deox→recovery coupling — the F2→F3 seam, closing ladle's last named
+> deferral).** `steel/ladle.py` gains `oxidation_recovery_loss` / `recovery_after_deox` /
+> `OXIDIZABLE_TRIM_ELEMENTS` + a `trim_to_grade(couple_deox_recovery=True)` path (+ `demo_deox_recovery.py`,
+> `plots.deox_recovery_figure`, 7 tests in `test_ladle.py` + `test_demo_deox_recovery.py` 7); fast lane
+> **884 → 898 green**. **Standalone — no engine touch, no ADR** (this plan is the record). The advisor's
+> pre-code analysis set the whole shape; three calls were load-bearing:
+> - **The magnitude *is* the result — modest by physics, not a failure-hero.** The dissolved oxygen F2 leaves
+>   on the `Heat` ties up a stoichiometric mass of the oxidizable additions as oxide (the same conservation
+>   `refining.generated_oxide` uses), so their recovery falls below nominal. But the C–O product caps the
+>   trim-time oxygen at the demonstrator carbons (~53 ppm at 0.40 %C, ~105 ppm at 0.20 %C), so even a *fully*
+>   under-killed bath taxes Mn only ~2–4 %. That is **sub-window**: the landed Mn dips but stays in the band,
+>   so the coupling **cannot trip off-grade** — which is *quantitatively why* Slice 1's gross under-trim hero
+>   (Cr/Mo recovery ~halved) had to be **hand-set** (the plan's own "marginal miss = in-window" note, now
+>   derived). A 20–35 % tax I briefly computed was a **carbon mismatch** (FeO-route oxygen belongs to a
+>   *low-carbon* slag a 0.40 %C bath cannot sit under — the carbon boil reduces it); the advisor caught it.
+>   So the demo is a **readout contrast, not a flag-trip** (the sulfide-morphology good-half precedent: a
+>   positive readout, no `add_defect`).
+> - **Selectivity is the payload, and it is exact.** The tax falls only on the trim elements that carry a
+>   deox reaction in `refining.DEOXIDIZERS` — **Mn and Si**; the noble hardenability alloys **Cr/Mo/Ni** are
+>   oxygen-independent (their real losses are slag reoxidation — the ceiling). Order-of-operations: *kill
+>   before you trim*. Plus the **carbon→oxygen→tax coherence** — the leaner 8620 sits at higher dissolved O
+>   (F2's inverse C–O coupling) → a bigger tax → the kill matters most where carbon is lowest. This ties F2's
+>   validated C–O number straight into F3 recovery.
+> - **Ceiling wording — verified against the code, not assumed.** The advisor's first framing called the slag
+>   reservoir "not modelled"; a grep proved that **inaccurate** — `slag.py` carries the `FeO` field and the
+>   Fe–FeO oxygen anchor (`K_FE_FEO`). So the ceiling is named precisely: the tax here is the **one-shot
+>   scavenge of the bath's dissolved O**; the *gross* industrial losses are the **alloy-reoxidation
+>   distribution** (Mn/Si/Cr partitioning into an oxidizing FeO slag), an equilibrium the repo does **not**
+>   build (the FeO field could seed it, but there is no metal→slag alloy partition, and FeO is not wired to
+>   set the bath oxygen at trim) — the real driver of the hand-set gross hero, and a legitimate next build
+>   (it may even carry a coherence tooth: the Mn≫Si≫Cr reoxidation order is F1's Ellingham order again).
+> - **NO claimable tooth** (conservation arithmetic on cited oxide stoichiometry; the oxidizable-vs-noble
+>   selectivity exact by construction, the Si-over-Mn split a stated simplification; the result a recovery /
+>   landed-composition readout, not a new flag — the under-killed heat's only defect is F2's own
+>   `porosity-risk`, one root cause). **Notebook & app deferred** (as the other front-end phases). Gallery
+>   "Ladle trim" card inserted after carbon carry-in; both READMEs updated.
 
 ### F4 — Casting & solidification (reuses the frozen heat engine + existing Scheil)
 Solidification heat extraction (frozen engine, heat mode, mold Robin BC);

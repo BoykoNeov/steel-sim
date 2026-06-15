@@ -21,9 +21,11 @@ import pytest
 from steel import ladle as ld
 from steel.ladle import (
     FERROALLOYS, LOW_CARBON_FERROALLOYS, GRADE_WINDOWS, HEAT_MASS_KG, OFF_GRADE,
-    mix, additions_for_grade, slag_loss, carbon_pickup_pct,
+    OXIDIZABLE_TRIM_ELEMENTS, mix, additions_for_grade, slag_loss, carbon_pickup_pct,
+    oxidation_recovery_loss, recovery_after_deox,
     in_window, off_grade_elements, is_on_grade, from_tap, trim_to_grade,
 )
+from steel import refining as rf
 from steel.heat_state import Heat, SOFT_CORE
 from steel.sweep import Steel, STEELS
 
@@ -218,3 +220,89 @@ def test_8620_also_trims_into_its_window():
     trimmed = trim_to_grade(from_tap("8620"), "8620")
     assert is_on_grade(trimmed.composition, "8620")
     assert trimmed.composition.Ni == pytest.approx(STEELS["8620"].Ni, abs=1e-6)
+
+
+# --------------------------------------------------------------------------- #
+# The deox→recovery coupling — F2's dissolved oxygen taxes the oxidizable trim (the F2→F3 seam)
+# --------------------------------------------------------------------------- #
+# This is spine-class arithmetic, NOT a physics benchmark: the tax is the same mass balance refining's
+# generated_oxide uses (oxygen × stoichiometry), read onto recovery. The checks are structural — selectivity
+# (which elements carry a deox reaction), direction (more O ⇒ less recovery), and the *honest magnitude* (the
+# tax is sub-window, which is why demo_ladle's gross hero is hand-set).
+def test_oxidizable_trim_is_exactly_the_deoxidizing_elements():
+    # Selectivity by construction: the taxed set is the trim elements that carry a deox reaction (Mn, Si),
+    # never the noble hardenability alloys (Cr/Mo/Ni). This is the intersection, computed not asserted.
+    assert OXIDIZABLE_TRIM_ELEMENTS == ("Mn", "Si")
+    assert all(e in rf.DEOXIDIZERS for e in OXIDIZABLE_TRIM_ELEMENTS)
+    assert not any(e in rf.DEOXIDIZERS for e in ("Cr", "Mo", "Ni"))
+
+
+def test_oxidation_tax_falls_only_on_mn_si_not_the_noble_alloys():
+    charges = additions_for_grade(from_tap("4140").composition, STEELS["4140"])
+    loss = oxidation_recovery_loss(charges, oxygen_ppm=105.0)
+    assert set(loss) <= {"Mn", "Si"}                         # only the oxidizable alloys are taxed
+    assert loss["Mn"] > 0.0                                  # and they genuinely are
+    rec = recovery_after_deox(charges, oxygen_ppm=105.0)
+    for noble in ("Cr", "Mo"):
+        assert rec[noble] == pytest.approx(FERROALLOYS[noble].recovery)   # noble recovery is oxygen-independent
+
+
+def test_oxidation_tax_rises_with_oxygen_and_is_zero_at_zero():
+    # Direction + the no-oxygen limit: a hotter bath taxes Mn more; a (hypothetical) oxygen-free bath does not.
+    charges = additions_for_grade(from_tap("4140").composition, STEELS["4140"])
+    assert oxidation_recovery_loss(charges, 0.0) == {}
+    lo = oxidation_recovery_loss(charges, 30.0)["Mn"]
+    hi = oxidation_recovery_loss(charges, 110.0)["Mn"]
+    assert 0.0 < lo < hi
+
+
+def test_oxidation_tax_matches_the_stoichiometric_mass_balance():
+    # The arithmetic IS conservation (NOT a benchmark): the Mn mass lost = its share of the dissolved-oxygen
+    # mass × the MnO metal-per-oxygen stoichiometry. Recomputed independently from the cited oxide data.
+    charges = {"Mn": 800.0, "Si": 200.0, "Cr": 100.0}       # Cr present but noble (gets no oxygen)
+    O_ppm = 80.0
+    delivered = {e: charges[e] * FERROALLOYS[e].element_fraction for e in ("Mn", "Si")}
+    total = sum(delivered.values())
+    O_mass = O_ppm * 1e-6 * HEAT_MASS_KG
+    d = rf.DEOXIDIZERS["Mn"]
+    metal_per_O = (1.0 - d.oxide_O_mass_frac) / d.oxide_O_mass_frac
+    expected_mn = (O_mass * delivered["Mn"] / total) * metal_per_O / delivered["Mn"]
+    assert oxidation_recovery_loss(charges, O_ppm)["Mn"] == pytest.approx(expected_mn, rel=1e-12)
+
+
+def test_tax_is_sub_window_cannot_trip_off_grade():
+    # The honest magnitude (the build's whole point): even a fully under-killed bath at 4140's carbon leaves
+    # the landed Mn ABOVE the window floor — the dissolved-O coupling alone cannot drive a heat off grade,
+    # which is why demo_ladle's gross under-trim hero must be hand-set.
+    tap = from_tap("4140")
+    charges = additions_for_grade(tap.composition, STEELS["4140"])
+    O = rf.equilibrium_oxygen(tap.composition.C)             # ~53 ppm, the un-killed C–O equilibrium
+    trimmed, _ = mix(tap.composition, charges, recovery=recovery_after_deox(charges, O))
+    assert trimmed.Mn > GRADE_WINDOWS["4140"].bands["Mn"][0]     # still in window
+    assert oxidation_recovery_loss(charges, O)["Mn"] / FERROALLOYS["Mn"].recovery < 0.05   # a few %, not halved
+
+
+def test_couple_deox_recovery_produces_the_shortfall_from_the_heats_oxygen():
+    # The seam wired through trim_to_grade: an under-killed Heat (high oxygen_ppm) lands Mn LOWER than a
+    # well-killed one, from the SAME charges — the recovery shortfall produced, not hand-set. Cr holds.
+    well = rf.deoxidize(from_tap("4140"), "Al", 0.04)        # O ~4 ppm
+    under = rf.deoxidize(from_tap("4140"), "Si", 0.05)       # O ~53 ppm, porosity-risk
+    tw = trim_to_grade(well, "4140", couple_deox_recovery=True)
+    tu = trim_to_grade(under, "4140", couple_deox_recovery=True)
+    assert tu.composition.Mn < tw.composition.Mn                 # the under-killed heat lands Mn short
+    # noble Cr is oxygen-independent in RECOVERY; its landed wt % shifts only by the tiny bath-mass dilution
+    # coupling (less Mn/Si retained ⇒ a hair lighter bath ⇒ a hair more concentrated), not the oxygen tax.
+    charges = additions_for_grade(under.composition, STEELS["4140"])
+    assert recovery_after_deox(charges, under.oxygen_ppm)["Cr"] == pytest.approx(FERROALLOYS["Cr"].recovery)
+    assert tu.composition.Cr == pytest.approx(tw.composition.Cr, abs=1e-3)
+    assert is_on_grade(tu.composition, "4140")                  # but still on grade (sub-window tax)
+    assert tu.has_defect("porosity-risk") and not tu.has_defect(OFF_GRADE)   # one cause: F2's flag, no new one
+
+
+def test_couple_deox_recovery_is_a_no_op_without_oxygen_state():
+    # When the Heat carries no oxygen_ppm (a bare tap), the coupling cannot fire — it falls back to the nominal
+    # recovery and lands on grade, exactly as the default trim. The hand-set actual_recovery still wins if given.
+    tap = from_tap("4140")
+    assert tap.oxygen_ppm is None
+    coupled = trim_to_grade(tap, "4140", couple_deox_recovery=True)
+    assert is_on_grade(coupled.composition, "4140") and coupled.is_clean

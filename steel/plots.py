@@ -3437,6 +3437,72 @@ def carbon_carry_in_figure(d):
     return fig
 
 
+def deox_recovery_figure(d):
+    """The F2→F3 seam artifact: the bath's dissolved oxygen taxes the *oxidizable* trim alloys' recovery.
+
+    ``d`` is a :class:`~steel.demo_deox_recovery.DeoxRecoveryDemo` (precomputed — this layer only draws,
+    ADR 0002). Two panels:
+
+    * **left — the selectivity.** Recovery η vs the bath's dissolved oxygen, per trim element. The oxidizable
+      Mn and Si (warm, sloping down) lose recovery as the bath gets hotter; the noble Cr/Mo/Ni (cool, flat)
+      do not care. The well-killed (~4 ppm) and under-killed (~53 ppm, porosity-risk) operating points are
+      marked — the oxygen tax falls only on the alloys that deoxidize.
+    * **right — modest, and in-window.** Landed Mn vs dissolved oxygen for the hero grade and the leaner one,
+      each against its cited window floor. The landed Mn dips with oxygen but stays *above* the floor across
+      the whole physical range — the tax is sub-window (which is *why* demo_ladle's gross under-trim hero must
+      be hand-set). The leaner 8620 sits at higher oxygen (the C–O coupling) and dips closer to its floor —
+      kill-before-you-trim matters most where the carbon is lowest.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_sel, ax_land) = plt.subplots(1, 2, figsize=(13.4, 5.4))
+    el_color = {"Mn": "#c0392b", "Si": "#e67e22", "Cr": "#2471a3", "Mo": "#5d6d7e", "Ni": "#7f8c8d"}
+    el_role = {"Mn": "oxidizable", "Si": "oxidizable", "Cr": "noble", "Mo": "noble", "Ni": "noble"}
+
+    # --- left: recovery vs dissolved oxygen, per element (the selectivity) ----------------------- #
+    for e in d.elements:
+        ls = "-" if el_role[e] == "oxidizable" else "--"
+        lw = 2.8 if el_role[e] == "oxidizable" else 1.8
+        ax_sel.plot(d.oxygen_grid, d.rec_curves[e], color=el_color[e], lw=lw, ls=ls,
+                    label=f"{e} ({el_role[e]})")
+    for O, tag, col in [(d.well_point_O, "well-killed", "#1f6f3c"), (d.under_point_O, "under-killed", "#c0392b")]:
+        ax_sel.axvline(O, color=col, lw=1.2, ls=":", alpha=0.8)
+        ax_sel.annotate(f"{tag}\n{O:.0f} ppm", (O, 0.842), xycoords=("data", "axes fraction"),
+                        ha="center", va="bottom", fontsize=7.8, color=col)
+    ax_sel.set_xlabel("bath dissolved oxygen at trim  (ppm)")
+    ax_sel.set_ylabel("alloy recovery  η")
+    ax_sel.set_ylim(0.83, 1.0)
+    ax_sel.set_xlim(0.0, float(d.oxygen_grid[-1]))
+    ax_sel.set_title("Dissolved oxygen taxes the oxidizable alloys — not the noble ones", fontsize=10.4)
+    ax_sel.legend(fontsize=8.0, loc="lower left", ncol=2)
+    ax_sel.grid(True, alpha=0.25)
+
+    # --- right: landed Mn vs dissolved oxygen, per grade (modest, in-window) --------------------- #
+    grade_color = {d.grades[0]: "#c0392b", d.grades[1]: "#8e44ad"}
+    for g in d.grades:
+        col = grade_color[g]
+        ax_land.plot(d.oxygen_grid, d.landed_mn[g], color=col, lw=2.6, label=f"{g} landed Mn")
+        ax_land.axhline(d.mn_floors[g], color=col, lw=1.3, ls="--", alpha=0.7)
+        ax_land.annotate(f"{g} Mn floor {d.mn_floors[g]:.2f} %", (d.oxygen_grid[-1], d.mn_floors[g]),
+                         textcoords="offset points", xytext=(-4, 3), ha="right", va="bottom",
+                         fontsize=7.8, color=col)
+        O, Mn = d.operating[g]
+        ax_land.plot([O], [Mn], "o", color=col, ms=11, mec="0.2", mew=1.2, zorder=5)
+        ax_land.annotate(f"under-killed\n{O:.0f} ppm → {Mn:.3f} %", (O, Mn), textcoords="offset points",
+                         xytext=(7, 8), ha="left", va="bottom", fontsize=7.8, color=col, fontweight="bold")
+    ax_land.set_xlabel("bath dissolved oxygen at trim  (ppm)")
+    ax_land.set_ylabel("landed manganese  (wt %)")
+    ax_land.set_xlim(0.0, float(d.oxygen_grid[-1]))
+    ax_land.set_title("Landed Mn dips with oxygen but stays in-window (sub-window tax)", fontsize=10.4)
+    ax_land.legend(fontsize=8.4, loc="center right")
+    ax_land.grid(True, alpha=0.25)
+
+    fig.suptitle("The F2→F3 seam — dissolved oxygen taxes the oxidizable trim, but only modestly",
+                 fontsize=12.2, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.88, bottom=0.12, wspace=0.22)
+    return fig
+
+
 def sulfide_morphology_figure(d):
     """The signed-sulfur artifact: the same MnS, a free-machining asset and a through-thickness liability.
 

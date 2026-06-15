@@ -36,7 +36,8 @@ so ``η`` falls; add them to a well-killed bath and ``η`` is high. That is the 
 sized assuming a recovery, and a heat where the *actual* recovery comes in well below the assumed one lands
 **short of the grade** — below the window, and (for Cr/Mo) into a back-end soft core. The tier-2 scatter in
 the cited recovery factor is not a weakness to hide; it is the modeled mechanism by which a real ladle
-misses spec. (This is the front-end consequence of F2's deox state — named here, the coupling deferred.)
+misses spec. (This is the front-end consequence of F2's deox state — the coupling is now built for the
+oxidizable Mn/Si: :func:`recovery_after_deox`, and ``trim_to_grade(couple_deox_recovery=True)``.)
 
 What is CITED vs the named ceiling — the two-tier discipline (as in casting/refining)
 ------------------------------------------------------------------------------------
@@ -61,8 +62,10 @@ What is CITED vs the named ceiling — the two-tier discipline (as in casting/re
   :data:`LOW_CARBON_FERROALLOYS` is the lever; the carbon then crosses the grade's C band and the existing
   window machinery raises **off-grade on carbon** (the demonstrated propagation: the over-carbon heat is a
   harder steel — see :mod:`steel.demo_carbon_carry_in`). The Slice-1 clean axis is still the **default** (the
-  trim only dilutes carbon). (b) The **deox-state-dependent recovery** above stays named, not built.
-  **Phosphorus and sulphur are not in the window check** — the
+  trim only dilutes carbon). (b) The **deox-state-dependent recovery** above is now built for the oxidizable
+  Mn/Si — :func:`oxidation_recovery_loss` / :func:`recovery_after_deox`, the **F2→F3 seam** that produces the
+  recovery shortfall from the bath's dissolved oxygen (modest / sub-window — see :mod:`steel.demo_deox_recovery`);
+  the gross slag-reoxidation loss stays the named ceiling. **Phosphorus and sulphur are not in the window check** — the
   :class:`~steel.sweep.Steel` vector carries no P/S, so the residual-element bands (and desulf/dephos, which
   is also F2 Slice 2) are deferred until that state exists.
 
@@ -73,6 +76,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from .heat_state import Heat, ProcessStep, add_defect
+from .refining import DEOXIDIZERS
 from .sweep import Steel, STEELS
 
 # --------------------------------------------------------------------------- #
@@ -280,6 +284,75 @@ def carbon_pickup_pct(
 
 
 # --------------------------------------------------------------------------- #
+# 2b. The deox→recovery coupling — F2's dissolved oxygen taxes the oxidizable trim (the F2→F3 seam)
+# --------------------------------------------------------------------------- #
+# The trim elements that are *also* deoxidizers (carry an m[M] + n[O] = MₘOₙ reaction in refining.DEOXIDIZERS):
+# Mn and Si. These are the additions a hot — under-killed — bath oxidizes, so their recovery falls with the
+# bath's residual dissolved oxygen (F2's :attr:`Heat.oxygen_ppm`). The hardenability alloys Cr/Mo/Ni have no
+# dissolved-O deox reaction in the model — noble at this level; their real recovery scatter is slag
+# reoxidation, the named ceiling below — so their recovery is oxygen-independent.
+OXIDIZABLE_TRIM_ELEMENTS: tuple[str, ...] = tuple(e for e in TRIM_ELEMENTS if e in DEOXIDIZERS)
+
+
+def oxidation_recovery_loss(
+    charges: dict[str, float], oxygen_ppm: float, *, heat_mass: float = HEAT_MASS_KG,
+) -> dict[str, float]:
+    """Recovery loss ``Δη`` per element from the oxidizable trim alloys scavenging the bath's residual O.
+
+    The F2→F3 coupling made quantitative — the part the F3 demo's hand-set ``actual_recovery`` stood in for.
+    The dissolved oxygen F2 leaves on the ``Heat`` (``oxygen_ppm``) does not vanish when the alloys go in: it
+    ties up a **stoichiometric mass** of the oxidizable additions as oxide (lost to the slag), so their
+    *recovery* lands below nominal. Only the trim elements with a deoxidation reaction in
+    :data:`~steel.refining.DEOXIDIZERS` — **Mn and Si** (:data:`OXIDIZABLE_TRIM_ELEMENTS`) — pay it; the noble
+    hardenability alloys **Cr/Mo/Ni** have no dissolved-O reaction in the model, so their ``Δη`` is 0.
+
+    The arithmetic is the same conservation :func:`~steel.refining.generated_oxide` uses, read the other way:
+    the oxygen mass ``[ppm]·10⁻⁶·heat_mass`` is apportioned across the oxidizable additions **present** (in
+    proportion to the delivered element mass — the Si-over-Mn deoxidation *preference* is **not** resolved, a
+    stated simplification; the selectivity that matters, oxidizable-vs-noble, is exact), and each element's
+    share of oxygen ties up ``(1 − f_O)/f_O`` kg of that metal per kg of oxygen, with ``f_O`` the oxide's
+    oxygen mass fraction (:attr:`~steel.refining.Deoxidizer.oxide_O_mass_frac`). ``Δη`` is that lost mass over
+    the delivered mass.
+
+    The magnitude is honest and **modest**: a well-killed bath (O at the Al-kill equilibrium, a few ppm) taxes
+    Mn/Si by ~0.2 %; even a *fully* under-killed bath at the demonstrator carbons (O at the C–O equilibrium —
+    ~53 ppm at 0.4 %C, ~105 ppm at 0.2 %C) taxes them only ~2–4 %. That is *sub-window*: it is quantitatively
+    **why the gross under-trim hero (Cr/Mo recovery ~halved) in** :mod:`steel.demo_ladle` **must be hand-set** —
+    the dissolved-O coupling alone cannot drive a heat off grade. The gross industrial losses come instead from
+    the **alloy-reoxidation distribution** (Mn/Si/Cr partitioning into an oxidizing FeO slag), an equilibrium
+    this repo does not build: :mod:`steel.slag` carries the ``FeO`` field and the Fe–FeO oxygen anchor that
+    *could* seed it, but no metal→slag alloy partition, and FeO is not wired to set the bath oxygen at trim.
+    """
+    oxidizable = [e for e in OXIDIZABLE_TRIM_ELEMENTS if charges.get(e, 0.0) > 0.0 and e in FERROALLOYS]
+    delivered = {e: charges[e] * FERROALLOYS[e].element_fraction for e in oxidizable}
+    total = sum(delivered.values())
+    O_mass = max(0.0, oxygen_ppm) * 1.0e-6 * heat_mass                # kg of dissolved oxygen in the heat
+    if total <= 0.0 or O_mass <= 0.0:
+        return {}
+    loss: dict[str, float] = {}
+    for e in oxidizable:
+        d = DEOXIDIZERS[e]
+        metal_per_O = (1.0 - d.oxide_O_mass_frac) / d.oxide_O_mass_frac     # kg metal tied up per kg O (stoich)
+        O_share = O_mass * delivered[e] / total                            # this element's share of the O pool
+        loss[e] = O_share * metal_per_O / delivered[e]                      # Δη = lost mass / delivered mass
+    return loss
+
+
+def recovery_after_deox(
+    charges: dict[str, float], oxygen_ppm: float, *, heat_mass: float = HEAT_MASS_KG,
+) -> dict[str, float]:
+    """Actual per-element recovery given the bath's dissolved oxygen — nominal ``η`` minus the oxidation tax.
+
+    Maps :func:`oxidation_recovery_loss` onto the ferroalloys' nominal recoveries: the oxidizable Mn/Si come in
+    **below** nominal in a hot (under-killed) bath, the noble Cr/Mo/Ni hold at nominal. This is the
+    ``actual_recovery`` dict :func:`trim_to_grade` consumes when ``couple_deox_recovery`` is on — turning the
+    hand-set recovery knob into a value **produced** by F2's deox state (the seam). Clamped at 0.
+    """
+    loss = oxidation_recovery_loss(charges, oxygen_ppm, heat_mass=heat_mass)
+    return {e: max(0.0, FERROALLOYS[e].recovery - loss.get(e, 0.0)) for e in charges if e in FERROALLOYS}
+
+
+# --------------------------------------------------------------------------- #
 # 3. The grade window — membership (the labelled spec)
 # --------------------------------------------------------------------------- #
 def in_window(comp: Steel, grade: str) -> dict[str, bool]:
@@ -329,6 +402,7 @@ def from_tap(
 def trim_to_grade(
     heat: Heat, grade: str, *, heat_mass: float = HEAT_MASS_KG,
     recovery: dict[str, float] | None = None, actual_recovery: dict[str, float] | None = None,
+    couple_deox_recovery: bool = False,
     apply_carbon_pickup: bool = False, ferroalloys: dict[str, Ferroalloy] | None = None,
 ) -> Heat:
     """Trim ``heat`` to ``grade`` by ferroalloy additions — sized for ``recovery``, delivered at ``actual``.
@@ -339,6 +413,14 @@ def trim_to_grade(
     When the additions are sized and delivered at the same recovery (``actual_recovery=None``) the heat lands
     **on grade**; when the bath delivers *less* than assumed (an under-killed bath eats the Cr/Mn — the F2
     deox-state coupling), the heat lands **short**, outside the window, and the **off-grade** flag is raised.
+
+    ``couple_deox_recovery`` **produces** that delivered recovery from F2's deox state instead of hand-setting
+    it: when on (and ``actual_recovery`` is not already given), the oxidizable Mn/Si are delivered at
+    :func:`recovery_after_deox` of the heat's ``oxygen_ppm`` — a hot, under-killed bath taxes them, a
+    well-killed one does not, and the noble Cr/Mo/Ni hold at nominal either way. The effect is **modest**
+    (sub-window at the demonstrator carbons — see :mod:`steel.demo_deox_recovery`), so it shifts the landed
+    Mn/Si as a *readout*; it does not by itself trip off-grade (that is why the gross under-trim hero is
+    hand-set). The hand-set ``actual_recovery`` still wins if supplied.
 
     The off-grade flag is F3's own labelled-spec catch (the cited grade window). The *downstream* consequence
     of an under-trim — a soft core when the heat is quenched — is **not** flagged here: it rides the existing
@@ -353,6 +435,8 @@ def trim_to_grade(
     """
     aim = STEELS[grade]
     charges = additions_for_grade(heat.composition, aim, heat_mass=heat_mass, recovery=recovery)
+    if couple_deox_recovery and actual_recovery is None and heat.oxygen_ppm is not None:
+        actual_recovery = recovery_after_deox(charges, heat.oxygen_ppm, heat_mass=heat_mass)
     trimmed, _ = mix(heat.composition, charges, heat_mass=heat_mass, recovery=actual_recovery or recovery,
                      apply_carbon_pickup=apply_carbon_pickup, ferroalloys=ferroalloys)
     trimmed = replace(trimmed, name=grade)

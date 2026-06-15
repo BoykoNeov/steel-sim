@@ -350,8 +350,25 @@ CATALOG: tuple[Entry, ...] = (
         "band through the same window machinery (no new flag); the hardness rise is the validated back end "
         "consuming the carry-in carbon — propagation colour, not a second pass/fail line. No engine, no ADR, "
         "and **no claimable tooth** (mass-balance on cited assays); the ~40 %-of-the-grade's-carbon magnitude "
-        "is an order-of-magnitude coherence note. Carbon recovery taken ~full; deox-state recovery and P/S "
-        "bands stay deferred.",
+        "is an order-of-magnitude coherence note. Carbon recovery taken ~full; deox-state-dependent recovery is "
+        "now its own panel (next); P/S bands stay deferred.",
+    ),
+    Entry(
+        "Ladle trim (front-end)", "demo_deox_recovery", "steel-deox-recovery.png",
+        "The F2→F3 seam — dissolved oxygen taxes the oxidizable trim",
+        "The seam that closes the ladle module's last named deferral: where demo_ladle *hand-set* the recovery "
+        "shortfall and demo_carbon_carry_in turned on the ferroalloy carbon, this one turns on F2's **deox "
+        "state**. Trim the same charges into a well-killed bath (Al-killed, O ~4 ppm) and Mn/Si recover in full; "
+        "trim them into an under-killed one (a weak, insufficient kill — O ~53 ppm, **porosity-risk**) and the "
+        "dissolved oxygen ties up a stoichiometric mass of the oxidizable additions as oxide, so Mn/Si land "
+        "short — while the noble Cr/Mo/Ni land identically (**selectivity**: the tax falls only on the alloys "
+        "that deoxidize). The magnitude is honest and **modest** — even a fully under-killed bath taxes Mn only "
+        "~2 % at 4140's carbon (~4 % at 8620's lower carbon, which sits at higher dissolved O), so the landed Mn "
+        "dips but stays *in-window*: the dissolved-O coupling alone cannot trip off-grade — quantitatively why "
+        "demo_ladle's gross under-trim hero must be hand-set. The carbon→oxygen→tax coherence ties F2's C–O "
+        "coupling straight into F3 recovery (kill-before-you-trim matters most where carbon is lowest). No "
+        "engine, no ADR, and **no claimable tooth** (conservation arithmetic on cited oxide stoichiometry; the "
+        "gross slag-FeO reoxidation distribution is the named ceiling). The only flag is F2's porosity-risk.",
     ),
     Entry(
         "Casting (front-end)", "demo_casting", "steel-casting.png",
