@@ -327,6 +327,7 @@ CATALOG: tuple[Entry, ...] = (
         "point, by construction. The machinability index is the MnS contribution only (hardness/carbon and "
         "Pb/Ca/Te confound the real rating); the transverse debit is its own directional axis (not the hardness "
         "toughness proxy or DBTT). Stringer aspect ratio (∝ rolling reduction) is a named ceiling.",
+        notebook="§D8",
     ),
     Entry(
         "Impurity consequences (front-end)", "demo_wootz", "steel-wootz.png",
@@ -351,6 +352,7 @@ CATALOG: tuple[Entry, ...] = (
         "computed — that would be a manufactured coherence (cake modulus, Chvorinov B, and the SDAS law are all "
         "soft knobs aimed at a 2×-wide target). The enrichment ratio is representative (the pinned Mo former as "
         "the exemplar). The verdict is yes/no, not a rendered etch — a named ceiling.",
+        notebook="§D9",
     ),
     Entry(
         "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",
@@ -376,6 +378,7 @@ CATALOG: tuple[Entry, ...] = (
         "and **no claimable tooth** (mass-balance on cited assays); the ~40 %-of-the-grade's-carbon magnitude "
         "is an order-of-magnitude coherence note. Carbon recovery taken ~full; deox-state-dependent recovery is "
         "now its own panel (next); P/S bands stay deferred.",
+        notebook="§F3b",
     ),
     Entry(
         "Ladle trim (front-end)", "demo_deox_recovery", "steel-deox-recovery.png",
@@ -393,6 +396,7 @@ CATALOG: tuple[Entry, ...] = (
         "coupling straight into F3 recovery (kill-before-you-trim matters most where carbon is lowest). No "
         "engine, no ADR, and **no claimable tooth** (conservation arithmetic on cited oxide stoichiometry; the "
         "gross slag-FeO reoxidation distribution is the named ceiling). The only flag is F2's porosity-risk.",
+        notebook="§F3c",
     ),
     Entry(
         "Casting (front-end)", "demo_casting", "steel-casting.png",
@@ -433,6 +437,7 @@ CATALOG: tuple[Entry, ...] = (
         "(carefully *not* independent — both rest on the Fe–C peritectic): the lever rule and Wolf's empirical "
         "FP place the trouble at the same ~0.1 %C window. The consumed-δ peaks at the band edge (Cγ 0.17), not "
         "the empirical worst — the exact worst-carbon needs δ→γ kinetics + shell mechanics (underdetermined).",
+        notebook="§D7",
     ),
 )
 

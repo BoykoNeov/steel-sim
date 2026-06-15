@@ -719,8 +719,9 @@ streamlit run steel/app.py
 
 > **The front-end teaching notebook (`making.ipynb`, plan §7/§9 — Slice 2b, built ✓).** The narrative
 > twin of `steel.ipynb` for the front end: *ore → billet → and what goes wrong* — the making chain
-> (F1 reduction → the `Heat` spine → F2 refining + slag → F3 ladle → F4 casting + solidification) and
-> then the six defect consequences, one make-then-break read. Same thin-skin discipline as
+> (F1 reduction → the `Heat` spine → F2 refining + slag → F3 ladle + carbon carry-in + the deox→recovery
+> seam → F4 casting + solidification) and then the nine defect consequences (through peritectic cracking
+> and the two *signed* foils — MnS morphology and Wootz banding), one make-then-break read. Same thin-skin discipline as
 > `steel.ipynb` (a direct compute cell banks each section's figure; `interact` is sugar) — and it reuses
 > the *same* tested readout helpers `app_making` / `app_consequences` expose, so it turns the validated
 > knobs with no duplicated logic (and inherits e.g. the deliberately-restricted TME grade set). It is a
