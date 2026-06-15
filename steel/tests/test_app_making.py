@@ -107,6 +107,42 @@ def test_ladle_trim_recovery_shortfall_double_flags():
 
 
 # --------------------------------------------------------------------------- #
+# 5b. F3 — carbon carry-in: the ferroalloy carbon grade decides off-grade-on-C
+# --------------------------------------------------------------------------- #
+def test_carbon_carryin_high_vs_low_carbon_ferroalloys():
+    hc = app.ladle_carbon_carryin_readout(False)         # charge-grade ferroalloys — carbon carries in
+    lc = app.ladle_carbon_carryin_readout(True)          # refined low-carbon ferroalloys — carbon holds
+    # The high-carbon trim drags the heat off the carbon window (a different mistake than the Cr/Mo shortfall);
+    # the low-carbon trim lands on grade. The off-grade flag fires on CARBON, not Cr/Mo.
+    assert hc["off_grade"] is True
+    assert hc["off_elements"] == ["C"]
+    assert lc["off_grade"] is False
+    # Same trim, same charges: the high-carbon set carries an order of magnitude more carbon in, over-hardening.
+    assert hc["pickup_C"] > 10.0 * lc["pickup_C"]
+    assert hc["landed_C"] > lc["landed_C"]
+    assert hc["HV"] > lc["HV"]
+
+
+# --------------------------------------------------------------------------- #
+# 5c. F2 → F3 — the deox→recovery seam: a sub-window readout, not an off-grade flag
+# --------------------------------------------------------------------------- #
+def test_deox_recovery_taxes_oxidizable_alloys_but_stays_sub_window():
+    killed = app.ladle_deox_recovery_readout("Al — proper kill (0.04 %)")
+    hot = app.ladle_deox_recovery_readout("Si — insufficient kill (0.05 %)")
+    # The under-killed bath leaves more dissolved oxygen, so it taxes the oxidizable Mn recovery harder.
+    assert hot["oxygen_ppm"] > killed["oxygen_ppm"]
+    assert hot["mn_tax_pct"] > killed["mn_tax_pct"]
+    # But the magnitude is MODEST — the landed Mn dips yet stays in the band: the coupling cannot trip
+    # off-grade (which is exactly why the gross under-trim hero in the F3 panel has to be hand-set).
+    assert hot["in_band"] is True
+    assert hot["off_grade"] is False
+    assert hot["mn_tax_pct"] < 10.0
+    # The insufficient kill leaves the heat over the porosity-risk line (F2's own flag, one root cause).
+    assert hot["porosity_risk"] is True
+    assert killed["porosity_risk"] is False
+
+
+# --------------------------------------------------------------------------- #
 # 6. F4 — casting: the segregated centerline is a harder band than the bulk
 # --------------------------------------------------------------------------- #
 def test_casting_centerline_is_an_enriched_hard_band():
@@ -130,6 +166,8 @@ def test_casting_centerline_is_an_enriched_hard_band():
     app.refining_overview_figure,
     app.slag_overview_figure,
     app.ladle_overview_figure,
+    app.carbon_carryin_overview_figure,
+    app.deox_recovery_overview_figure,
     app.casting_overview_figure,
 ])
 def test_overview_figure_builds_when_viz_present(builder):

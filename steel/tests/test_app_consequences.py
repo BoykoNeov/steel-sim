@@ -133,7 +133,76 @@ def test_hot_tear_manganese_decides_through_segregation():
 
 
 # --------------------------------------------------------------------------- #
-# 7. Figure builders — a build-only smoke test, viz-gated (ADR 0002: render is reach)
+# 6b. Peritectic surface cracking — the non-monotonic carbon hero + the alloy lever
+# --------------------------------------------------------------------------- #
+def test_peritectic_non_monotonic_carbon_and_alloy_lever():
+    lean = app.peritectic_readout(0.05, False)           # sub-peritectic — solidifies fully δ, sound
+    peri = app.peritectic_readout(0.11, False)           # hypo-peritectic — in Wolf's depression band, cracks
+    rich = app.peritectic_readout(0.45, False)           # austenitic — sound
+    # The counter-intuitive hero: the MIDDLE carbon cracks; both a leaner AND a richer steel cast soundly.
+    assert peri["crack"] is True
+    assert lean["crack"] is False
+    assert rich["crack"] is False
+    # The alloy lever: at a FIXED 0.20 %C, ferrite stabilizers (Si+Cr) pull the carbon-equivalent into the band.
+    plain = app.peritectic_readout(0.20, False)
+    alloyed = app.peritectic_readout(0.20, True)
+    assert plain["crack"] is False
+    assert alloyed["crack"] is True
+    assert alloyed["Cp"] < plain["Cp"]                   # ferrite stabilizers lower the carbon equivalent
+
+
+# --------------------------------------------------------------------------- #
+# 7. Sulfide morphology (signed foil) — same sulfur, the SHAPE decides
+# --------------------------------------------------------------------------- #
+def test_sulfide_morphology_shape_is_the_lever_not_the_sulfur():
+    fm_key = "1144 — resulfurized (S ≈ 0.24 %)"
+    plain_key = "1045 — plain (S ≈ 0.020 %)"
+    as_rolled = app.sulfide_morphology_readout(fm_key, False)
+    shaped = app.sulfide_morphology_readout(fm_key, True)
+    plain = app.sulfide_morphology_readout(plain_key, False)
+    # Same heat, same sulfur, same MnS volume — only the morphology changed, and it flips the anisotropy
+    # WITHOUT touching the machinability (the lever is the shape, not the sulfur level).
+    assert as_rolled["anisotropic"] is True
+    assert shaped["anisotropic"] is False
+    assert as_rolled["free_machining"] is True and shaped["free_machining"] is True
+    assert shaped["machinability"] == pytest.approx(as_rolled["machinability"])
+    assert shaped["mns_volpct"] == pytest.approx(as_rolled["mns_volpct"])
+    # The other end of the trade: the plain heat is tough/isotropic but carries too little MnS to free-machine.
+    assert plain["free_machining"] is False
+    assert plain["anisotropic"] is False
+
+
+# --------------------------------------------------------------------------- #
+# 8. Wootz / Damascus banding (signed GOOD-impurity foil) — three gates, intent-flagged
+# --------------------------------------------------------------------------- #
+def test_wootz_three_gates_and_intent_gated_flag():
+    in_window = 882.0                                    # mid the 1.5 %C forging window (857–907 °C)
+    genuine = app.wootz_readout(1.5, 60.0, in_window)    # all three gates hold → the pattern develops
+    clean = app.wootz_readout(1.5, 5.0, in_window)       # V below threshold → forged as wootz but FAILS
+    plain_c = app.wootz_readout(0.45, 60.0, 850.0)       # not hypereutectoid → no pattern intent
+    too_hot = app.wootz_readout(1.5, 60.0, 977.0)        # above A_cm → cementite dissolves, no intent
+    assert genuine["patterned"] is True
+    assert genuine["pattern_failed"] is False
+    # The flag fires ONLY under intent (forged as wootz) when the trace former falls short — the signed miss.
+    assert clean["pattern_failed"] is True
+    assert clean["forged_as_wootz"] is True
+    # A bar never forged as wootz raises NO flag, even though its former is fine / its carbon is plain.
+    assert plain_c["pattern_failed"] is False and plain_c["forged_as_wootz"] is False
+    assert too_hot["pattern_failed"] is False and too_hot["forged_as_wootz"] is False
+    # The trace 'impurity' is exactly what separates the asset from the miss (same forging, V decides).
+    assert genuine["effective_former_ppm"] > genuine["v_threshold"] > clean["effective_former_ppm"]
+
+
+def test_wootz_readout_survives_sub_hypereutectoid_carbon():
+    # Regression: the forging window is defined only for hypereutectoid carbon — the readout must guard the
+    # display call so dragging the carbon slider below the eutectoid does not raise (it would crash the panel).
+    r = app.wootz_readout(0.40, 60.0, 700.0)
+    assert r["hypereutectoid"] is False
+    assert r["pattern_failed"] is False
+
+
+# --------------------------------------------------------------------------- #
+# 9. Figure builders — a build-only smoke test, viz-gated (ADR 0002: render is reach)
 # --------------------------------------------------------------------------- #
 # Mirrors test_app.py / test_app_making.py's layer 3: each *_overview_figure must actually render through
 # the plots layer, so a future plots.* signature change can't break the app's st.pyplot calls silently.
@@ -144,6 +213,9 @@ def test_hot_tear_manganese_decides_through_segregation():
     app.hydrogen_flaking_overview_figure,
     app.gas_porosity_overview_figure,
     app.hot_tear_overview_figure,
+    app.peritectic_overview_figure,
+    app.sulfide_morphology_overview_figure,
+    app.wootz_overview_figure,
 ])
 def test_overview_figure_builds_when_viz_present(builder):
     pytest.importorskip("matplotlib").use("Agg")

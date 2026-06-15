@@ -695,7 +695,8 @@ streamlit run steel/app.py
 
 > **The front-end twin (`app_making.py`, plan §7).** A **separate** Streamlit app — the *"ore → billet"*
 > companion to this *"cooling curve in, microstructure out"* one — covering the steel-**making** chain
-> (reduction → spine → refining + slag → ladle trim → casting + solidification). Same three-layer
+> (reduction → spine → refining + slag → ladle trim, incl. carbon carry-in + the deox→recovery seam →
+> casting + solidification). Same three-layer
 > discipline and run-as-script bootstrap (verify with `python steel/app_making.py` — it must die only at
 > `import streamlit` inside `main()`); `tests/test_app_making.py` exercises every compute helper
 > always-green. It is *separate, not appended*: the two narratives, test surfaces, and `main()` bodies
@@ -706,12 +707,15 @@ streamlit run steel/app.py
 
 > **The defect-consequences app (`app_consequences.py`, plan §14 — Slice 2a).** The *third* panel of the
 > triptych: *make it* (`app_making`) → *here is what goes wrong* (`app_consequences`) → *heat-treat the
-> survivors* (`app`). Six panels turn the knobs on each consequence — cold/red-short (the impurity window),
+> survivors* (`app`). Nine panels turn the knobs on each consequence — cold/red-short (the impurity window),
 > reversible temper embrittlement, irreversible tempered-martensite embrittlement, hydrogen flaking, CO
-> porosity, and hot-tearing — each showing the recurring two-tier shape: a flat upstream **risk** line vs
-> the carbon-/geometry-/segregation-aware **consequence** that sees what it cannot. Same separate-app
-> discipline, run-as-script bootstrap, and three layers; `tests/test_app_consequences.py` exercises every
-> compute helper always-green plus a viz-gated figure build-smoke test per panel.
+> porosity, hot-tearing, and peritectic surface cracking — each showing the recurring two-tier shape: a flat
+> upstream **risk** line vs the carbon-/geometry-/segregation-aware **consequence** that sees what it cannot.
+> The last two panels are the *signed* foils, which turn the title on its head: the same MnS that robs
+> through-thickness toughness is what makes a steel free-cutting, and the trace vanadium a clean spec rejects
+> is what makes the Wootz/Damascus pattern — the impurity read as an asset, not only a defect. Same
+> separate-app discipline, run-as-script bootstrap, and three layers; `tests/test_app_consequences.py`
+> exercises every compute helper always-green plus a viz-gated figure build-smoke test per panel.
 
 > **The front-end teaching notebook (`making.ipynb`, plan §7/§9 — Slice 2b, built ✓).** The narrative
 > twin of `steel.ipynb` for the front end: *ore → billet → and what goes wrong* — the making chain

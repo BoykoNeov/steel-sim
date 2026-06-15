@@ -10,8 +10,9 @@ paper-thin ``main()`` bodies stay focused instead of one 3000-line file straddli
 
 Like :mod:`app`, it adds **reach, not correctness** (ADR 0002): every number it shows is produced
 by a function already sealed behind its own validation triad (:mod:`reduction`, :mod:`refining`,
-:mod:`slag`, :mod:`ladle`, :mod:`casting`, :mod:`solidification`, :mod:`heat_state`), so this
-module introduces **no new physics, no new calibration, no new constant**.
+:mod:`slag`, :mod:`ladle` — alloy trim, carbon carry-in, and the deox→recovery seam — :mod:`casting`,
+:mod:`solidification`, :mod:`heat_state`), so this module introduces **no new physics, no new
+calibration, no new constant**.
 
 Three layers, by the same ADR-0002 discipline :mod:`app` follows
 ----------------------------------------------------------------
@@ -95,6 +96,21 @@ SLAG_O_MIN, SLAG_O_MAX = 2.0, 600.0
 LADLE_GRADE = "4140"
 LADLE_RECOVERY_MIN, LADLE_RECOVERY_MAX = 0.30, 1.05
 LADLE_MEDIUM, LADLE_DIAMETER = "oil", 0.015
+
+# F3 — carbon carry-in. The same trim, but the ferroalloy *carbon grade* decides: charge-grade ferrochrome/
+# ferromanganese carry ~6–8 %C, so a 4140 trim drags ~+0.18 %C in (off-grade on carbon + over-hard); the
+# refined low-carbon ferroalloys (the reason they exist) keep the carbon on aim. The knob is the alloy grade.
+CARRYIN_GRADE = LADLE_GRADE
+
+# F3 — the deox→recovery seam (F2 → F3). The dissolved oxygen the kill leaves taxes the *oxidizable* trim
+# elements (Mn, Si) as oxide — the noble hardenability alloys (Cr, Mo, Ni) are oxygen-independent. The knob is
+# the kill quality: a proper aluminium kill vs an insufficient silicon one. NB the tax is **sub-window** (it
+# dips Mn but cannot trip off-grade) — a readout contrast, not a flag, which is *why* the F3 hero is hand-set.
+DEOXREC_GRADE = LADLE_GRADE
+DEOX_KILLS = {
+    "Al — proper kill (0.04 %)": ("Al", 0.04),
+    "Si — insufficient kill (0.05 %)": ("Si", 0.05),
+}
 
 # F4 — casting. The hero grade, the casting-modulus axis (Chvorinov t ∝ M²), and the discriminating
 # treat section where the segregated centerline over-hardens into a band the nominal bulk misses.
@@ -274,6 +290,97 @@ def ladle_trim_readout(recovery_ratio: float) -> dict:
     }
 
 
+def ladle_carbon_carryin_readout(low_carbon_ferroalloys: bool) -> dict:
+    """F3 carbon carry-in: same trim, the ferroalloy *carbon grade* decides off-grade-on-C + over-hard.
+
+    Trims a fresh 4140 tap to grade with the carbon pickup on (:func:`~steel.ladle.trim_to_grade`,
+    ``apply_carbon_pickup=True``), using either the charge-grade high-carbon ferroalloys (which carry ~6–8 %C)
+    or the refined :data:`~steel.ladle.LOW_CARBON_FERROALLOYS`, then heat-treats the result. With the
+    high-carbon set the trim drags ~+0.16 %C in — off the grade's carbon window and into an *over-hard* steel;
+    the low-carbon set (the reason it exists) keeps carbon on aim. A *different* ladle mistake than the
+    recovery shortfall: the off-grade flag fires on **carbon**, not Cr/Mo. All formatting here, so :func:`main`
+    only forwards strings (+ reads the flag).
+    """
+    ferro = ld.LOW_CARBON_FERROALLOYS if low_carbon_ferroalloys else ld.FERROALLOYS
+    tap = ld.from_tap(CARRYIN_GRADE)
+    charges = ld.additions_for_grade(tap.composition, STEELS[CARRYIN_GRADE])
+    trimmed = ld.trim_to_grade(tap, CARRYIN_GRADE, apply_carbon_pickup=True, ferroalloys=ferro)
+    treated = hs.heat_treat(trimmed, medium=LADLE_MEDIUM, diameter=LADLE_DIAMETER)
+    o = evaluate(trimmed.as_steel(), medium=LADLE_MEDIUM, diameter=LADLE_DIAMETER)
+    c_lo, c_hi = ld.GRADE_WINDOWS[CARRYIN_GRADE].bands["C"]
+    pickup = ld.carbon_pickup_pct(charges, ferroalloys=ferro)
+    off = ld.off_grade_elements(trimmed.composition, CARRYIN_GRADE)
+    return {
+        "low_carbon": bool(low_carbon_ferroalloys),
+        "tap_C": float(tap.composition.C),
+        "landed_C": float(trimmed.composition.C),
+        "pickup_C": float(pickup),
+        "off_grade": treated.has_defect(ld.OFF_GRADE),
+        "off_elements": off,
+        "martensite": float(o.result.martensite),
+        "HV": float(o.HV),
+        "c_window": (float(c_lo), float(c_hi)),
+        "landed_str": f"{trimmed.composition.C:.2f} %C  (window {c_lo:.2f}–{c_hi:.2f} %)",
+        "pickup_str": f"+{pickup:.2f} %C from the ferroalloys",
+        "hardness_str": f"{o.result.martensite:.0%} M, {o.HV:.0f} HV",
+        "grade_verdict": (
+            f"on grade — carbon {trimmed.composition.C:.2f} % sits in the {c_lo:.2f}–{c_hi:.2f} % window; "
+            f"the low-carbon ferroalloys held the aim"
+            if not off else
+            f"OFF GRADE on carbon — {trimmed.composition.C:.2f} % overshoots the {c_lo:.2f}–{c_hi:.2f} % window "
+            f"(+{pickup:.2f} %C carried in); a harder, more crack-prone steel than the grade calls for"
+        ),
+    }
+
+
+def ladle_deox_recovery_readout(kill_key: str) -> dict:
+    """F2→F3 seam: the dissolved oxygen the kill leaves taxes the oxidizable Mn/Si recovery (Cr/Mo noble).
+
+    Kills a fresh 4140 tap with the chosen deoxidizer (a proper aluminium kill vs an insufficient silicon
+    one — :func:`~steel.refining.deoxidize`, which also raises ``porosity-risk`` when weak), then trims to
+    grade with the seam on (:func:`~steel.ladle.trim_to_grade`, ``couple_deox_recovery=True``): the residual
+    dissolved oxygen ties up a stoichiometric mass of the *oxidizable* trim alloys (Mn, Si) as oxide, so their
+    recovery lands below nominal, while the noble Cr/Mo/Ni hold. The effect is **modest and sub-window** — a
+    readout contrast, **not** a flag: it dips the landed Mn but cannot trip off-grade, which is *why* the gross
+    F3 under-trim hero is hand-set. All formatting here, so :func:`main` only forwards strings.
+    """
+    deox, level = DEOX_KILLS[kill_key]
+    tap = ld.from_tap(DEOXREC_GRADE)
+    charges = ld.additions_for_grade(tap.composition, STEELS[DEOXREC_GRADE])
+    killed = ref.deoxidize(tap, deox, level)
+    trimmed = ld.trim_to_grade(killed, DEOXREC_GRADE, couple_deox_recovery=True)
+    O = killed.oxygen_ppm
+    loss = ld.oxidation_recovery_loss(charges, O if O is not None else 0.0)
+    mn_loss, si_loss = loss.get("Mn", 0.0), loss.get("Si", 0.0)
+    mn_tax_pct = 100.0 * mn_loss / ld.FERROALLOYS["Mn"].recovery if mn_loss else 0.0
+    si_tax_pct = 100.0 * si_loss / ld.FERROALLOYS["Si"].recovery if si_loss else 0.0
+    mn_lo, mn_hi = ld.GRADE_WINDOWS[DEOXREC_GRADE].bands["Mn"]
+    landed_Mn = trimmed.composition.Mn
+    off = ld.off_grade_elements(trimmed.composition, DEOXREC_GRADE)
+    return {
+        "deox_name": deox,
+        "kill_level": float(level),
+        "oxygen_ppm": float(O) if O is not None else float("nan"),
+        "mn_tax_pct": float(mn_tax_pct),
+        "si_tax_pct": float(si_tax_pct),
+        "landed_Mn": float(landed_Mn),
+        "mn_floor": float(mn_lo),
+        "in_band": bool(mn_lo <= landed_Mn <= mn_hi),
+        "off_grade": bool(off),                          # expected empty — the coupling is sub-window
+        "porosity_risk": trimmed.has_defect(ref.POROSITY_RISK),
+        "noble": ("Cr", "Mo", "Ni"),
+        "oxygen_str": f"{O:.0f} ppm O after the {deox} kill" if O is not None else "—",
+        "tax_str": f"Mn recovery −{mn_tax_pct:.1f} % (Si −{si_tax_pct:.1f} %)",
+        "landed_str": f"Mn {landed_Mn:.2f} %  (window floor {mn_lo:.2f} %)",
+        "verdict": (
+            f"the oxidizable Mn/Si come in below nominal (Mn −{mn_tax_pct:.1f} %), but the landed Mn "
+            f"{landed_Mn:.2f} % stays {'in' if mn_lo <= landed_Mn <= mn_hi else 'OUT of'} the "
+            f"{mn_lo:.2f}–{mn_hi:.2f} % band — the noble Cr/Mo/Ni are oxygen-independent. A sub-window "
+            f"readout, not a flag: the dissolved-O coupling alone cannot drive a heat off grade."
+        ),
+    }
+
+
 def casting_readout(grade: str, modulus_mm: float) -> dict:
     """F4 casting: cast a billet, read the Scheil centerline enrichment and the front-to-back divergence.
 
@@ -347,6 +454,20 @@ def ladle_overview_figure():
     from steel.demo_ladle import compute
     from steel.plots import ladle_figure
     return ladle_figure(compute())
+
+
+def carbon_carryin_overview_figure():
+    """The F3 carbon-carry-in figure — the banked HC-vs-LC ferroalloy / carbon→hardness demo arrays."""
+    from steel.demo_carbon_carry_in import compute
+    from steel.plots import carbon_carry_in_figure
+    return carbon_carry_in_figure(compute())
+
+
+def deox_recovery_overview_figure():
+    """The F2→F3 deox→recovery figure — the banked recovery-vs-O / landed-Mn-per-grade demo arrays."""
+    from steel.demo_deox_recovery import compute
+    from steel.plots import deox_recovery_figure
+    return deox_recovery_figure(compute())
 
 
 def casting_overview_figure():
@@ -512,6 +633,54 @@ def main() -> None:
     except ImportError:
         st.info(viz_hint)
 
+    # ---- F3 — carbon carry-in (the ferroalloy carbon grade decides) -------- #
+    st.subheader("F3 · Carbon carry-in — the *same* trim, but the ferroalloy carbon grade decides")
+    carryin_alloy = st.radio(
+        "Ferroalloy grade",
+        ["high-carbon (charge-grade, ~6–8 %C)", "low-carbon (refined)"],
+        index=0,
+    )
+    cir = ladle_carbon_carryin_readout(carryin_alloy.startswith("low"))
+    ci1, ci2 = st.columns(2)
+    ci1.metric("Landed carbon", cir["landed_str"])
+    ci2.metric("At the oil quench", cir["hardness_str"])
+    (st.error if cir["off_grade"] else st.success)(cir["grade_verdict"])
+    st.caption(
+        "A *different* ladle mistake than the recovery shortfall above: charge-grade ferrochrome/ferromanganese "
+        f"carry ~6–8 % carbon, so the 4140 trim drags **{cir['pickup_str']}** in — ~40 % of the grade's own "
+        "carbon — and pushes it off the carbon window into an over-hard steel. The refined low-carbon "
+        "ferroalloys (the reason they exist, and cost more) keep the carbon on aim. Mass-balance over "
+        "representative assays — an order-of-magnitude coherence number, no fitted constant."
+    )
+    try:
+        st.pyplot(carbon_carryin_overview_figure())
+    except ImportError:
+        st.info(viz_hint)
+
+    # ---- F2 → F3 — the deox→recovery seam (modest, sub-window) ------------- #
+    st.subheader("F2 → F3 · Deox → recovery — the kill's leftover oxygen taxes the oxidizable alloys")
+    kill = st.radio("Deoxidation before the trim", list(DEOX_KILLS), index=0)
+    dr = ladle_deox_recovery_readout(kill)
+    dr1, dr2, dr3 = st.columns(3)
+    dr1.metric("Dissolved oxygen", dr["oxygen_str"])
+    dr2.metric("Recovery tax", dr["tax_str"])
+    dr3.metric("Landed manganese", dr["landed_str"])
+    st.info(dr["verdict"])
+    if dr["porosity_risk"]:
+        st.warning("…and the insufficient kill leaves the heat over the 30 ppm porosity-risk line (F2's own flag).")
+    st.caption(
+        "The seam from F2's deox state to F3's recovery: the dissolved oxygen the kill leaves does not vanish "
+        "when the alloys go in — it ties up a stoichiometric mass of the **oxidizable** trim elements (Mn, Si) "
+        "as oxide, so they land below nominal. The **noble** Cr/Mo/Ni are oxygen-independent (their real losses "
+        "are slag reoxidation — the named ceiling). The order of operations is *kill before you trim*. The "
+        "effect is honest but **modest** — sub-window at these carbons — which is exactly *why* the gross "
+        "under-trim hero in the panel above has to be hand-set: the coupling alone cannot drive a heat off grade."
+    )
+    try:
+        st.pyplot(deox_recovery_overview_figure())
+    except ImportError:
+        st.info(viz_hint)
+
     # ---- F4 — casting ------------------------------------------------------ #
     st.subheader("F4 · Casting — freeze the billet, and segregation locks in a hard band")
     modulus_mm = st.slider("Casting modulus V/A (mm)", CAST_MODULUS_MIN_MM, CAST_MODULUS_MAX_MM, 25.0, 1.0)
@@ -554,10 +723,11 @@ def main() -> None:
     st.markdown("---")
     st.caption(
         "Where the numbers come from: F1 Ellingham (`reduction`), the `Heat` spine (`heat_state`), F2 "
-        "refining + slag (`refining`, `slag`), F3 trim (`ladle`), F4 casting + solidification "
-        "(`casting`, `solidification`). Each is sealed behind its own validation triad; this surface "
-        "adds reach, not physics (ADR 0002). Defect consequences (porosity, flaking, hot-tear, "
-        "cold/red-short, temper embrittlement) are a separate slice."
+        "refining + slag (`refining`, `slag`), F3 trim (`ladle`) — including carbon carry-in and the "
+        "deox→recovery seam — F4 casting + solidification (`casting`, `solidification`). Each is sealed "
+        "behind its own validation triad; this surface adds reach, not physics (ADR 0002). Defect "
+        "consequences (porosity, flaking, hot-tear, cold/red-short, temper embrittlement, peritectic "
+        "cracking, the signed sulfide/wootz foils) are a separate slice — the third app of the triptych."
     )
 
 

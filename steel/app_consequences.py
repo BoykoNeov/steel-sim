@@ -12,8 +12,10 @@ already files under "Impurity consequences (front-end)."
 Like :mod:`app` and :mod:`app_making`, it adds **reach, not correctness** (ADR 0002): every verdict it
 shows is produced by a model already sealed behind its own validation triad (:mod:`grain`,
 :mod:`hot_work`, :mod:`temper_embrittlement`, :mod:`tempered_martensite_embrittlement`,
-:mod:`hydrogen_flaking`, :mod:`gas_porosity`, :mod:`hot_tear`), so this module introduces **no new
-physics, no new calibration, no new constant**.
+:mod:`hydrogen_flaking`, :mod:`gas_porosity`, :mod:`hot_tear`, :mod:`peritectic`,
+:mod:`sulfide_morphology`, :mod:`wootz`), so this module introduces **no new physics, no new
+calibration, no new constant**. The last two — sulfide morphology and wootz banding — are the *signed*
+foils: the same impurity read as an asset, not only a defect (the title turned on its head).
 
 Three layers, by the same ADR-0002 discipline :mod:`app` / :mod:`app_making` follow
 ----------------------------------------------------------------------------------
@@ -50,15 +52,19 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from steel import fe_c
 from steel import gas_porosity as gp
 from steel import grain as g
 from steel import hot_tear as ht
 from steel import hot_work as hw
 from steel import hydrogen_flaking as hf
+from steel import peritectic as pk
 from steel import refining as ref
 from steel import slag as sl
+from steel import sulfide_morphology as sm
 from steel import temper_embrittlement as te
 from steel import tempered_martensite_embrittlement as tme
+from steel import wootz as wz
 from steel.heat_state import COLD_SHORT, Heat, cold_short_check
 from steel.hot_work import RED_SHORT, hot_work, red_short_assessment
 from steel.sweep import STEELS, Steel, evaluate
@@ -114,6 +120,39 @@ GP_AL_MIN, GP_AL_MAX = 0.0005, 0.05
 HT_BACKBONE = replace(STEELS["1045"], C=0.18, Mn=0.0, Si=0.30, P=0.0, S=0.0, name="cast structural")
 HT_MN_MIN, HT_MN_MAX = 0.05, 2.00
 HT_S_MIN, HT_S_MAX = 0.005, 0.10
+
+# Peritectic surface cracking (the casting-stage CARBON consequence — the third casting defect). A lean cast
+# structural backbone; the knob is the **nominal** carbon (read on the bulk aim, NEVER the Scheil last liquid —
+# the peritectic δ→γ contraction is a primary-shell phenomenon), with an optional ferrite-stabilizer lever
+# (same carbon, +Si+Cr pulls the carbon-equivalent Cp into Wolf's crack band). The famously worst surface-
+# crackers are the hypo-peritectic ~0.10–0.16 %C grades — counter-intuitively, a leaner OR a richer steel casts
+# more soundly, so "more carbon is safer" past the band.
+PK_BACKBONE = replace(STEELS["1045"], C=0.11, Mn=0.0, Si=0.0, Cr=0.0, Mo=0.0, Ni=0.0, P=0.0, S=0.0,
+                      name="cast structural")
+PK_ALLOY_SI, PK_ALLOY_CR = 0.50, 1.00          # the ferrite-stabilizer lever (same carbon, Cp into the band)
+PK_C_MIN, PK_C_MAX = 0.02, 0.50
+
+# Sulfide morphology (the SIGNED sulfur foil). The *same* MnS is a free-machining asset by volume and a short-
+# transverse toughness liability by shape — so the lever is **shape control, NOT the sulfur level** (an S knob
+# would only re-derive red-short). Two cited backbones (a resulfurized free-machining 1144 and a plain 1045)
+# read at the two morphologies: as-rolled stringers (anisotropic) vs a Ca-globularized shape (isotropic).
+SM_BACKBONES = {
+    "1144 — resulfurized (S ≈ 0.24 %)": replace(STEELS["1045"], C=0.45, Mn=1.40, Si=0.25, P=0.0, S=0.24,
+                                                name="1144 (resulfurized)"),
+    "1045 — plain (S ≈ 0.020 %)": replace(STEELS["1045"], C=0.45, Mn=0.75, Si=0.25, P=0.0, S=0.020,
+                                          name="1045 (plain)"),
+}
+
+# Wootz / Damascus carbide banding (the SIGNED GOOD-impurity foil — the inversion of every other panel here).
+# The Damascus pattern needs a trace carbide-former (V ≥ 40 ppm) — the very "impurity" a modern clean-steel
+# spec rejects: "bad steel" and "good steel" are the same composition, signed either way. Three gates —
+# hypereutectoid carbon, the V threshold, and cyclic forging 50–100 °C below A_cm. V/Mo sit below the Steel
+# vector's resolution, so they are keyword inputs to the model, not composition fields.
+WZ_BACKBONE = Steel(C=1.5, Mn=0.30, Si=0.10, name="wootz cake")
+WZ_FORGE_CYCLES = 7
+WZ_C_MIN, WZ_C_MAX = 0.40, 1.80
+WZ_V_MIN, WZ_V_MAX = 0.0, 120.0
+WZ_FORGE_MIN_C, WZ_FORGE_MAX_C = 600.0, 980.0
 
 
 # --------------------------------------------------------------------------- #
@@ -363,6 +402,150 @@ def hot_tear_readout(Mn_pct: float, S_pct: float) -> dict:
     }
 
 
+def peritectic_readout(carbon_pct: float, add_ferrite_stabilizers: bool) -> dict:
+    """Peritectic surface cracking: the non-monotonic carbon hero, read on the *nominal* aim chemistry.
+
+    Builds a lean cast structural heat at the chosen **nominal** carbon (and, optionally, the ferrite-
+    stabilizer lever Si+Cr), then reads :func:`~steel.peritectic.peritectic_assessment` — the carbon-
+    equivalent ``Cp`` and Wolf's ferrite-potential ``FP`` — and the crack flag from
+    :func:`~steel.peritectic.peritectic_crack_check`. Unlike hot-tear (which reads the Scheil *last* liquid),
+    this reads ``heat.composition.C``: the δ→γ contraction is a primary-solidification / shell phenomenon on
+    the bulk aim. The hero is non-monotonic — a hypo-peritectic ~0.11 %C cracks while *both* a leaner and a
+    richer steel cast soundly. All formatting here, so :func:`main` only forwards strings (+ reads the flag).
+    """
+    si = PK_ALLOY_SI if add_ferrite_stabilizers else 0.0
+    cr = PK_ALLOY_CR if add_ferrite_stabilizers else 0.0
+    comp = replace(PK_BACKBONE, C=float(carbon_pct), Si=si, Cr=cr)
+    a = pk.peritectic_assessment(comp)
+    crack = pk.peritectic_crack_check(Heat(composition=comp)).has_defect(pk.PERITECTIC_CRACK)
+    lo, hi = pk.FP_CRACK_LOW, pk.FP_CRACK_HIGH
+    return {
+        "C": float(a.C),
+        "Cp": float(a.Cp),
+        "fp": float(a.fp),
+        "regime": a.regime,
+        "crack": crack,
+        "band": (float(lo), float(hi)),
+        "fp_str": f"FP = {a.fp:.2f}  (crack band {lo:.2f}–{hi:.2f})",
+        "cp_str": f"{a.C:.2f} %C → Cp {a.Cp:.2f}  ({a.regime})",
+        "verdict": (
+            f"SURFACE-CRACKS — the ferrite potential FP {a.fp:.2f} sits in the {lo:.2f}–{hi:.2f} depression "
+            f"band (hypo-peritectic); the δ→γ contraction shrinks the thin shell off the mould wall into "
+            f"longitudinal facial cracks"
+            if crack else
+            f"sound — FP {a.fp:.2f} is outside the {lo:.2f}–{hi:.2f} crack band ({a.regime}); the shell "
+            f"contracts evenly"
+        ),
+        "why": (
+            "in the band" if crack else
+            f"leaner than the band (sub-/just-peritectic, FP > {hi:.2f})" if a.fp > hi else
+            f"richer than the band (austenitic, FP < {lo:.2f})"
+        ),
+    }
+
+
+def sulfide_morphology_readout(grade_key: str, shape_controlled: bool) -> dict:
+    """MnS morphology: same sulfur, the *shape* decides — the free-machining asset vs the toughness liability.
+
+    Reads one of the two cited backbones (a resulfurized free-machining 1144 or a plain 1045) at the chosen
+    **morphology** — the load-bearing lever, *not* the sulfur level. The *same* MnS volume is read two ways:
+    :func:`~steel.sulfide_morphology.sulfide_morphology_assessment` gives the machinability index (rises with
+    MnS volume — the asset) and the short-transverse toughness ratio (falls with it — the liability), and
+    :func:`~steel.sulfide_morphology.sulfide_morphology_check` raises the ``sulfide-anisotropy`` defect when
+    elongated stringers drop the through-thickness toughness below spec. Shape control (a Ca treatment that
+    globularizes the MnS) clears the anisotropy without touching the machinability — the lever the flat sulfur
+    line cannot see. All formatting here, so :func:`main` only forwards strings (+ reads the flag).
+    """
+    comp = SM_BACKBONES[grade_key]
+    a = sm.sulfide_morphology_assessment(comp.Mn, comp.S, shape_controlled=bool(shape_controlled))
+    aniso = sm.sulfide_morphology_check(
+        Heat(composition=comp), shape_controlled=bool(shape_controlled)
+    ).has_defect(sm.SULFIDE_ANISOTROPY)
+    risk = comp.S > sl.MAX_SULFUR_PCT
+    return {
+        "S_pct": float(comp.S),
+        "mns_volpct": float(a.mns_volume_fraction),
+        "machinability": float(a.machinability_index),
+        "free_machining": bool(a.free_machining),
+        "transverse_ratio": float(a.transverse_ratio),
+        "anisotropic": aniso,
+        "risk": risk,
+        "free_min": float(sm.FREE_MACHINING_MIN_VOLPCT),
+        "transverse_spec": float(sm.MIN_TRANSVERSE_RATIO_SPEC),
+        "s_spec_pct": float(sl.MAX_SULFUR_PCT),
+        "mach_str": f"×{a.machinability_index:.2f}  ({a.mns_volume_fraction:.2f} vol % MnS)",
+        "transverse_str": f"{a.transverse_ratio:.0%} of longitudinal  (spec ≥ {sm.MIN_TRANSVERSE_RATIO_SPEC:.0%})",
+        "risk_str": f"slag's flat risk line: S {'>' if risk else '≤'} {sl.MAX_SULFUR_PCT:.3f} % "
+                    f"→ {'flagged' if risk else 'cleared'}",
+        "free_verdict": (
+            f"free-machining — {a.mns_volume_fraction:.2f} vol % MnS breaks the chip (≥ "
+            f"{sm.FREE_MACHINING_MIN_VOLPCT:.2f} vol %)"
+            if a.free_machining else
+            f"NOT free-machining — only {a.mns_volume_fraction:.2f} vol % MnS (needs ≥ "
+            f"{sm.FREE_MACHINING_MIN_VOLPCT:.2f} vol %); low sulfur buys toughness at the cost of the chip-breaker"
+        ),
+        "aniso_verdict": (
+            f"ANISOTROPIC — elongated MnS stringers drop the short-transverse toughness to "
+            f"{a.transverse_ratio:.0%} of longitudinal (below the {sm.MIN_TRANSVERSE_RATIO_SPEC:.0%} spec)"
+            if aniso else
+            f"isotropic — through-thickness toughness {a.transverse_ratio:.0%} of longitudinal clears the "
+            f"{sm.MIN_TRANSVERSE_RATIO_SPEC:.0%} spec"
+        ),
+    }
+
+
+def wootz_readout(carbon_pct: float, v_ppm: float, forge_peak_C: float) -> dict:
+    """Wootz / Damascus banding: the trace carbide-former a clean spec rejects is what *makes* the pattern.
+
+    Forges a bespoke ~1.5 %C cake at the chosen carbon, trace vanadium, and forging-peak temperature and reads
+    :func:`~steel.wootz.wootz_assessment` — the three gates (hypereutectoid carbon, the V banding threshold,
+    cyclic forging 50–100 °C below A_cm) and the verdict. :func:`~steel.wootz.wootz_pattern_check` raises the
+    ``wootz-pattern-failed`` flag **only** when the heat was *forged as wootz* (the intent: hypereutectoid +
+    correctly cycled) but the trace former fell short — the signed miss, off-spec by *lacking* a good impurity.
+    A clean modern stock fails this exact gate; a plain-carbon or wrongly-forged bar never intends a pattern, so
+    it raises no flag. All formatting here, so :func:`main` only forwards strings (+ reads the flag).
+    """
+    comp = replace(WZ_BACKBONE, C=float(carbon_pct))
+    a = wz.wootz_assessment(
+        float(carbon_pct), v_ppm=float(v_ppm), forge_peak_C=float(forge_peak_C), forge_cycles=WZ_FORGE_CYCLES
+    )
+    failed = wz.wootz_pattern_check(
+        Heat(composition=comp), v_ppm=float(v_ppm), forge_peak_C=float(forge_peak_C), forge_cycles=WZ_FORGE_CYCLES
+    ).has_defect(wz.WOOTZ_PATTERN_FAILED)
+    # The forging window is defined only for hypereutectoid carbon (the cementite-solvus A_cm); below the
+    # eutectoid there is no proeutectoid cementite to band, so the gate is moot — guard the display call.
+    if a.hypereutectoid:
+        lo, hi = wz.forging_window(float(carbon_pct))
+        window = (float(lo), float(hi))
+        forge_gate = f"forged {lo:.0f}–{hi:.0f} °C {'✓' if a.forged_in_window else '✗'}"
+    else:
+        window = (float("nan"), float("nan"))
+        forge_gate = "forged 50–100 °C below A_cm ✗"
+    return {
+        "C": float(a.carbon_pct),
+        "v_ppm": float(a.v_ppm),
+        "effective_former_ppm": float(a.effective_former_ppm),
+        "v_threshold": float(wz.V_BANDING_MIN_PPM),
+        "hypereutectoid": bool(a.hypereutectoid),
+        "former_sufficient": bool(a.former_sufficient),
+        "forged_in_window": bool(a.forged_in_window),
+        "forged_as_wootz": bool(a.forged_as_wootz),
+        "patterned": bool(a.patterned),
+        "pattern_failed": failed,
+        "window": window,
+        "former_str": f"{a.effective_former_ppm:.0f} ppm carbide-former "
+                      f"(V banding threshold {wz.V_BANDING_MIN_PPM:.0f} ppm)",
+        "gates_str": (
+            f"hypereutectoid C {'✓' if a.hypereutectoid else '✗'} · "
+            f"V ≥ {wz.V_BANDING_MIN_PPM:.0f} ppm {'✓' if a.former_sufficient else '✗'} · "
+            f"{forge_gate}"
+        ),
+        "verdict": a.verdict,
+        # the three-way signed verdict tier: asset / signed-miss flag / never intended a pattern
+        "tier": "patterned" if a.patterned else "failed" if failed else "no-intent",
+    }
+
+
 # --------------------------------------------------------------------------- #
 # 2. Figure builders — wrap the banked demo pipelines + plots.* (matplotlib lazy)
 # --------------------------------------------------------------------------- #
@@ -408,6 +591,27 @@ def hot_tear_overview_figure():
     return hot_tear_figure(compute())
 
 
+def peritectic_overview_figure():
+    """The peritectic figure — the banked non-monotonic-carbon / Wolf-FP / lever-rule demo arrays."""
+    from steel.demo_peritectic import compute
+    from steel.plots import peritectic_figure
+    return peritectic_figure(compute())
+
+
+def sulfide_morphology_overview_figure():
+    """The sulfide-morphology figure — the banked signed-trade-off (shape decides) demo arrays."""
+    from steel.demo_sulfide_morphology import compute
+    from steel.plots import sulfide_morphology_figure
+    return sulfide_morphology_figure(compute())
+
+
+def wootz_overview_figure():
+    """The wootz figure — the banked trace-V / three-gate / signed-Scheil demo arrays."""
+    from steel.demo_wootz import compute
+    from steel.plots import wootz_figure
+    return wootz_figure(compute())
+
+
 # --------------------------------------------------------------------------- #
 # 3. main() — the Streamlit surface (the ONLY place streamlit is imported)
 # --------------------------------------------------------------------------- #
@@ -437,7 +641,11 @@ def main() -> None:
             "*geometry*-aware, or *segregation*-aware, so it sees what the flat risk line cannot.\n\n"
             "The recurring punchline: **same impurity, the *other* variable decides.** Same oxygen, the "
             "carbon decides porosity. Same hydrogen, the section decides flaking. Same sulfur, the manganese "
-            "decides hot-tearing. The risk line and the consequence routinely disagree."
+            "decides hot-tearing. The risk line and the consequence routinely disagree.\n\n"
+            "And the last two panels turn the title on its head: an impurity is a *signed* thing, **not always "
+            "a defect.** The same MnS that ruins through-thickness toughness is what makes a steel free-cutting; "
+            "the trace vanadium a modern clean-steel spec rejects is exactly what makes the Damascus pattern. "
+            "What the impurity *does* depends on the other variable — and sometimes the answer is *good*."
         )
 
     viz_hint = "Install the figures: `pip install -e .[viz,app]`"
@@ -576,14 +784,102 @@ def main() -> None:
     except ImportError:
         st.info(viz_hint)
 
+    # ---- Peritectic surface cracking (the third casting defect, carbon-driven) ---- #
+    st.subheader("Peritectic surface cracking — the carbon decides, and more carbon is safer")
+    k1, k2 = st.columns(2)
+    pk_C = k1.slider("Nominal carbon (%)", PK_C_MIN, PK_C_MAX, 0.11, 0.01)
+    pk_alloy = k2.radio("Ferrite stabilizers (Si+Cr)", ["none", "+0.5 Si +1.0 Cr"], index=0)
+    kr = peritectic_readout(pk_C, pk_alloy.startswith("+"))
+    km1, km2 = st.columns(2)
+    km1.metric("Carbon equivalent", kr["cp_str"])
+    km2.metric("Ferrite potential (Wolf)", kr["fp_str"])
+    (st.error if kr["crack"] else st.success)(kr["verdict"])
+    st.caption(
+        "The carbon sibling of hot-tearing — but read on the **nominal** aim chemistry, never the Scheil last "
+        "liquid: the δ→γ peritectic contraction is a primary-shell phenomenon. The worst surface-crackers are "
+        "the hypo-peritectic ~0.10–0.16 %C grades; a leaner *or* a richer steel casts more soundly, so the hero "
+        "is non-monotonic. The second lever is alloying: at a fixed 0.20 %C, ferrite stabilizers (Si+Cr) pull "
+        "the carbon-equivalent Cp *into* the crack band — same carbon, the alloying decides. No strict tooth — "
+        "Wolf's FP band is a cited classifier, the Fe–C lever rule the by-construction mechanism."
+    )
+    try:
+        st.pyplot(peritectic_overview_figure())
+    except ImportError:
+        st.info(viz_hint)
+
+    # ---- The signed foils — an impurity is not always a defect --------------- #
+    st.markdown("---")
+    st.markdown(
+        "### Not every impurity is a defect — the *signed* foils\n"
+        "The two panels below flip the title: the same impurity that is a liability one way is an **asset** "
+        "the other. What it does is set by a second variable — the shape of the sulfide, or the intent to forge "
+        "a pattern — not by how much of it there is."
+    )
+
+    # ---- Sulfide morphology (the signed sulfur foil — shape decides) -------- #
+    st.subheader("Sulfide morphology — same sulfur, the *shape* decides (machinable vs tough)")
+    sm1, sm2 = st.columns(2)
+    sm_grade = sm1.selectbox("Heat", list(SM_BACKBONES), index=0)
+    sm_shape = sm2.radio("Sulfide shape", ["as-rolled (stringers)", "shape-controlled (globular)"], index=0)
+    smr = sulfide_morphology_readout(sm_grade, sm_shape.startswith("shape"))
+    sn1, sn2 = st.columns(2)
+    sn1.metric("Machinability (the asset)", smr["mach_str"])
+    sn2.metric("Through-thickness toughness", smr["transverse_str"])
+    (st.success if smr["free_machining"] else st.warning)(smr["free_verdict"])
+    (st.error if smr["anisotropic"] else st.success)(smr["aniso_verdict"])
+    st.caption(
+        "Slag's risk line is flat and shape-blind (S > 0.040 %), and it fires on every free-machining grade by "
+        "design — because that sulfur is added *on purpose*. The MnS it forms is signed: a chip-breaking asset "
+        "by **volume**, a through-thickness toughness liability by **shape**. Take the resulfurized 1144 and "
+        "switch the shape: it stays free-machining either way, but globularizing the MnS (a calcium treatment) "
+        "clears the anisotropy the elongated stringers caused — the lever is the shape, not the sulfur. The "
+        "plain 1045 carries too little MnS to free-machine at all: low sulfur buys toughness, not both."
+    )
+    try:
+        st.pyplot(sulfide_morphology_overview_figure())
+    except ImportError:
+        st.info(viz_hint)
+
+    # ---- Wootz / Damascus banding (the signed GOOD-impurity foil) ---------- #
+    st.subheader("Wootz / Damascus banding — the trace impurity a clean spec rejects *makes* the pattern")
+    wz1, wz2, wz3 = st.columns(3)
+    wz_C = wz1.slider("Carbon (%)", WZ_C_MIN, WZ_C_MAX, 1.50, 0.05)
+    wz_V = wz2.slider("Trace vanadium (ppm)", WZ_V_MIN, WZ_V_MAX, 60.0, 5.0)
+    wz_peak = wz3.slider("Forging peak (°C)", WZ_FORGE_MIN_C, WZ_FORGE_MAX_C, 882.0, 5.0)
+    wzr = wootz_readout(wz_C, wz_V, wz_peak)
+    wm1, wm2 = st.columns(2)
+    wm1.metric("Trace carbide-former", wzr["former_str"])
+    wm2.metric("The three gates", wzr["gates_str"])
+    if wzr["tier"] == "patterned":
+        st.success(wzr["verdict"])
+    elif wzr["tier"] == "failed":
+        st.error(wzr["verdict"])
+    else:
+        st.info(wzr["verdict"])
+    st.caption(
+        "The inversion of every other panel: the Damascus pattern needs a trace carbide-former (vanadium ≥ "
+        "40 ppm) — the very 'impurity' a modern clean-steel spec rejects. *Bad steel* and *good steel* are the "
+        "same composition, signed either way. Three gates must all hold: **hypereutectoid carbon** (a "
+        "proeutectoid cementite network to band), the **V threshold** (the trace former), and **cyclic forging "
+        "50–100 °C below A_cm** (hot enough fully dissolves the cementite). The flag fires *only* under intent — "
+        "a heat forged as wootz whose trace former fell short (a clean modern stock); a plain-carbon or "
+        "wrongly-forged bar never intended a pattern, so it raises none. No tooth — three cited gates over the "
+        "same casting Scheil engine the centerline-defect uses, run with the opposite sign (γ-phase enrichment)."
+    )
+    try:
+        st.pyplot(wootz_overview_figure())
+    except ImportError:
+        st.info(viz_hint)
+
     st.markdown("---")
     st.caption(
         "Where the numbers come from: cold/red-short (`grain`, `hot_work`), temper embrittlement "
         "(`temper_embrittlement`), tempered-martensite embrittlement "
         "(`tempered_martensite_embrittlement`), hydrogen flaking (`hydrogen_flaking`), gas porosity "
-        "(`gas_porosity`), hot-tearing (`hot_tear`). Each is sealed behind its own validation triad; this "
-        "surface adds reach, not physics (ADR 0002). Production lives in the *ore → billet* app; "
-        "heat-treatment in the back-end app — this is the third panel of the triptych."
+        "(`gas_porosity`), hot-tearing (`hot_tear`), peritectic cracking (`peritectic`), and the signed foils "
+        "— sulfide morphology (`sulfide_morphology`) and wootz banding (`wootz`). Each is sealed behind its own "
+        "validation triad; this surface adds reach, not physics (ADR 0002). Production lives in the *ore → "
+        "billet* app; heat-treatment in the back-end app — this is the third panel of the triptych."
     )
 
 

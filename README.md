@@ -88,10 +88,13 @@ Three ways into the same validated core (install + launch commands are in
 - **App** (`steel/app.py`) — the interactive back-end what-if: pick a grade, quench medium, and
   section size and watch the microstructure and hardness move.
 - **Making app** (`steel/app_making.py`) — the front-end (ore→billet) twin: walk reduction → refining
-  → slag → ladle trim → casting and watch an upstream mistake propagate to a downstream soft core.
+  → slag → ladle trim (alloy, carbon carry-in, the deox→recovery seam) → casting and watch an upstream
+  mistake propagate to a downstream soft core.
 - **Consequences app** (`steel/app_consequences.py`) — the third panel of the triptych: turn the
   knobs on each defect (cold/red-short, temper & tempered-martensite embrittlement, hydrogen flaking,
-  CO porosity, hot-tearing) and see the flat upstream risk line disagree with the real consequence.
+  CO porosity, hot-tearing, peritectic surface cracking) and see the flat upstream risk line disagree
+  with the real consequence — then the *signed* foils, where the same impurity is an asset (the
+  free-machining sulfide, the Wootz/Damascus carbide pattern), not only a defect.
 
 The table is ordered as a suggested path — top rows first. Every demo is its own
 `python -m steel.<name>`; the *Also interactive* column points to where the same idea lives in
