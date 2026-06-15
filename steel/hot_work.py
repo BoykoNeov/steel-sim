@@ -40,8 +40,9 @@ just must not be dressed as a tooth. The parts:
 hot-ductility curve — no strain rate, no
 reduction-of-area trough, no window *shape* (the red-short ductility trough hot-tensile tests map between
 ~900–1200 °C is the unmodelled refinement). MnS inclusion **fracture anisotropy** / transverse-toughness
-debit, and the *good*-impurity **free-machining** use of sulfur (resulfurized 11xx grades — MnS breaks the
-chip), are named deferrals. Units: wt % for composition, °C for temperature.
+debit and the *good*-impurity **free-machining** use of sulfur (resulfurized 11xx grades — MnS breaks the
+chip) are the *tied*-sulfide siblings, now built in :mod:`steel.sulfide_morphology` (where red-short reads the
+**free** sulfur, that reads the MnS that **did** form). Units: wt % for composition, °C for temperature.
 """
 from __future__ import annotations
 

@@ -309,6 +309,26 @@ CATALOG: tuple[Entry, ...] = (
         notebook="§D6",
     ),
     Entry(
+        "Impurity consequences (front-end)", "demo_sulfide_morphology", "steel-sulfide-morphology.png",
+        "MnS morphology — the signed sulfur foil (same MnS, asset and liability)",
+        "The same manganese sulfide is signed: a deliberate **free-machining** asset (the reason the "
+        "resulfurized 11xx grades exist — MnS breaks the chip) *and* an unintended **through-thickness "
+        "toughness** liability (hot working elongates the plastic MnS into stringers that gut the "
+        "short-transverse direction). Slag raises one flat, shape-blind `high-sulfur` risk (S > 0.040 %) that "
+        "fires on every free-machining grade by design; this **splits** it into its good and bad halves. The "
+        "hero: one resulfurized 1144-type heat read two ways — as-rolled it is free-machining **and** "
+        "anisotropic; a calcium treatment globularizes the MnS and it is free-machining **and** isotropic, the "
+        "same sulfur, the same MnS *volume* — only the shape changed (the lever is the shape, not the sulfur, "
+        "which is why the anisotropy flag is gated on **morphology**, never an S-threshold). A plain low-S heat "
+        "is tough but cannot free-machine — the other end of the trade. The worked-product sibling of "
+        "forging-stage red-shortness (it reads the *tied* MnS, where red-short reads the *free* sulfur). No "
+        "engine, no ADR, and **no claimable tooth**: the MnS amount is cited stoichiometry, its volume a cited "
+        "density ratio, the two verdicts by-construction; 'one MnS, two opposite signs' is the pedagogical "
+        "point, by construction. The machinability index is the MnS contribution only (hardness/carbon and "
+        "Pb/Ca/Te confound the real rating); the transverse debit is its own directional axis (not the hardness "
+        "toughness proxy or DBTT). Stringer aspect ratio (∝ rolling reduction) is a named ceiling.",
+    ),
+    Entry(
         "Ladle trim (front-end)", "demo_ladle", "steel-ladle.png",
         "Alloy to grade — where the composition is finalized (and missed)",
         "The seam to the back end: trim an alloy-lean tap up to a grade by ferroalloy additions, sized for "

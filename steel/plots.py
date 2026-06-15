@@ -3435,3 +3435,143 @@ def carbon_carry_in_figure(d):
                  fontsize=12.2, fontweight="bold")
     fig.subplots_adjust(left=0.07, right=0.97, top=0.88, bottom=0.12, wspace=0.22)
     return fig
+
+
+def sulfide_morphology_figure(d):
+    """The signed-sulfur artifact: the same MnS, a free-machining asset and a through-thickness liability.
+
+    ``d`` is a :class:`~steel.demo_sulfide_morphology.SulfideMorphologyDemo` (precomputed — this layer only
+    draws, ADR 0002). Four panels:
+
+    * **top-left — one MnS, two opposite signs (the centerpiece).** Against the MnS volume fraction: the
+      machinability index *rises* (green, left axis — the good half) while the short-transverse toughness
+      ratio of *elongated* MnS *falls* (red, right axis — the bad half); globular MnS (grey dashed) stays
+      isotropic. The free-machining floor (vertical) and the toughness acceptance line (horizontal) bound the
+      readings — one number read with opposite signs, by construction.
+    * **top-right — the hero, the shape-control lever.** The *same* resulfurized heat's short-transverse
+      toughness, as-rolled (elongated → below the line → anisotropic) vs shape-controlled (globular → restored)
+      — the lever is the shape, not the sulfur.
+    * **bottom-left — disambiguating the flat high-sulfur flag.** For the as-rolled resulfurized heat, slag's
+      one ``high-sulfur`` risk splits into a free-machining benefit (green, up) and a short-transverse
+      toughness debit (red, down) — the build's reason to exist.
+    * **bottom-right — the trade-off plane.** The three readings on (machinability, short-transverse toughness):
+      the plain heat is tough but not free-machining; the resulfurized heat as-rolled is free-machining but
+      anisotropic; shape control lifts it (arrow) into the good corner — free-machining *and* isotropic.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ((ax_signed, ax_hero), (ax_split, ax_plane)) = plt.subplots(2, 2, figsize=(13.6, 9.6))
+    warn, good, blue, spec = "#c0392b", "#1f6f3c", "#2471a3", "#8e44ad"
+    rolled, globular, plain = d.readings[0], d.readings[1], d.readings[2]
+    floor, t_spec = d.free_machining_floor_volpct, d.transverse_spec
+
+    # --- top-left: one MnS, two opposite signs -------------------------------- #
+    ax_signed.axvspan(floor, d.volpct_grid[-1], color=good, alpha=0.06)
+    ax_signed.plot(d.volpct_grid, d.machinability_curve, color=good, lw=2.8, label="machinability (good)")
+    ax_signed.axvline(floor, color=good, ls=":", lw=1.5)
+    ax_signed.annotate(f"free-machining\nfloor {floor:.2f} vol %", (floor, ax_signed.get_ylim()[1]),
+                       textcoords="offset points", xytext=(6, -28), fontsize=8.0, color=good)
+    ax_signed.set_xlabel("MnS volume fraction  (vol %)")
+    ax_signed.set_ylabel("machinability index  (×, MnS only)", color=good)
+    ax_signed.tick_params(axis="y", labelcolor=good)
+    ax_signed.set_xlim(0.0, d.volpct_grid[-1])
+
+    ax_t = ax_signed.twinx()
+    ax_t.plot(d.volpct_grid, d.transverse_elongated_curve, color=warn, lw=2.8,
+              label="short-transverse toughness, elongated (bad)")
+    ax_t.plot(d.volpct_grid, d.transverse_globular_curve, color="0.5", ls="--", lw=2.0,
+              label="… globular (shape-controlled)")
+    ax_t.axhline(t_spec, color=warn, ls=":", lw=1.5)
+    ax_t.annotate(f"toughness acceptance line ({t_spec:.0%})", (0.02, t_spec), xycoords=("axes fraction", "data"),
+                  va="bottom", fontsize=8.0, color=warn)
+    ax_t.set_ylabel("short-transverse / longitudinal toughness", color=warn)
+    ax_t.tick_params(axis="y", labelcolor=warn)
+    ax_t.set_ylim(0.0, 1.05)
+    # the resulfurized heat's MnS volume, where both signs are read
+    ax_signed.axvline(rolled[2], color="0.3", lw=1.1, alpha=0.6)
+    ax_signed.annotate(f"1144\n{rolled[2]:.2f} vol %", (rolled[2], ax_signed.get_ylim()[0]),
+                       textcoords="offset points", xytext=(4, 6), fontsize=7.8, color="0.3")
+    ax_signed.set_title("One MnS, two opposite signs — machinability up, transverse\ntoughness down with the "
+                        "same volume (by construction)", fontsize=10.2)
+    h1, l1 = ax_signed.get_legend_handles_labels()
+    h2, l2 = ax_t.get_legend_handles_labels()
+    ax_signed.legend(h1 + h2, l1 + l2, fontsize=7.6, loc="center right")
+    ax_signed.grid(True, alpha=0.22)
+
+    # --- top-right: the hero, shape-control lever ----------------------------- #
+    bars = [("as-rolled\n(elongated)", rolled[5], rolled[6]), ("shape-controlled\n(globular)", globular[5], globular[6])]
+    xh = np.arange(len(bars))
+    ax_hero.bar(xh, [b[1] for b in bars], width=0.55, color=[warn if b[2] else good for b in bars],
+                edgecolor="0.25", zorder=3)
+    ax_hero.axhline(t_spec, color="0.3", ls="--", lw=1.6, zorder=2)
+    ax_hero.annotate(f"acceptance line ({t_spec:.0%})", (0.98, t_spec), xycoords=("axes fraction", "data"),
+                     ha="right", va="bottom", fontsize=8.4, color="0.3")
+    for xi, (_lab, val, aniso) in zip(xh, bars):
+        ax_hero.annotate(f"{val:.0%}\n{'ANISOTROPIC' if aniso else 'isotropic'}", (xi, val),
+                         textcoords="offset points", xytext=(0, 4), ha="center", va="bottom",
+                         fontsize=9, fontweight="bold", color=warn if aniso else good)
+    ax_hero.set_xticks(xh)
+    ax_hero.set_xticklabels([b[0] for b in bars], fontsize=8.6)
+    ax_hero.set_ylabel("short-transverse / longitudinal toughness")
+    ax_hero.set_ylim(0.0, 1.15)
+    ax_hero.set_title("Same sulfur, the shape decides — a calcium treatment\nglobularizes the MnS and restores "
+                      "the toughness", fontsize=10.2)
+    ax_hero.grid(True, axis="y", alpha=0.25)
+
+    # --- bottom-left: disambiguating the flat high-sulfur flag ---------------- #
+    benefit = rolled[3] - 1.0                 # machinability above the no-MnS baseline (the good half)
+    debit = 1.0 - rolled[5]                   # short-transverse toughness lost (the bad half)
+    ax_split.bar([0], [benefit], width=0.5, color=good, edgecolor="0.25", zorder=3)
+    ax_split.bar([1], [-debit], width=0.5, color=warn, edgecolor="0.25", zorder=3)
+    ax_split.axhline(0.0, color="0.3", lw=1.2)
+    ax_split.annotate(f"free-machining\n+{benefit:.0%} machinability", (0, benefit), textcoords="offset points",
+                      xytext=(0, 4), ha="center", va="bottom", fontsize=8.6, fontweight="bold", color=good)
+    ax_split.annotate(f"anisotropy\n−{debit:.0%} transverse toughness", (1, -debit), textcoords="offset points",
+                      xytext=(0, -4), ha="center", va="top", fontsize=8.6, fontweight="bold", color=warn)
+    ax_split.set_xticks([0, 1])
+    ax_split.set_xticklabels(["the good half", "the bad half"], fontsize=8.8)
+    ax_split.set_ylabel("effect of the same MnS")
+    lim = max(benefit, debit) * 1.5
+    ax_split.set_ylim(-lim, lim)
+    ax_split.set_title(f"Slag's one flat 'high-sulfur' flag (S > {d.s_spec_pct:.3f} %)\nsplit into its good and "
+                       "bad halves", fontsize=10.2)
+    ax_split.grid(True, axis="y", alpha=0.22)
+
+    # --- bottom-right: the trade-off plane ------------------------------------ #
+    fm_floor_x = _machinability_at_floor(d)              # machinability index at the free-machining floor
+    x_max = max(rolled[3], globular[3], plain[3]) * 1.12
+    ax_plane.set_xlim(1.0, x_max)
+    ax_plane.axhspan(t_spec, 1.1, color=good, alpha=0.05)          # tough enough (through-thickness)
+    ax_plane.axvspan(fm_floor_x, x_max, color=good, alpha=0.05)    # free-machining enough
+    ax_plane.axvline(fm_floor_x, color=good, ls=":", lw=1.4)
+    ax_plane.axhline(t_spec, color=warn, ls=":", lw=1.4)
+    pts = [("1045 plain\n(as-rolled)", plain, blue), ("1144 as-rolled", rolled, warn),
+           ("1144 shape-controlled", globular, good)]
+    for label, r, color in pts:
+        ax_plane.plot([r[3]], [r[5]], "o", ms=13, color=color, mec="0.2", mew=1.2, zorder=5)
+        ax_plane.annotate(label, (r[3], r[5]), textcoords="offset points", xytext=(8, 6), fontsize=8.0,
+                          color=color, fontweight="bold")
+    ax_plane.annotate("", (globular[3], globular[5]), (rolled[3], rolled[5]),
+                      arrowprops=dict(arrowstyle="->", color=good, lw=1.8))
+    ax_plane.annotate("shape\ncontrol", ((rolled[3] + globular[3]) / 2, (rolled[5] + globular[5]) / 2),
+                      textcoords="offset points", xytext=(8, -2), fontsize=7.8, color=good)
+    ax_plane.annotate("good corner\n(machinable + tough)", (0.97, 0.97), xycoords="axes fraction",
+                      ha="right", va="top", fontsize=8.0, color="#5a8a3c")
+    ax_plane.set_xlabel("machinability index  (×, MnS only)")
+    ax_plane.set_ylabel("short-transverse / longitudinal toughness")
+    ax_plane.set_ylim(0.0, 1.1)
+    ax_plane.set_title("The trade-off plane — shape control reaches the good corner\nthat low or high sulfur "
+                       "alone cannot", fontsize=10.2)
+    ax_plane.grid(True, alpha=0.25)
+
+    fig.suptitle("MnS morphology — the signed sulfur foil: the same sulfide is a free-machining asset and a "
+                 "through-thickness liability", fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.93, top=0.90, bottom=0.08, wspace=0.32, hspace=0.30)
+    return fig
+
+
+def _machinability_at_floor(d):
+    """The machinability index at the free-machining MnS-volume floor — the vertical divider on the plane."""
+    return 1.0 + 0.0 if d.machinability_curve.size == 0 else float(
+        np.interp(d.free_machining_floor_volpct, d.volpct_grid, d.machinability_curve)
+    )

@@ -852,11 +852,11 @@ deferred state extensions (P/S on `Steel`) — then **`game/` last**, on the pro
 > red-short by acid Bessemer / no manganese, and sound by basic + Mushet + ladle desulf; four panels
 > (P→DBTT with the yield foil; free-S vs Mn:S Mushet threshold; the signed yield–DBTT foil; the closing
 > workable window). Suite **668 green / 2 skipped**, no engine touch, no ADR (additive `P_pct` + two new
-> orchestrators, not a semantics change). **Named deferrals:** MnS inclusion fracture-anisotropy /
-> transverse-toughness debit, the "good-impurity" free-machining use of S (resulfurized 11xx), and the
-> kinetic hot-ductility *trough shape*. (Temper embrittlement — the martensitic-P deferral named here — is
-> now BUILT; see the next banner.) Theme C (purity ramp), D (inverse hardness) and E (Scheil ghost lines)
-> remain as written below.
+> orchestrators, not a semantics change). **Named deferrals:** the kinetic hot-ductility *trough shape*.
+> (Temper embrittlement — the martensitic-P deferral named here — and **MnS inclusion fracture-anisotropy /
+> transverse-toughness debit + the "good-impurity" free-machining use of S** (resulfurized 11xx) are now BUILT
+> — see the temper-embrittlement and MnS-morphology banners.) Theme C (purity ramp), D (inverse hardness) and
+> E (Scheil ghost lines) remain as written below.
 
 > **BUILT ✓ 2026-06-13 — temper embrittlement closes phosphorus' MARTENSITIC path (theme A, the other half).**
 > `cold_short_check` closed the ferritic/normalized P path (DBTT); `temper_embrittlement.py` closes the
@@ -915,6 +915,44 @@ deferred state extensions (P/S on `Steel`) — then **`game/` last**, on the pro
 > hardenability), the irreversibility cycle, and the reversible↔irreversible contrast. Suite **742 green / 2
 > skipped** (+20), no engine touch, no ADR. **Deferrals:** the absolute trough depth (no Charpy-J — the back-end
 > ceiling stands), the P-aggravation magnitude, and the explicit ε→Fe₃C carbide sequence.
+
+> **BUILT ✓ 2026-06-15 — MnS morphology closes the *tied*-sulfide deferral: the signed sulfur foil.** The two
+> deferrals the impurity-consequence build named together — MnS **fracture-anisotropy** / transverse-toughness
+> debit and the **good-impurity free-machining** use of sulfur — are folded into one module,
+> `sulfide_morphology.py` (+ `demo_sulfide_morphology.py`, `plots.sulfide_morphology_figure`,
+> `tests/test_sulfide_morphology.py` 16 + `test_demo_sulfide_morphology.py` 5, +21; **no engine touch, no
+> ADR**). It is the **worked-product sibling of red-shortness** (:mod:`hot_work`): where red-short reads the
+> **free** sulfur Mn failed to tie up, this reads the **tied** MnS that *did* form — because that benign-looking
+> sulfide is itself **signed**. The same MnS (`slag.manganese_sulfide().mns_pct`, converted to a volume
+> fraction by a cited density ratio) is a deliberate **free-machining** asset (the reason the resulfurized 11xx
+> grades exist) *and* an unintended **through-thickness toughness** liability (hot working elongates the plastic
+> MnS into stringers that gut the short-transverse direction).
+> - **The load-bearing design call (advisor, pre-code): the anisotropy flag is gated on MORPHOLOGY, never on a
+>   sulfur threshold.** slag's flat `high-sulfur` risk (S > 0.040 %) **already fires on every free-machining
+>   grade by design** (its own comment says "free-machining grades run higher"; 11xx run S ≈ 0.08–0.33 %). So
+>   gating the consequence on S would just **re-derive red-short** and brand every free-cutting steel "defective"
+>   for being itself. Instead the build **disambiguates** the already-firing flag into its good half
+>   (free-machining) and its bad half (`sulfide-anisotropy`), gated on the **shape** — so the lever is sulfide
+>   **shape control** (a Ca / RE / Te treatment globularizes the MnS → keeps the machining benefit, removes the
+>   directional debit), not desulfurization. Free-machining is a **positive readout** (no defect flag); only the
+>   anisotropy raises one.
+> - **NO claimable tooth (the red-short / hot-tear landing) — and no manufactured coherence note (advisor).** The
+>   MnS amount is cited stoichiometry, its volume a cited density ratio, and the two verdicts are by-construction
+>   `if` rules. "One MnS, two opposite-signed consequences" is the **pedagogical** point — but it is one number
+>   fed to two laws with opposite signs (by construction), **not** two independent constructions agreeing, so it
+>   is **not dressed as a coherence note** (the precise Mushet move, declined). The **machinability index is
+>   representative, ranking/OoM only**, and the hardness/carbon confound is named out loud (a higher-carbon
+>   resulfurized grade can machine *worse* than a lower-carbon plain one despite more MnS; Pb/Ca/Te confound it
+>   further) — it is the MnS contribution only, never the AISI rating. The transverse-toughness debit is its
+>   **own** directional axis (pinned carbon-invariant in test), **not** `properties.toughness_index` or the DBTT.
+> - **Hero = same sulfur, the shape decides.** One resulfurized 1144-type heat (S ≈ 0.24 %, MnS ≈ 1.27 vol %),
+>   as-rolled → free-machining **and** anisotropic (short-transverse toughness ~43 %, below the labelled 50 %
+>   acceptance line); shape-controlled → free-machining **and** isotropic — same sulfur, same MnS volume, only
+>   the shape changed. A plain 1045 (S ≈ 0.020 %) is tough but cannot free-machine — the other end of the trade.
+>   **Ceiling:** the stringer aspect ratio (∝ rolling reduction) is unmodelled (elongated/globular is a two-state
+>   stand-in); the debit assumes through-thickness loading; MnS elongates because it is plastic (rigid oxides
+>   stay spherical) — narrative, not resolved. Suite **+21 tests**, all green; gallery card + root-README tour
+>   row. **Notebook & app deferred** (as the other front-end consequences).
 
 **The reframe that makes it useful.** The originally-named tramp axes
 (hardenability/Jominy, CCT kinetics, residual stress) are the *weakest* for our
