@@ -31,6 +31,18 @@ porosity-risk fires); sulfide = **dual sign** (`_mark(not free_machining)` for t
 for the liability — the shape toggle flips toughness only); wootz = **three-tier glyph** (✓ watered /
 ✗ failed / · no-flag, never a binary pass/fail); peritectic = non-monotonic (✓/✗/✓).
 
+**DURABLE (sharpened by a post-build self-review 2026-06-15) — `interact` SWALLOWS exceptions, so the
+live `# Live:` cells are guarded by NOTHING the suite checks.** Proven empirically: a `KeyError` raised
+*inside* an `interact` callback does **not** raise `CellExecutionError` and banks **0** cell-level error
+outputs (the traceback lands in the widget's Output area) — so "runs clean" is blind to a bad readout key
+in a live cell. The live cells legitimately use keys the bank cells never exercise (`grade_verdict`,
+`verdict`, `why`, `free_verdict`, `aniso_verdict`); the **only** real guard is a *direct* key-existence
+check against the readout dicts (done — all present). So the landmine is two-pronged: bank cells need the
+verdict **READ**, live cells need the **keys verified by calling the readout**, not by trusting the run.
+Self-review also re-confirmed: 5 §-anchors all match real headers; widget state 167 models / 0
+referenced-but-missing / 0 dangling internal refs (additive merge orphaned nothing); gallery drift-guard
+byte-identical; wootz readout survives ALL slider corners (sub-hypereutectoid C=0.4 guard holds).
+
 **DURABLE — surgical insertion verified by content hash, NOT by the git line-diff.** The notebook diff
 is huge (+2856 / −643) purely from 5 inline base64 figures + `nbformat` JSON re-serialization; that
 number is meaningless for correctness. The real proof: `git show HEAD:…ipynb` vs current →
