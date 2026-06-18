@@ -30,6 +30,11 @@ no new source. Catalogued in `docs/plans/next-directions.md` §A3.
   or T-at-t via Arrhenius inversion). Round-trip recovers target to **machine precision**.
   Ceilings: **D(C) Tibbetts not closed-form invertible**; **hardness-based** case depth
   would couple back to the quench model. `r∉(0,1)`→`nan`; out-of-window T surfaced.
+  Review hardening (`400ce0b`, 2026-06-15): two advisor-flagged gaps closed by tests only
+  (no source change) — round-trip at a **non-default carbon span** (proves any erfc level
+  set `r`, not just 0.8/0.2/0.4) + a **surface-don't-clamp guard** (out-of-window T is
+  finite + unclamped both directions). Suite 932→**958 green**. Inverse correctness =
+  forward-anchored (`test_numeric_case_depth_matches_closed_form`) + round-trip-consistent.
 
 **Why:** The advisor's load-bearing catch was **regime + module separation**: (1) yield is
 `nan` in the martensitic regime the hardness search returns, so it is a SEPARATE recipe
