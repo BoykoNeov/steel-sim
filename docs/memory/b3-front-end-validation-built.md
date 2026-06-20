@@ -48,7 +48,13 @@ cause is NOT isolated (amphoteric Al₂O₃ Λ=0.605 vs out-of-domain high-alumi
 listed repeats, runs in the suite). **Scope-limited though** — it guards the **C_S column only**; the
 composition/T columns (which drive Λ) are cross-checked only *partially* via `overlap_crosscheck` (the
 4 rows printed in BOTH Table 6 & Table 9 agree on composition+C_S = 4/10 rows end-to-end). A
-composition typo outside those 4 (e.g. a mis-read MgO in the MnO tier) is NOT caught. (2) **Compute
+composition typo outside those 4 (e.g. a mis-read MgO in the MnO tier) is NOT caught. **That residual
+gap was closed by HUMAN CONFIRMATION 2026-06-20: the user opened the open-access PDF and verified
+all of Table 6 cell-by-cell + the one flagged ambiguity (the two C4/MnO rows carry DIFFERENT MgO
+0.087 vs 0.121 because their TEMPERATURES differ — both correct, not a typo) + the rest → the whole
+holdout is now primary-source-verified, not just internally consistent. The di-crosscheck standard is
+fully met (automated C_S/overlap guards + human eyes on the composition columns the guard is blind
+to).** (2) **Compute
 ALL points before framing** — my 2-point preview ("carries high-Λ / breaks low-Λ") was *wrong*; the
 full set is "consistent mild overpred across the 4 basic comps + Q1 as a single sign-flipped 4×
 outlier." (3) **The acidic edge "recurs across labs" was noise-mining** (advisor): the literature's
