@@ -2,9 +2,11 @@
 
 > **Status: as-built plan (2026-06-20).** The one genuine *new-physics* thread on the
 > `next-directions.md` menu (B1). It couples the two axes the repo already carries —
-> the **residual-stress field** (§18, `residual.py`) and the **inclusion/cleanliness**
-> axis (`slag` / `sulfide_morphology`) — into a **linear-elastic-fracture-mechanics
-> (LEFM) quench-crack gate**. This is the direction the user picked; it gets its own
+> the **residual-stress field** (§18, `residual.py`, consumed as code) and a
+> **cleanliness** axis (a representative worst-case surface-flaw size `√area` — *not*
+> wired to `slag` / `sulfide_morphology`; see the scope note below) — into a
+> **linear-elastic-fracture-mechanics (LEFM) quench-crack gate**. This is the direction
+> the user picked; it gets its own
 > short plan, its own honest cited-vs-representative map, and the validated-vs-calibrated
 > discipline, like every slice before it.
 
@@ -95,6 +97,15 @@ and all existing §18 teeth are untouched.
 * **One representative flaw per heat, not an extreme-value distribution.** √area is taken as
   a single representative "largest surface inclusion" for the cleanliness class, not drawn
   from a Murakami extreme-value statistics-of-extremes fit over a control volume.
+* **The cleanliness axis is a representative input, not wired to the inclusion engines
+  (named deferral — the scope note).** `√area` is passed (clean/dirty classes), *not*
+  computed from `slag.manganese_sulfide` / `sulfide_morphology` /
+  `Heat.inclusion_volume_fraction`. A **bulk volume fraction is not a largest-flaw size**, and
+  the scales do not line up — single micro-inclusions are ~10–50 µm, whereas the discriminating
+  `√area` here is *hundreds* of µm (clusters / exogenous reoxidation defects / segregated
+  stringer colonies). A vol%→`√area` bridge would be *tuned*, not physical, so it is left
+  explicit rather than manufactured. The coupling the code makes is **residual stress × a
+  representative flaw**; the inclusion-model bridge is the extension.
 * **Static LEFM, no R-curve / no short-crack / no residual-stress redistribution on cracking.**
   A one-shot initiation criterion, not a propagation simulation.
 

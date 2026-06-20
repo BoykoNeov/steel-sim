@@ -214,3 +214,36 @@ def test_field_shape_and_geometry(direct_on):
     assert direct_on.x[-1] == pytest.approx(HALF_THICKNESS, rel=0.05)
     assert direct_on.center_stress == pytest.approx(direct_on.sigma[0])
     assert direct_on.surface_stress == pytest.approx(direct_on.sigma[-1])
+
+
+# --------------------------------------------------------------------------- #
+# The optional phase-split yield path (the mechanics the fracture coupling consumes)
+# --------------------------------------------------------------------------- #
+def test_default_is_single_yield_and_phase_split_records_the_flag():
+    """``phase_split_yield`` defaults off (unchanged behaviour) and is recorded on the field."""
+    default = res.quench_residual_stress(STEEL, HALF_THICKNESS, n_cells=N_CELLS, n_t=N_T)
+    assert default.phase_split is False
+    split = res.quench_residual_stress(
+        STEEL, HALF_THICKNESS, phase_split_yield=True, n_cells=N_CELLS, n_t=N_T)
+    assert split.phase_split is True
+
+
+def test_phase_split_lifts_surface_tension_above_the_single_yield_cap():
+    """A hard martensite surface holds tension the single-yield solve caps at σ_Y,20 — the mechanism.
+
+    The default solve clips the surface near ``SIGMA_Y_REF_20C`` (the named scope edge); the phase-split
+    solve lets the transformed surface carry far higher tension (the soft hot core still yields to generate
+    the mismatch). A thick section makes the gradient steep enough to show it clearly.
+    """
+    ht = 0.04                                                     # thick enough to be cap-limited
+    single = res.quench_residual_stress(STEEL, ht, n_cells=N_CELLS, n_t=N_T)
+    split = res.quench_residual_stress(STEEL, ht, phase_split_yield=True, n_cells=N_CELLS, n_t=N_T)
+    assert single.surface_stress == pytest.approx(SIGMA_Y_20, rel=0.1)   # single-yield is at the cap
+    assert split.surface_stress > 1.5 * single.surface_stress           # split lifts it well above
+    assert split.surface_stress < res.SIGMA_Y_MARTENSITE_20C            # but bounded by the martensite yield
+
+
+def test_phase_split_field_is_still_self_equilibrated():
+    """Lifting the yield cap must not break the conservation leg: ``∫σ dx = 0`` still holds."""
+    split = res.quench_residual_stress(STEEL, 0.04, phase_split_yield=True, n_cells=N_CELLS, n_t=N_T)
+    assert split.mean_stress == pytest.approx(0.0, abs=1e-6 * SIGMA_Y_20)

@@ -1,10 +1,22 @@
 """Fracture-side coupling — the inclusion as the **quench-crack initiator** (Steel B1, the one new-physics thread).
 
 Every consequence module so far read one axis. This one **couples two**: the **residual-stress field**
-(:mod:`steel.residual`, §18) and the **inclusion / cleanliness** axis (:mod:`steel.slag` /
-:mod:`steel.sulfide_morphology`). On its own, a tensile residual surface is only a *risk*; on its own, a
-non-metallic inclusion is only a defect. A **quench crack** is what happens when the two meet: a flaw large
+(:mod:`steel.residual`, §18) — consumed directly as code — and a **cleanliness** axis, represented here as a
+worst-case surface-flaw size ``√area``. On its own, a tensile residual surface is only a *risk*; on its own,
+a non-metallic inclusion is only a defect. A **quench crack** is what happens when the two meet: a flaw large
 enough, in a surface tensile enough, that linear-elastic fracture mechanics says a crack will run.
+
+**Scope of the cleanliness axis (read this — it is the honest bound of the coupling).** ``√area`` is a
+**representative input**, not derived from the repo's inclusion engines. Two named cleanliness classes
+(:data:`SQRT_AREA_CLEAN_UM` / :data:`SQRT_AREA_DIRTY_UM`) stand in for "the largest surface flaw a clean vs a
+dirty heat carries". Wiring the *actual* inclusion models (:func:`steel.slag.manganese_sulfide`'s MnS volume,
+:mod:`steel.sulfide_morphology`, :attr:`steel.heat_state.Heat.inclusion_volume_fraction`) into ``√area`` is a
+**named deferral** — and deliberately *not* faked: a **bulk volume fraction is not a largest-flaw size**, and
+the scales do not line up (single micro-inclusions are ~10–50 µm, whereas the ``√area`` that actually
+discriminates here is *hundreds* of µm — inclusion *clusters* / exogenous reoxidation defects / segregated
+stringer colonies). A vol%→``√area`` bridge would therefore be a *tuned* number, not a physical one, so it is
+left as an explicit extension rather than manufactured. The coupling this module *does* make is **residual
+stress × a representative flaw**; the flaw's provenance is honest about being a knob.
 
 The gate (linear-elastic fracture mechanics)
 --------------------------------------------
@@ -85,6 +97,11 @@ Named ceilings (each a real limit, not hidden)
 * **One representative flaw per heat, not an extreme-value distribution.** ``√area`` is a single
   representative "largest surface inclusion" for the cleanliness class, not a Murakami statistics-of-extremes
   fit over a control volume.
+* **The cleanliness axis is not wired to the inclusion engines (named deferral).** ``√area`` is a passed
+  representative input, not computed from :func:`steel.slag.manganese_sulfide` /
+  :mod:`steel.sulfide_morphology` / :attr:`steel.heat_state.Heat.inclusion_volume_fraction`. A bulk volume
+  fraction is not a largest-flaw size and the scales do not line up (see the scope note above), so the bridge
+  is left explicit rather than tuned. The coupling is residual-stress × a representative flaw.
 * **Static LEFM** — a one-shot initiation criterion, no R-curve, no short-crack correction, no
   residual-field redistribution once a crack starts.
 
@@ -269,6 +286,11 @@ def fracture_check(
     name); ``sqrt_area_um`` is the heat's representative largest surface flaw (the cleanliness input — e.g.
     :data:`SQRT_AREA_CLEAN_UM` / :data:`SQRT_AREA_DIRTY_UM`). Returns a *new* ``Heat`` with one
     ``"fracture-check"`` :class:`~steel.heat_state.ProcessStep` appended; composition is unchanged.
+
+    Note: like :func:`steel.heat_state.quench_crack_check`, this writes ``residual_stress_MPa`` — but from the
+    **phase-split** solve (martensite-bounded, ~1045 MPa for the hero), where ``quench_crack_check`` writes
+    the **single-yield** value (~388 MPa). Running both on one ``Heat`` is last-writer-wins on that field; the
+    trail records which step set it.
     """
     grade = grade or heat.composition.name
     a = quench_crack_fracture(
