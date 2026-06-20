@@ -154,6 +154,13 @@ CATALOG: tuple[Entry, ...] = (
         notebook="§6e", app="residual stress",
     ),
     Entry(
+        "Stress", "demo_fracture", "steel-fracture.png",
+        "Quench cracking — the inclusion as initiator",
+        "Couples the residual-stress field to the heat's inclusions through a fracture-mechanics "
+        "gate: in the *same* tensile surface, a clean heat survives while a dirty one quench-cracks "
+        "— cleanliness decides, not just the stress.",
+    ),
+    Entry(
         "Case hardening", "demo_carburize", "steel-carburize-gradient.png",
         "Carburizing",
         "A carburized gear tooth: carbon diffused in at the surface, case hardness profiled out "

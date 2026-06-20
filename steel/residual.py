@@ -113,6 +113,14 @@ from .martemper import SlabHistory, slab_thermal_history
 POISSON = 0.30                  # Poisson's ratio ν (standard for steel; constant)
 E_REF_20C = 210.0e9             # room-temperature Young's modulus E₂₀ (Pa) — standard
 SIGMA_Y_REF_20C = 400.0e6       # representative room-temperature yield base σ_Y,20 (Pa)
+# Representative room-temperature yield of *as-quenched* (untempered) martensite — the hard surface phase.
+# Used ONLY by the optional ``phase_split_yield`` path (see :func:`quench_residual_stress`): the default
+# single-yield solve keeps capping every cell at ``SIGMA_Y_REF_20C`` (the named scope edge in the module
+# docstring). Untempered martensite genuinely yields ~1200–1800 MPa (≈ 3.3·HV with HV ~ 600–800); 1.5 GPa
+# is a representative figure (magnitude is property-sensitive — the same named edge as σ_Y,20). When the
+# hard surface can *hold* tension without yielding, the soft austenite core still yields to *generate* the
+# eigenstrain mismatch — so the surface tension is no longer clipped at 400 MPa but at the martensite yield.
+SIGMA_Y_MARTENSITE_20C = 1500.0e6
 ALPHA_THERMAL = 1.5e-5          # representative mean linear thermal-expansion coefficient (1/K)
 T_REF_STRAIN = 25.0             # reference T for thermal strain (°C) — immaterial to σ (absorbed by ε*)
 
@@ -236,12 +244,15 @@ class ResidualStressField:
     ``center_stress`` are the surface and core residuals (Pa); ``peak_tension`` / ``peak_compression`` the
     profile extremes. ``mean_stress`` is the self-equilibrium residual (``∫σ dx`` ÷ thickness — ``≈ 0`` to
     machine precision, the conservation leg). ``transform`` records whether the transformation dilatation
-    was active (the ON/OFF toggle); ``route`` the quench path; ``slab`` the underlying thermal history.
+    was active (the ON/OFF toggle); ``phase_split`` whether the yield was phase-dependent (hard martensite
+    surface / soft austenite core — the path that lifts the σ_Y,20 surface-tension cap, used by the
+    fracture coupling); ``route`` the quench path; ``slab`` the underlying thermal history.
     """
 
     steel: str
     route: str
     transform: bool
+    phase_split: bool
     half_thickness: float
     Ms: float
     x: np.ndarray
@@ -279,6 +290,7 @@ def quench_residual_stress(
     half_thickness: float,
     route: str = "direct",
     transform: bool = True,
+    phase_split_yield: bool = False,
     T0: float = 850.0,
     T_bath: float | None = None,
     t_hold: float | None = None,
@@ -302,6 +314,16 @@ def quench_residual_stress(
     with the default ``transform=True`` it exhibits the surface-sign reversal (compression → tension)
     that is the model's headline tooth. ``steel`` must be an anchored atlas steel
     (:data:`~steel.austemper.ATLAS_STEELS`); ``route`` one of ``"direct"`` / ``"martemper"``.
+
+    ``phase_split_yield`` (default ``False``) lifts the module's named **single-yield scope edge**: instead
+    of capping every cell at ``SIGMA_Y_REF_20C``, the local yield is interpolated between the soft austenite
+    base (``SIGMA_Y_REF_20C``) and the hard as-quenched-martensite base (:data:`SIGMA_Y_MARTENSITE_20C`) by
+    the local martensite fraction ``f_M`` — the standard quench-residual-FEM treatment. The soft hot core
+    still yields to *generate* the eigenstrain mismatch, but the hard transformed surface can now *hold*
+    far higher tension without yielding, so the surface tension is no longer clipped near 400 MPa. This is
+    the path the :mod:`steel.fracture` coupling consumes (it needs the physical, martensite-bounded surface
+    tension to drive the fracture gate); the default ``False`` leaves every existing residual result — and
+    its teeth — unchanged.
     """
     if steel not in ATLAS_STEELS:
         raise ValueError(f"no atlas anchor for steel {steel!r} — anchored: {sorted(ATLAS_STEELS)}")
@@ -346,7 +368,13 @@ def quench_residual_stress(
     for i in range(1, n_steps):
         Ti = T[i]
         M = youngs_modulus(Ti) / (1.0 - POISSON)         # equibiaxial stiffness E/(1−ν)
-        sigma_Y = yield_strength(Ti)
+        if phase_split_yield:
+            # Phase-dependent yield base: soft austenite (generates the mismatch) → hard martensite (holds
+            # the tension), blended by the local martensite fraction, then softened by the cited k_y(T).
+            base = SIGMA_Y_REF_20C * (1.0 - f_M[i]) + SIGMA_Y_MARTENSITE_20C * f_M[i]
+            sigma_Y = base * np.interp(Ti, _EC3_T, _EC3_KY)
+        else:
+            sigma_Y = yield_strength(Ti)
         a = eps_free[i] + eps_pl                          # strain already spent (eigen + plastic)
         # Return-map: solve ε* for equilibrium with the clipped (yield-capped) stress, then read the
         # plastic increment as the clipped overflow. On elastic cells σ_trial = σ ⇒ no plastic increment;
@@ -358,7 +386,7 @@ def quench_residual_stress(
 
     sigma_final = sigma_history[-1]
     return ResidualStressField(
-        steel=steel, route=route, transform=transform,
+        steel=steel, route=route, transform=transform, phase_split=phase_split_yield,
         half_thickness=half_thickness, Ms=Ms,
         x=uniform_grid(half_thickness, n_cells).centers,  # cell-centre depths (0 = core)
         sigma=sigma_final,

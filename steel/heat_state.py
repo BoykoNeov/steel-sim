@@ -80,7 +80,8 @@ MIN_MARTENSITE_SPEC: float = 0.90
 
 # Defect-flag names — the failure carriers that ride in Heat.defects (steel-making.md §5/§6).
 SOFT_CORE: str = "soft-core"                 # insufficient through-hardening (heat_treat, any composition)
-QUENCH_CRACK_RISK: str = "quench-crack-risk"  # surface locked in tension (atlas-steel illustration)
+QUENCH_CRACK_RISK: str = "quench-crack-risk"  # surface locked in tension — the NECESSARY condition (atlas-steel)
+QUENCH_CRACK: str = "quench-crack"           # tension AND a critical flaw (the realized LEFM crack; steel.fracture)
 COLD_SHORT: str = "cold-short"               # phosphorus → DBTT above service temperature (cold_short_check)
 
 

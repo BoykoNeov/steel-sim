@@ -3766,3 +3766,116 @@ def wootz_figure(d):
                  "makes the pattern", fontsize=12.0, fontweight="bold")
     fig.subplots_adjust(left=0.07, right=0.95, top=0.90, bottom=0.08, wspace=0.26, hspace=0.30)
     return fig
+
+
+def fracture_figure(d):
+    """The quench-crack artifact: same residual field, the cleanliness decides — the inclusion as initiator.
+
+    ``d`` is a :class:`~steel.demo_fracture.FractureDemo` (precomputed — this layer only draws, ADR 0002).
+    Four panels:
+
+    * **top-left — the hero, same field the flaw decides.** One thick 4340 section, one direct quench, one
+      surface tension. The clean and dirty heats' largest surface flaw √area against the critical flaw size
+      √area_c (the horizontal line at this stress): the clean flaw sits below (green, no crack), the dirty
+      flaw above (red, quench crack). The flat ``quench-crack-risk`` cannot see this split.
+    * **top-right — the crack window opens with section size.** √area_c (curve) falls as the section
+      thickens (surface tension rises); the clean and dirty flaw sizes are horizontal lines. Where the dirty
+      line drops below √area_c the heat cracks (shaded) — quench cracking is a heavy-section problem.
+    * **bottom-left — the route lever.** The same dirty heat, direct vs martemper surface stress: martempering
+      collapses the tension (→ compression), so √area_c → ∞ and the crack clears — §17/§18 in fracture.
+    * **bottom-right — the LEFM gate.** Murakami K = Y·σ·√(π·√area) rising with the flaw, against K_Ic (the
+      as-quenched martensite toughness, horizontal): the clean flaw is sub-critical, the dirty flaw crosses.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ((ax_hero, ax_window), (ax_route, ax_gate)) = plt.subplots(2, 2, figsize=(13.6, 9.6))
+    warn, good, blue, spec = "#c0392b", "#1f6f3c", "#2471a3", "#8e44ad"
+    c, d_ = d.clean, d.dirty
+    two_t_mm = 2.0 * d.half_thickness * 1000.0
+
+    # --- top-left: the hero — same field, the flaw decides ------------------------ #
+    xh = np.arange(2)
+    flaws = [d.clean_um, d.dirty_um]
+    cracks = [c.cracks, d_.cracks]
+    cols = [warn if cr else good for cr in cracks]
+    ax_hero.bar(xh, flaws, width=0.55, color=cols, edgecolor="0.25", zorder=3)
+    ax_hero.axhline(d_.critical_flaw_um, color="0.3", ls="--", lw=1.8, zorder=2)
+    ax_hero.annotate(f"critical flaw √area_c = {d_.critical_flaw_um:.0f} µm\n(at {d_.surface_stress_MPa:+.0f} "
+                     f"MPa surface tension)", (0.98, d_.critical_flaw_um), xycoords=("axes fraction", "data"),
+                     ha="right", va="bottom", fontsize=8.4, color="0.3")
+    for xi, fl, cr in zip(xh, flaws, cracks):
+        verdict = "QUENCH\nCRACK" if cr else "no crack"
+        ax_hero.annotate(f"{fl:.0f} µm\n{verdict}", (xi, fl), textcoords="offset points", xytext=(0, 4),
+                         ha="center", va="bottom", fontsize=9, fontweight="bold", color=warn if cr else good)
+    ax_hero.set_xticks(xh)
+    ax_hero.set_xticklabels([f"clean heat\n(√area {d.clean_um:.0f} µm)", f"dirty heat\n(√area {d.dirty_um:.0f} µm)"],
+                            fontsize=8.6)
+    ax_hero.set_ylabel("largest surface flaw  √area  (µm)")
+    ax_hero.set_ylim(0.0, max(flaws) * 1.32)
+    ax_hero.set_title(f"Same residual field — the cleanliness decides\n({d.steel}, 2t = {two_t_mm:g} mm, one "
+                      f"direct quench)", fontsize=10.2)
+    ax_hero.grid(True, axis="y", alpha=0.22)
+
+    # --- top-right: the crack window opening with section size -------------------- #
+    two_t_grid = 2.0 * d.ht_grid * 1000.0
+    ax_window.plot(two_t_grid, d.critical_curve, color="0.25", lw=2.6, label="critical flaw √area_c")
+    ax_window.axhline(d.dirty_um, color=warn, ls="--", lw=1.8, label=f"dirty heat ({d.dirty_um:.0f} µm)")
+    ax_window.axhline(d.clean_um, color=good, ls="--", lw=1.8, label=f"clean heat ({d.clean_um:.0f} µm)")
+    # shade the section range where the dirty flaw is super-critical (cracks)
+    crack_mask = d.dirty_um > d.critical_curve
+    if crack_mask.any():
+        ax_window.fill_between(two_t_grid, 0, d.critical_curve.max() * 1.1, where=crack_mask,
+                               color=warn, alpha=0.07, zorder=0)
+        first = two_t_grid[crack_mask][0]
+        ax_window.annotate("dirty heat cracks\n(√area > √area_c)", (first, d.critical_curve.max() * 0.9),
+                            textcoords="offset points", xytext=(6, 0), fontsize=8.2, color=warn, va="top")
+    ax_window.set_xlabel("section thickness  2t  (mm)")
+    ax_window.set_ylabel("flaw size  √area  (µm)")
+    ax_window.set_ylim(0.0, min(d.critical_curve.max() * 1.1, 4.0 * d.dirty_um))
+    ax_window.set_title("The crack window opens with section size\n(thicker → higher surface tension → "
+                        "smaller √area_c)", fontsize=10.2)
+    ax_window.legend(fontsize=8.0, loc="upper right")
+    ax_window.grid(True, alpha=0.22)
+
+    # --- bottom-left: the route lever (martemper saves the dirty part) ------------ #
+    dd, dm = d.dirty_direct, d.dirty_martemper
+    xr = np.arange(2)
+    stresses = [dd.surface_stress_MPa, dm.surface_stress_MPa]
+    rcols = [warn if a.cracks else good for a in (dd, dm)]
+    ax_route.bar(xr, stresses, width=0.55, color=rcols, edgecolor="0.25", zorder=3)
+    ax_route.axhline(0.0, color="0.4", lw=1.0)
+    for xi, a in zip(xr, (dd, dm)):
+        verdict = "QUENCH CRACK" if a.cracks else "no crack"
+        va = "bottom" if a.surface_stress_MPa >= 0 else "top"
+        off = 4 if a.surface_stress_MPa >= 0 else -4
+        ax_route.annotate(f"{a.surface_stress_MPa:+.0f} MPa\n{verdict}", (xi, a.surface_stress_MPa),
+                          textcoords="offset points", xytext=(0, off), ha="center", va=va,
+                          fontsize=9, fontweight="bold", color=warn if a.cracks else good)
+    ax_route.set_xticks(xr)
+    ax_route.set_xticklabels(["direct quench", "martemper"], fontsize=9)
+    ax_route.set_ylabel("surface residual stress  (MPa, tension +)")
+    ax_route.set_title(f"The route lever — same dirty heat (√area {d.dirty_um:.0f} µm)\nmartempering collapses "
+                       "the tension → no crack", fontsize=10.2)
+    ax_route.grid(True, axis="y", alpha=0.22)
+
+    # --- bottom-right: the LEFM gate (K vs √area against K_Ic) -------------------- #
+    ax_gate.plot(d.sqrt_area_grid, d.K_curve, color=blue, lw=2.6, label="K = Y·σ·√(π·√area)")
+    ax_gate.axhline(d.K_Ic_MPa, color="0.25", ls="--", lw=1.8,
+                    label=f"K_Ic (as-quenched) = {d.K_Ic_MPa:.0f} MPa√m")
+    ax_gate.plot([d.clean_um], [c.K_applied_MPa], "o", ms=10, color=good, zorder=4, label="clean (sub-critical)")
+    ax_gate.plot([d.dirty_um], [d_.K_applied_MPa], "o", ms=10, color=warn, zorder=4, label="dirty (cracks)")
+    ax_gate.axvline(d_.critical_flaw_um, color="0.5", ls=":", lw=1.4)
+    ax_gate.annotate(f"√area_c {d_.critical_flaw_um:.0f} µm", (d_.critical_flaw_um, 0.05),
+                     xycoords=("data", "axes fraction"), rotation=90, va="bottom", ha="right",
+                     fontsize=8.0, color="0.4")
+    ax_gate.set_xlabel("flaw size  √area  (µm)")
+    ax_gate.set_ylabel("stress intensity  K  (MPa√m)")
+    ax_gate.set_title(f"The LEFM gate at {d_.surface_stress_MPa:+.0f} MPa — K crosses K_Ic\nat the critical "
+                      "flaw size (Murakami surface defect)", fontsize=10.2)
+    ax_gate.legend(fontsize=7.8, loc="upper left")
+    ax_gate.grid(True, alpha=0.22)
+
+    fig.suptitle("Quench cracking — the inclusion as crack initiator: same residual field, the cleanliness "
+                 "decides", fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.95, top=0.90, bottom=0.08, wspace=0.24, hspace=0.32)
+    return fig
