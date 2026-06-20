@@ -3879,3 +3879,95 @@ def fracture_figure(d):
                  "decides", fontsize=12.0, fontweight="bold")
     fig.subplots_adjust(left=0.07, right=0.95, top=0.90, bottom=0.08, wspace=0.24, hspace=0.32)
     return fig
+
+
+def slag_validation_figure(d):
+    """The B3 artifact: cited C_S model vs an independent measured dataset (Nzotta 1998), two panels.
+
+    ``d`` is a :class:`~steel.demo_slag_validation.SlagValidationDemo` (validated residual lists only
+    — this layer draws, ADR 0002).
+
+    * **left — predicted vs measured log10 C_S (the Nzotta-Fig-2 view).** The independent HOLDOUT
+      (Al2O3-CaO-MgO-SiO2, filled, coloured by temperature) hugs the 1:1 line inside the ±factor-2
+      band — it CARRIES. The acidic edge (lowest Lambda) is ringed: it under-predicts. The pre-1986
+      literature (open) corroborates; the MnO tier (grey x) sits high off the band — the weak link.
+    * **right — the residual vs optical basicity (the diagnosis).** log10(model/measured) against
+      Lambda: the basic HOLDOUT cluster is a tight, flat, slightly-positive band (consistent ×1.4);
+      the acidic edge plunges negative at low Lambda; the MnO tier rides high.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_sc, ax_re) = plt.subplots(1, 2, figsize=(13.6, 5.7))
+    v = d.verdict
+    edge_label, edge_T = v.edge.label, v.edge.T_K
+    t_color = {1773: "#2471a3", 1823: "#16a085", 1873: "#e67e22", 1923: "#c0392b"}
+
+    def is_edge(r):
+        return r.label == edge_label and r.T_K == edge_T
+
+    # --- left: predicted vs measured log C_S ---------------------------------- #
+    lo, hi = -4.6, -2.2
+    ax_sc.fill_between([lo, hi], [lo - 0.301, hi - 0.301], [lo + 0.301, hi + 0.301],
+                       color="0.85", alpha=0.6, zorder=0, label="±factor-2")
+    ax_sc.plot([lo, hi], [lo, hi], color="0.4", ls="--", lw=1.2, zorder=1, label="perfect (1:1)")
+    ax_sc.scatter([r.measured for r in d.mno], [r.predicted for r in d.mno], s=42, marker="x",
+                  color="0.55", lw=1.4, zorder=2, label="MnO tier (fitted Lambda — ×5 high)")
+    ax_sc.scatter([r.measured for r in d.literature], [r.predicted for r in d.literature], s=34,
+                  marker="o", facecolors="none", edgecolors="0.45", lw=1.0, zorder=3,
+                  label="literature (pre-1986, corrob.)")
+    seen = set()
+    for r in d.holdout:
+        lab = f"holdout {r.T_K:.0f} K" if r.T_K not in seen else None
+        seen.add(r.T_K)
+        ax_sc.scatter([r.measured], [r.predicted], s=58, color=t_color.get(r.T_K, "0.2"),
+                      edgecolor="0.2", lw=0.6, zorder=4, label=lab)
+        if is_edge(r):
+            ax_sc.scatter([r.measured], [r.predicted], s=180, facecolors="none",
+                          edgecolors="#c0392b", lw=2.0, zorder=5)
+            ax_sc.annotate(f"acidic edge {r.label} (1 pt)\n(Lambda={r.Lambda:.2f}, ×{10 ** abs(r.resid):.0f} low)",
+                           (r.measured, r.predicted), textcoords="offset points", xytext=(8, -2),
+                           fontsize=8.0, color="#c0392b", va="top")
+    ax_sc.set_xlim(lo, hi); ax_sc.set_ylim(lo, hi)
+    ax_sc.set_xlabel("measured  log10 C_S  (Nzotta 1998)")
+    ax_sc.set_ylabel("predicted  log10 C_S  (Sosinsky-Sommerville)")
+    ax_sc.set_title("independent holdout hugs the 1:1 band — it CARRIES", fontsize=10.4)
+    ax_sc.legend(loc="upper left", fontsize=7.4, framealpha=0.92)
+    ax_sc.grid(True, alpha=0.2)
+
+    # --- right: residual vs optical basicity (the diagnosis) ------------------ #
+    ax_re.axhline(0.0, color="0.4", ls="--", lw=1.2, zorder=1)
+    ax_re.fill_between([0.55, 0.80], [-0.301, -0.301], [0.301, 0.301], color="0.9", alpha=0.6,
+                       zorder=0, label="±factor-2")
+    ax_re.scatter([r.Lambda for r in d.mno], [r.resid for r in d.mno], s=42, marker="x",
+                  color="0.55", lw=1.4, zorder=2)
+    ax_re.scatter([r.Lambda for r in d.literature], [r.resid for r in d.literature], s=34,
+                  marker="o", facecolors="none", edgecolors="0.45", lw=1.0, zorder=3)
+    for r in d.holdout:
+        ax_re.scatter([r.Lambda], [r.resid], s=58, color=t_color.get(r.T_K, "0.2"),
+                      edgecolor="0.2", lw=0.6, zorder=4)
+        if is_edge(r):
+            ax_re.scatter([r.Lambda], [r.resid], s=180, facecolors="none", edgecolors="#c0392b",
+                          lw=2.0, zorder=5)
+    bb = v.holdout_basic
+    ax_re.axhline(bb.mean_log, color="#16a085", lw=1.6, zorder=2)
+    ax_re.annotate(f"basic cluster: ×{10 ** bb.mean_log:.2f} ± ×{10 ** bb.std_log:.2f}",
+                   (0.80, bb.mean_log), textcoords="offset points", xytext=(-4, 6), ha="right",
+                   fontsize=8.0, color="#138a72")
+    ax_re.set_xlim(0.55, 0.80); ax_re.set_ylim(-0.85, 0.95)
+    ax_re.set_xlabel("optical basicity  Lambda")
+    ax_re.set_ylabel("log10(model / measured)")
+    ax_re.set_title("the diagnosis: flat & tight where basic, breaks acid-side & on MnO", fontsize=10.4)
+    ranks = " ".join(f"{T:.0f}K rho={rho:+.0f}" for T, (rho, n) in v.ranking.items())
+    ax_re.annotate(
+        "VERDICT — holdout-validated (basic domain):\n"
+        "  4 basic compositions, each ~×1.4, x 3 temperatures\n"
+        "  T-slope reproduced (indep. axis): ~+0.44 model vs +0.47 meas / 100 K\n"
+        f"  (within-T ranking {ranks} — supporting footnote)",
+        (0.5, 0.02), xycoords="axes fraction", ha="center", va="bottom", fontsize=7.6,
+        bbox=dict(boxstyle="round,pad=0.4", fc="#eafaf1", ec="#16a085", alpha=0.92))
+    ax_re.legend(loc="upper left", fontsize=7.6, framealpha=0.9)
+
+    fig.suptitle("B3 — front-end validation: the cited sulfide-capacity model holds out-of-sample "
+                 "(Nzotta 1998), within the basic domain", fontsize=11.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.985, top=0.9, bottom=0.12, wspace=0.22)
+    return fig

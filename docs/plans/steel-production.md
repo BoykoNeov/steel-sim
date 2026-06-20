@@ -2190,3 +2190,60 @@ ranking + order-of-magnitude, never number-matching; the headline rests on the t
 carbon/alloy axis is **under-identified** (low-carbon grades excluded by `Mₛ > 700 °F`). (4) **No engine
 touch** — `kinetics`/`austemper`/`unified_kv`/`pathint` byte-identical; the study only *reads* the cited
 factors.
+
+## 21 — Front-end validation: the cited sulfide-capacity model, holdout-validated against measured data (BUILT ✓ 2026-06-20)
+
+The front-end twin of §20, on the project's own standing discipline: *does a cited correlation the engine uses
+predict out-of-sample, or is its "order-of-magnitude only" posture forced?* The target (direction **B3**) was
+the F2 slag sulfide capacity — **Sosinsky–Sommerville (1986)** `log C_S = (22690 − 54640·Λ)/T + 43.6·Λ − 25.2`
+in `slag.py`. Per the advisor's "lead with C_S, not L_P" steer (C_S is better-conditioned; optical basicity is
+conceptually independent of any single fit), the desulfurization capacity was graded; the Healy **L_P** leg is
+left for a later pass (it needs its own independent measured-partition dataset).
+
+**The circularity gate (load-bearing).** S–S is a regression *fit*, so an honest holdout needs measured C_S the
+fit could not have seen — grading it against its training data is the vacuous-benchmark trap. The B3 scoping
+spike (2026-06-20) first **deferred** the build, blocked not on data *existence* but on **extractability to the
+`di-crosscheck` standard**: the accessible web artifacts were model/review papers citing the data without
+tabulating it. That block was cleared by getting the **primary source in hand** — Nzotta–Sichen–Seetharaman,
+*ISIJ International* **38** (1998) 1170, is **open access** (CC BY-NC-ND) and its Tables 5/6/9 carry measured
+C_S as **text** (committed at `docs/sources/nzotta_1998_sulphide_capacities.pdf`; transcribed from the tables,
+not figure-scraped — the fabrication path that once dropped the "AI Table A7 D_I").
+
+**Why the chosen holdout is clean** (`slag_validation.HOLDOUT` = Table 6, Al₂O₃–CaO–MgO–SiO₂, present work):
+**(1) temporal** — measured 1998, after the 1986 fit, different lab; **(2) parametric** — no MnO/no FeO, whose
+optical basicities in `slag.py` are *themselves optimized from C_S data*; the four components present carry
+spectroscopic Duffy–Ingram values → the composite under test (Λ → S–S) has **zero parameters fit to these
+data**. In-domain on temperature (1773–1923 K ⊂ S–S's 1400–1700 °C) → any edge is compositional.
+
+**The verdict — it CARRIES (a positive out-of-sample result).** On the nine basic slags (Λ ≳ 0.65) the model is
+a **consistent ~×1.4 overprediction** with **tight ×1.18 scatter** — inside the factor-2–3 inter-laboratory
+band the source itself documents. **Composition ranking is perfect within each temperature** (Spearman ρ = 1.0
+at 1773 K and 1873 K — the T-confound removed, since "C_S rises with Λ" is baked into S–S and pooling
+temperatures would inflate the score). The **temperature slope is reproduced** on the repeated compositions
+(Q2, Q3 at three temperatures: ≈ +0.44 model vs +0.47 measured per +100 K) — an independent second axis. So
+`slag.py`'s C_S posture is **upgraded** from "order-of-magnitude only" to "holdout-validated within the basic
+domain"; the decision (keep the model, name the edges, fit nothing) is `docs/decisions/0006`.
+
+**Named edges (quantified, flagged honestly).** (1) **Acidic — a single-point flag, not an established
+trend.** The one most-acidic slag tested (Q1, Λ ≈ 0.60) flips sign and under-predicts ~×4. The *independent
+literature* comparison (Table 9: Abraham–Richardson / Kärsrud / Kalyanram, **pre-1986 → corroboration only,
+weaker independence**) has its worst miss at its lowest-Λ point too, **but** a near-identical-Λ neighbour fits
+fine and the two differ ~7× in measured C_S at the same basicity — internal scatter, not a reproduced acidic
+trend. So the acidic edge rests on Q1 alone; candidate causes (amphoteric Al₂O₃ Λ = 0.605; S–S at the
+high-alumina extreme) are *not* isolated. (2) **MnO** — the Table-5 diagnostic over-predicts ~×5, but it tests
+`slag.py`'s *fitted* MnO Λ = 1.00 in the steep high-Λ regime, so it is a weak-independence tier reported as a
+located weak link, not the headline.
+
+**Surfaces.** `slag_validation.py` (the study, with a `validate_transcription` guard that re-runs the
+di-crosscheck — every tabulated average must equal the mean of its raw repeats — in the suite),
+`demo_slag_validation.py` + `plots.slag_validation_figure` → banked `docs/figures/steel-slag-validation.png`
+(left: predicted-vs-measured log C_S with the ±factor-2 band, the holdout hugging the 1:1 line, the acidic edge
+ringed below; right: residual vs optical basicity — flat-and-tight where basic, plunging acid-side, MnO riding
+high), gallery "Validation" 2nd card + README guided-tour row + memory `[[b3-front-end-validation-built]]`.
+`test_slag_validation.py` (13) + `test_demo_slag_validation.py` (2); fast lane **949 green**. **No engine
+touch** — `slag.py` and every engine module byte-identical (only `slag.py`'s C_S *docstring* posture changed);
+the study reads `slag.sulfide_capacity`, feeds the frozen pipeline nothing.
+
+**Still open.** The Healy **L_P** dephosphorization leg (needs an independent measured-partition dataset of the
+same standard); a **second slag system** beyond Al₂O₃–CaO–MgO–SiO₂ (Table 6 is the only post-1986, MnO/FeO-free
+table in the source — the same primary-source-in-hand gate that blocked the spike).

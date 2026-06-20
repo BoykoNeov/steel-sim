@@ -146,6 +146,14 @@ CATALOG: tuple[Entry, ...] = (
         notebook="§6c",
     ),
     Entry(
+        "Validation", "demo_slag_validation", "steel-slag-validation.png",
+        "Sulfide capacity, holdout-validated",
+        "Does the cited optical-basicity C_S model predict sulfur affinity *out-of-sample*? An "
+        "independent measured dataset (Nzotta 1998, post-dating the 1986 fit, MnO/FeO-free) says "
+        "yes for basic slags — ~×1.4 with tight scatter and perfect ranking — and names the acidic "
+        "and MnO edges where it doesn't.",
+    ),
+    Entry(
         "Stress", "demo_residual", "steel-residual-stress.png",
         "Residual stress & distortion",
         "The residual stress and distortion a quench locks into a section — the "

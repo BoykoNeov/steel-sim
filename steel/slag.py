@@ -68,6 +68,17 @@ What is CITED vs the named ceiling — the two-tier provenance (as in reduction 
   are themselves *optimized* from sulfide-capacity data), and the Fe–FeO oxygen anchor (``[%O] = 0.213·a_FeO``
   at 1600 °C) used only to link slag FeO to metal oxygen on a shared axis. P/S equilibria scatter by a
   factor of several between studies — the read is the ranking and the order of magnitude.
+
+  **C_S is now holdout-validated (B3, ADR 0006 — see** :mod:`steel.slag_validation` **).** Graded
+  against an *independent* measured dataset (Nzotta–Sichen–Seetharaman, ISIJ Int. 38 (1998) 1170,
+  Table 6 — measured after the 1986 fit, MnO/FeO-free so no fitted Λ is in the loop), the
+  Sosinsky–Sommerville correlation **carries** for basic Al₂O₃–CaO–MgO–SiO₂ slags: a consistent
+  ~×1.4 overprediction with ×1.2 scatter, *exact* composition ranking within temperature, and the
+  temperature slope reproduced. So C_S earns "holdout-validated within the basic domain (Λ ≳ 0.65)"
+  rather than "order-of-magnitude only" there. Two **named edges** remain source-sensitive and were
+  *quantified*, not removed: the **acidic** side (Λ ≲ 0.6) under-predicts ~×4, and **MnO**-rich slags
+  over-predict ~×5 (the optical-basicity scale's weak spots). The L_P / Healy and the metal-partition
+  conversions are *not* covered by this holdout — they stay order-of-magnitude.
 * **The named ceiling.** Equilibrium partition endpoints, never the *rate* (slag–metal mass-transfer /
   emulsion kinetics — the front-end tar pit, §4); a single lumped slag of fixed mass ratio (no slag
   evolution through the heat); dilute 1-wt% Henrian metal (``a_O ≈ [%O]``, ``f_X ≈ 1``); the optical

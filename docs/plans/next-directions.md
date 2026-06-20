@@ -78,11 +78,22 @@ refining, ladle trim, and heat treatment to a finished part would make the
 front-meets-back seam concrete. **Integration + pedagogy, no new physics.** **Size:
 small–medium.** **Status: idea.**
 
-### B3. Front-end validation deepening
+### B3. Front-end validation deepening — **BUILT ✓ 2026-06-20** (sulfide-capacity slice)
 Replicate the §20 bainite cross-composition validation pattern (`cct_validation.py`)
 for the front end — benchmark F2 dephosphorization/desulfurization (Healy L_P,
 sulfide-capacity L_S) across more measured heats, turning "benchmarked physics" into
-a holdout-validated claim. **Size: medium.** **Status: idea.**
+a holdout-validated claim. **Size: medium.** **Status: C_S slice BUILT** (`slag_validation.py`
++ `demo_slag_validation.py` + `plots.slag_validation_figure` + 15 tests; ADR 0006). Per the
+advisor's "lead with C_S" steer, the Sosinsky–Sommerville sulfide-capacity correlation was
+graded against an **independent measured dataset** — Nzotta–Sichen–Seetharaman, *ISIJ Int.* 38
+(1998) 1170, Table 6 (Al₂O₃–CaO–MgO–SiO₂, measured after the 1986 fit, MnO/FeO-free so no
+fitted Λ is in the loop; the open-access PDF is committed at `docs/sources/`). Verdict: the
+model **carries** for basic slags (~×1.4, ×1.2 scatter, *exact* within-temperature ranking,
+T-slope reproduced) — a *positive* out-of-sample result that upgraded `slag.py`'s C_S posture;
+the **acidic** (Λ ≲ 0.6, ~×4 low) and **MnO** (~×5 high) edges are named, not tuned away. The
+data-gate that deferred the scoping spike was cleared by getting the **primary source in hand**
+(open-access tabular data, not figure-scraped). **Still open:** the Healy L_P leg (needs an
+independent measured-partition dataset) and a second slag system beyond Al₂O₃–CaO–MgO–SiO₂.
 
 ---
 
