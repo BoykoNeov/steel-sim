@@ -1,0 +1,322 @@
+# The `game/` build plan — the playable spine on the proven chain
+
+> **Status: plan-only (2026-06-21). Nothing here is built yet** (no `game/`
+> package). This is the build plan that **promotes** the game *doctrine* —
+> already written in depth in `steel-making.md` **§8** (the firewall), **§15**
+> (methods as paths through the built engines), and **§16** (the Tier-3
+> physics-shaped dynamics) — into a **sliced, testable build order**. It does
+> **not** re-derive that doctrine: it **cross-references** it and adds the two
+> things those sections leave open — the **stateful interaction surface** and the
+> **slice ladder** — plus the user's new first-class requirement, an opt-in
+> **educational mode**.
+>
+> **Why now.** Both §15.4 front-end physics gaps (P/S slag partition; wootz V/Mo
+> banding) are **built**, and the **B2 full-chain capstone** (`demo_capstone.py`,
+> 2026-06-21) already threads **one `Heat` ore → billet → part** with a
+> reference/foil contrast on a **single** knob (the F2 blow endpoint). So there is
+> **no physics left to invent** for the game — it is pure orchestration + UX on a
+> spine that is already benchmarked end to end. This is exactly the condition
+> `steel-making.md` §13 set for building `game/` **last**: *on a proven verified
+> spine, never first.* That condition is now met.
+
+---
+
+## 1. What this plan is — and what it deliberately is not
+
+- **It IS** the build order for a `game/` package: the slices, their banked
+  artifacts, their **structural** tests, their scope ceilings, and the one
+  genuinely new design surface (stateful, multi-turn play).
+- **It is NOT** a restatement of the doctrine. The firewall rule, the
+  method→engine map, the Type-A/Type-B trajectory archetypes, and the
+  verified-vs-flavor labeling contract live in `steel-making.md` §8/§15/§16 and
+  are **load-bearing references here, not copies** (two copies would drift). When
+  this plan says "the firewall" it means §8; "the method map," §15.2; "Type B,"
+  §16.2.
+- **It IS** honest that `game/` is the one package in this repo that clears **no
+  validation triad** — see §2. Its discipline is structural, the same class as
+  the `heat_state` spine, F3 ladle trim, and the B2 capstone.
+
+---
+
+## 2. The honesty posture — `game/` clears no physics triad (and must not pretend to)
+
+Every `steel/` engine earns its place by clearing the validation triad
+(analytical limit + conservation law + published benchmark). **`game/` cannot and
+must not** — it computes no new material behaviour. Its checks are **structural**,
+exactly as the spine's and the capstone's are (`heat_state`, `demo_capstone`):
+
+1. **Firewall guard** — `game/` imports only the **public** engine surfaces and
+   defines **no physics constant**; every number with a citation lives in
+   `steel/` or `engines/`. (Mirrors the `app.py` layering guard, §8.)
+2. **Endpoint-consistency** — every flavor τ-dynamic (§16) **relaxes toward a
+   validated F1–F4 endpoint** and may not overshoot or contradict it (Type-A
+   monotone to the floor/ceiling; Type-B turns around a validated optimum — the
+   *optimum* is physics, only the excursion is feel).
+3. **Label-correctness** — every field the UI shows is tagged **verified**
+   (engine number + citation) or **flavor** (feel-tuned, "plausible, not
+   validated"), and a test asserts the tag matches the source.
+4. **Golden-run determinism** — a scripted play-through (the capstone's
+   reference + foil endpoints) produces the **same** verdicts the sealed engines
+   already produce: the reference through-hardens, the over-blow soft-cores. The
+   game adds no scripted "you failed" branch — the failure is the back-end
+   martensite fraction crossing the spec line (§6), reached through play.
+
+> The claim on the box (the §9 one-liner, verbatim): *"Every link is individually
+> grounded in cited physics; the chain is a physically-consistent composition,
+> not a validated whole."* That sentence **is** the boundary between the verified
+> library and the game.
+
+---
+
+## 3. The new surface — stateful, multi-turn play (the load-bearing new design)
+
+The existing apps (`app.py`, `app_making.py`, `app_consequences.py`) are
+**stateless what-if panels**: sliders in → readout out, nothing persists between
+actions. A game is **stateful and multi-step** — a live `Heat` evolving across
+turns. This is a genuinely new interaction surface with **no analog in the repo**,
+so the plan specifies it rather than assuming it.
+
+### 3.1 Session-state schema (what persists between reruns)
+
+Streamlit reruns the script top-to-bottom on every interaction, so all game state
+lives in `st.session_state`:
+
+| Key | Type | Role |
+|---|---|---|
+| `heat` | `Heat` | the live heat — the **current** node of an immutable, append-only chain |
+| `stage` | `int`/enum | the stage cursor (which step the player is about to run) |
+| `method` | preset id | the chosen route (Slice 0: one preset; Slice 2+: the §15.2 map) |
+| `educational` | `bool` | the opt-in education toggle, chosen at start (§5) |
+| `score` / `verdict` | scalars/flags | running economy + the §6 flags fired so far |
+
+### 3.2 Turn structure (clean, because `Heat` is immutable)
+
+`Heat` is a **frozen, append-only** dataclass (every orchestrator step returns a
+*new* `Heat` with one `ProcessStep` appended — `heat_state` §5). So **each player
+action = run one sealed stage on `st.session_state.heat`, get a new `Heat`, write
+it back.** The provenance trail is the history list on that `Heat` — the game's
+post-mortem comes free, already built. No new history machinery; the game *drives*
+the spine's existing one. A "restart" is just resetting `session_state.heat` to
+the chosen origin.
+
+### 3.3 The Type-B knob, reframed honestly (advisor catch)
+
+§16.2's iconic dynamic is the **decarb blow** — a Type-B *targeted optimum* you
+can over- or under-shoot. The vision's "Bessemer flame-drop, stop NOW" is a
+**reflex** mechanic, and **Streamlit reruns do reflex timing badly.** The
+idiomatic, honest version is **value-selection on the τ-curve**:
+
+- The player sets the **blow endpoint** with a slider (carbon target), not a
+  reaction test.
+- The curve is drawn: carbon falling first-order toward the target, then —
+  **past** the validated C–O target — dissolved oxygen / FeO **climbing again**
+  (the over-blow region). The "flame drop" becomes a **position readout** ("you
+  are past the optimum — FeO climbing, bath over-oxidized"), not a clock.
+- The **turning point is the validated F2 number** (`refining.carbon_oxygen_product`);
+  only the over-/under-shoot *region* around it is flavor (§16.4).
+
+**Real-time / reflex timing is named as needing a different surface** (a canvas /
+non-Streamlit front end) and is **deferred** — the plan does not promise a
+minigame the tech can't deliver.
+
+---
+
+## 4. The firewall (= §8) and its guard test
+
+The rule is §8 verbatim: `game/` may **orchestrate** engines and own the loop,
+economy, score, RNG, and UI; it may **never reimplement physics.** The
+deliverable that enforces it is a **guard test** (mirrors `app.py`'s layering
+guard): `game/` imports only public engine surfaces; physics constants stay in the
+verified packages; the only `import streamlit` lives in the paper-thin `main()`.
+
+**Three-layer discipline (the `app.py`/`app_making.py` idiom, §ADR-0002), which
+also makes the game testable:**
+
+1. **Compute/logic helpers** — τ-curves, state transitions, verdicts,
+   educational-content selection, score. Plain functions, **no** streamlit/matplotlib
+   import, **always-green** unit tests. *All game logic lives here.*
+2. **Figure builders** — thin wrappers over the existing `demo_*.compute()`
+   pipelines + `steel.plots`, matplotlib imported lazily. The game invents **no
+   figure of its own**.
+3. **`main()`** — the **only** place `import streamlit` lives; paper-thin, every
+   value computed/formatted by a tested helper above.
+
+The **golden-run test drives the helpers, not the UI.**
+
+---
+
+## 5. Educational mode (the user's first-class requirement)
+
+**At the start, the player chooses optional additional guides and information —
+an opt-in "educational mode" with more help, tips, and info.** It is a
+**first-class requirement from Slice 0**: the startup toggle exists in v0. The
+*rich content* phases in (so we learn whether the loop is fun before investing in
+a content system).
+
+### 5.1 Scope — info-overlay, NOT a difficulty axis (decided, to stop creep)
+
+Educational mode is **purely an information overlay**: it surfaces *more*
+explanation; it does **not** change the physics, the difficulty, the available
+knobs, or auto-pilot hard stages. (A separate *difficulty / assist* axis —
+auto-running hard stages for beginners — is a **distinct, deferred** idea, named
+here only so the two don't blur.) The base game is fully playable with the
+overlay **off**; nothing gates progress on reading.
+
+### 5.2 The three tiers (phased across slices)
+
+| Tier | What it surfaces | Lands in |
+|---|---|---|
+| **Why-cards** | per-knob "what this step does / what over- and under-shoot mean," the validated target named | **Slice 0** (the one knob) |
+| **Physics-shape explainer** | the Type-A asymptote vs Type-B optimum (§16.2), the curve annotated; the verified-vs-flavor chip explained | Slice 1 |
+| **Cited post-mortem** | the provenance trail deep-dive with the **source citation** per verified number + "learn more" links into `making.ipynb` / the gallery / the relevant `demo_*` | Slice 2 |
+
+### 5.3 The educational-mode firewall line (sharpened — advisor)
+
+Educational **prose may live in `game/`** (text is content, not physics). But two
+rules keep it from becoming a backdoor for un-sourced claims:
+
+1. **Every number it quotes is read LIVE from the engine at runtime — never
+   hardcoded.** (The why-card says "the C–O target here is *{value from
+   `refining.carbon_oxygen_product` at the current state}*," not a baked-in
+   string.)
+2. **Every physics claim cites the SAME source the engine cites.** A claim with
+   no engine behind it is **flavor** and wears the "plausible, not validated"
+   label like any other flavor — including game-feel tips ("watch for the flame
+   to drop").
+
+This is the §15.5 verified-vs-flavor contract applied to teaching text.
+
+---
+
+## 6. The slice ladder
+
+Each slice banks one playable artifact + its structural tests; each names its
+scope ceiling. **Build in order; stop and play after each** (the loop must be fun
+before it grows).
+
+### Slice 0 — the hero heat, interactive (the playable capstone) — *first build*
+- **Goal.** Make the **already-built B2 capstone chain playable**: one method
+  (the capstone's 4140 BOF/EAF route), the chain auto-running every stage **except
+  one** player knob — the **F2 decarb blow endpoint** (§3.3, value-selection on
+  the τ-curve). Player sets the endpoint → the sealed chain runs → the part is
+  judged (sound / soft-core) → the **provenance trail is the post-mortem.**
+- **Build.** `game/` package; the stateful Streamlit surface (§3); compute helpers
+  wrapping `demo_capstone.run_chain` / the F2 stages; the τ-curve figure (over
+  `refining` + `plots`); the startup screen with the **educational toggle** +
+  **why-cards on the one knob** (§5.2 tier 1).
+- **Banked artifact.** The playable + a banked screenshot/figure for a new gallery
+  **"Game"** card; root + `steel/` READMEs wired.
+- **Tests.** Firewall guard; golden-run determinism (reference endpoint → sound,
+  over-blow → soft-core, byte-stable verdicts, driving **helpers**); state-transition
+  (each action pushes a new immutable `Heat`, trail grows by one); label-correctness
+  (the blow target is tagged verified + cites `refining`); educational-content
+  numbers read live (no hardcoded value).
+- **Ceiling.** One method, one knob; **no reflex timing** (value-selection only,
+  §3.3); economy is a placeholder; educational mode = toggle + why-cards only.
+
+### Slice 1 — the second knob + the verified-vs-flavor chips made visible
+- Add the **deox kill** knob (Type B — the real dissolved-O **minimum** at
+  ~0.074 % Al, `e_O^Al = −3.9`, §16.2/§16.3): a second value-selection on a
+  τ-curve, under → O retained, over → alumina clusters.
+- Surface the **verified-vs-flavor label as UI chips** (citation chip for verified
+  numbers; "plausible" watermark for feel-tuned τ) — the firewall becomes a
+  *visible feature*, not just a code rule.
+- Educational mode grows to **tier 2** (the physics-shape explainer).
+
+### Slice 2 — methods & the era ramp (the tech tree)
+- Turn the **§15.2 method→engine map** into a `game/` **method-preset table**
+  behind the firewall: each preset = a `Heat` **recipe** over F1–F4 + the set of §6
+  flags it can fire + a **verified-vs-flavor label per field** (§15.5).
+- The **purity-control ramp is the progression** (§14 theme C / §15.2): start at
+  the **bloomery** (few knobs, forgiving — but hard-capped: below the F1 C/CO
+  crossover you **cannot** make hardenable alloy steel); earn each era, and **each
+  era unlocks one tramp element you can finally control** — P with Thomas (basic
+  slag), N with the BOF, S with ladle desulfurization. *The history is the
+  difficulty curve.*
+- Educational mode grows to **tier 3** (cited post-mortem + links into the
+  notebook / gallery; pairs with the §14 historical timeline).
+
+### Slice 3+ — economy, scale, discrete events (flavor, last)
+- **Economy-scale anchors** (§16.3) — bloomery ~kg/day → crucible ~tens-of-kg →
+  BOF ~300 t / 40 min — **flavor anchored to real orders of magnitude**, not a
+  validated rate.
+- **Type-A relaxation dynamics** with feel-tuned τ (§16.3 table) — degassing,
+  flotation, desulf kinetics — labeled plausible, endpoint-consistent.
+- **Physically-rated discrete events** (refractory breakout, slag carryover, ladle
+  skull, §6.2) — rare, tied to a physical driver, **not** free-floating bad luck.
+- (Deferred, named: real-time/reflex timing on a non-Streamlit surface, §3.3.)
+
+---
+
+## 7. Module map (proposed)
+
+`game/` is the new sibling package §10 of `steel-making.md` already reserved:
+
+```
+game/
+  __init__.py
+  state.py        # the session-state schema + turn transitions (Heat in / Heat out)   [logic]
+  knobs.py        # the τ-curves: Type-A relaxation, Type-B optimum (endpoint, deox)    [logic]
+  presets.py      # the §15.2 method→engine recipes + per-field verified/flavor labels  [logic]
+  teach.py        # educational-mode content selection (prose in game/, numbers live)   [logic]
+  figures.py      # thin wrappers over demo_*.compute() + steel.plots                   [figure]
+  app_game.py     # the ONLY `import streamlit`; paper-thin main()                      [ui]
+  tests/
+```
+
+Physics stays in `steel/` / `engines/`; `game/` only orchestrates.
+
+---
+
+## 8. Validation & test surface (structural, per §2)
+
+- **Firewall guard** (`test_game_firewall`) — `game/` imports no private engine
+  internals, defines no physics constant, and `import streamlit` appears only in
+  `app_game.main`.
+- **Golden-run determinism** (`test_game_golden_run`) — drives the **helpers**:
+  the reference blow endpoint → sound part, the over-blow → soft-core, verdicts
+  byte-stable against the sealed-engine output.
+- **State-transition** (`test_game_state`) — each action returns a new immutable
+  `Heat`, the trail grows by exactly one `ProcessStep`, restart resets cleanly.
+- **Label-correctness** (`test_game_labels`) — every UI field's verified/flavor
+  tag matches its source; every educational number is read live (a baked-in
+  physics number fails the test).
+- **Endpoint-consistency** (`test_game_knobs`) — each τ-curve relaxes toward (Type
+  A) / turns around (Type B) the validated F1–F4 endpoint and never overshoots it.
+
+---
+
+## 9. Invariant-compliance check (the `steel-making.md` §12 form)
+
+| Invariant | How this plan honors it |
+|---|---|
+| Build the toolkit once; reuse frozen | `game/` touches **no** engine; it orchestrates the public surfaces only (the §8 firewall). |
+| Phase so each stage banks an artifact | Slices 0–3 each bank one playable + its tests; Slice 0 alone is demonstrable. |
+| Validation triad from day one | **N/A by design** — `game/` clears no physics triad; its discipline is the **structural** four-check set (§2/§8), stated up front, not skipped. |
+| Target the consequence where the mechanism is a wall | Process *rates/dynamics* (the §4 transport-kinetics tar pit) stay **flavor** (Tier-3, §16); only validated endpoints are claimed. |
+| Updating docs is part of every change | This plan, the per-slice READMEs, the gallery card, and any ADR are deliverables of each slice. |
+| Terms of use | §11 below — clean, published science; flavor labeled. |
+
+---
+
+## 10. Terms of use
+
+Same posture as `steel-making.md` §11. The game adds **no** new physics data, so
+it introduces no new sourcing surface; all cited numbers are the engines' own.
+Educational prose is original; every physics claim in it carries the **engine's**
+citation (§5.3). Flavor (τ values, economy, discrete-event rates) is original and
+**labeled plausible**.
+
+---
+
+## 11. Sequencing & immediate next step
+
+**Build order:** Slice 0 (playable capstone + educational toggle) → Slice 1
+(deox knob + visible chips) → Slice 2 (methods + the era ramp) → Slice 3+
+(economy / flavor / discrete events). **Stop and play after each.**
+
+**Immediate next step.** Plan-only — this document. The first build is **Slice 0**:
+stand up the `game/` package with the firewall guard, the session-state surface
+(§3), the one Type-B blow knob as value-selection (§3.3), the educational toggle +
+why-cards (§5.2 tier 1), and the four structural tests (§8) — all on the
+**already-proven** capstone chain, no engine touched.

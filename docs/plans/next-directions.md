@@ -24,8 +24,12 @@ crucible, wootz, acid Bessemer, Thomas, open hearth, BOF, EAF, ladle, continuous
 casting — each a `Heat` recipe + the set of §6 flags it can fire + a per-field
 **verified-vs-flavor** label. **Both §15.4 physics gaps are now closed** (P/S slag
 partition; wootz V/Mo banding), so this is fully grounded — orchestration + UX, no
-physics left to invent. **Size: large.** **Status: unstarted** (no `game/` dir).
-The repo-split is deferred; the in-repo `game/` home was authorized.
+physics left to invent. **Size: large.** **Status: build plan written
+(2026-06-21) → `docs/plans/game.md`** — promotes §8/§15/§16 into a sliced,
+testable build order (Slice 0 = the B2 capstone made playable + an opt-in
+**educational mode**; the new stateful-Streamlit surface + the structural test set
+specified). **No `game/` code yet.** The repo-split is deferred; the in-repo
+`game/` home was authorized.
 
 ### A2. P → DBTT slope — the one still-unpinned *physics* piece
 `steel-making.md` §14.5 flags it: the P→strength axis carries teeth (Thiele–Hošek,
