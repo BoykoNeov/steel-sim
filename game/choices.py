@@ -85,7 +85,8 @@ DECISIONS: dict[str, Decision] = {
     )),
     "quench_medium": Decision("quench_medium", "Quench medium", (
         Option("Oil — the grade's quench", "oil", "through-hardens this section", recommended=True),
-        Option("Water — severe", "water", "harder still (distortion / crack risk in practice)"),
+        Option("Water — more severe", "water", "harder still — this section through-hardens either way "
+               "(distortion / quench-crack risk is real in practice but not modelled for this grade)"),
         Option("Air — mild", "air", "cools too slowly → no martensite → soft core"),
     )),
     "part_diameter": Decision("part_diameter", "Section to quench", (

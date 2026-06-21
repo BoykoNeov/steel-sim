@@ -50,6 +50,9 @@ LOSABLE = [
     ("decarb · over-blow",   dict(carbon=0.25),          "off-grade"),
     ("decarb · under-blow",  dict(carbon=0.55),          "off-grade"),
     ("dephos · skipped",     dict(dephosphorize=False),  "cold-short"),
+    # NB: the deox→porosity loss rides a thin ~2% supersaturation margin (a weak kill pins O on the C–O line,
+    # S≈1.02 just over the CO product at the reference carbon). Deterministic, but if this row ever fails it
+    # means the CO-line margin moved (an upstream carbon-dilution drift), not that the gauntlet itself broke.
     ("deox · weak Si kill",  dict(deoxidizer="Si"),      "gas-porosity"),
     ("deox · weak Mn kill",  dict(deoxidizer="Mn"),      "gas-porosity"),
     ("degas · shallow",      dict(degas_p_H2=0.1),       "hydrogen-flaking"),
