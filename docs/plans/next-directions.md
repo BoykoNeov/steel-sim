@@ -87,8 +87,14 @@ mistake surfaced two stages apart. **Integration + pedagogy, no new physics** �
 (structural teeth: continuous trail, ordered field-fill, cross-chain propagation; the reference clears
 every sealed-engine spec). The lone front-end seam that takes a `Steel` (casting) is **re-based** onto the
 `Heat` via `evolve` (Option A, demo-local; **promotion trigger** = a second surface needing the same glue
-→ promote to a `Heat`-consuming casting seam). **Still open:** the notebook section (slice 2 — the heavy
-surgical banked-figure op, deferred per the notebook-discipline lesson).
+→ promote to a `Heat`-consuming casting seam). **Notebook section (slice 2) — BUILT ✓ 2026-06-21**
+(`14a55b5`): a static banked `## §capstone` section in `making.ipynb`, placed as the make-arc finale
+(between §F4b solidification and the "what goes wrong" pivot) and reusing `demo_capstone.compute` /
+`print_summary` verbatim (the inverted-verdict landmine class). The surgical op added 2 cells and edited
+2 markdown cells (the section-index table row + an epilogue scope note), leaving 57 of the 59 originals
+byte-identical (content-hash proven); gallery `notebook="§capstone"` + both READMEs wired. The promotion
+trigger was **not** tripped — the notebook calls `compute()`, so the casting re-base stays inside the
+demo. **B2 is now fully closed.**
 
 ### B3. Front-end validation deepening — **BUILT ✓ 2026-06-20** (sulfide-capacity slice)
 Replicate the §20 bainite cross-composition validation pattern (`cct_validation.py`)
