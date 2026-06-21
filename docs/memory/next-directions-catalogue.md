@@ -15,10 +15,11 @@ direction. Consult it when "what's next" recurs.
 
 - **A1** `game/` historical-methods spinoff (large; both §15.4 physics gaps now closed so it's
   pure orchestration/UX behind the firewall). **Build plan WRITTEN 2026-06-21 → `docs/plans/game.md`;
-  Slice 0 BUILT ✓ 2026-06-21 → [[game-slice0-built]].** The `game/` package is stood up — capstone chain
-  made playable, one F2 blow-endpoint knob (value-selection on the C–O τ-curve), immutable-`Heat` turn
-  surface, educational why-cards (numbers read live), 4 structural tests; lone engine touch = promoted
-  `casting.cast_billet_onto` (the capstone's named trigger). It **promotes** the doctrine in
+  Slices 0 AND 1 BUILT ✓ 2026-06-21.** Slice 0 → [[game-slice0-built]] (capstone made playable, one knob).
+  **Slice 1 → [[game-slice1-built]] = the gauntlet** (EVERY stage a decision; user widened scope from the
+  plan's "deox knob"): `Recipe` choices vector + `choices.py` + `postmortem.py` (sealed consequence engines
+  judge the finished part, no spine mutation → golden run preserved), with **losability** the acceptance bar
+  (7 losable knobs, 1 test each; casting an honest no-loss pass-through). It **promotes** the doctrine in
   steel-making.md §8 (firewall) / §15 (method map) / §16 (Tier-3 dynamics) into a sliced build order —
   cross-refs, does NOT restate. Durable advisor-driven calls baked into the plan: **`game/` clears NO
   physics triad** → structural discipline (firewall guard + endpoint-consistency + label-correctness +

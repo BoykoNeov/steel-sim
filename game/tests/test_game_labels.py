@@ -6,9 +6,15 @@ from the engine (never hardcoded), and every physics claim cites the **same** so
 returns a string": it drives **two** different endpoints and asserts the quoted oxygen number **moves**,
 and that it matches the live engine value — a baked-in constant would fail both.
 """
+import pytest
+
+from game import choices as ch
 from game import knobs as kn
 from game import teach as tc
+from steel import heat_state as hs
+from steel import hydrogen_flaking as hf
 from steel import refining as ref
+from steel import slag as sl
 
 
 def test_quoted_oxygen_moves_with_the_endpoint():
@@ -54,3 +60,32 @@ def test_intro_text_grows_only_when_educational():
     # The educational toggle's first visible effect: more text when on, the base blurb when off.
     off, on = tc.intro_text(False), tc.intro_text(True)
     assert on != off and off in on and "Educational mode" in on
+
+
+# --- Slice 1: a why-card per knob, each citing the engine's own threshold (read live) ---------------- #
+
+def test_every_named_knob_has_a_verified_why_card():
+    # Every gauntlet decision must carry a why-card, and each must cite a real steel engine (not a bare claim).
+    for knob in ch.DECISIONS:
+        cards = tc.knob_why_cards(knob)
+        assert cards, f"{knob}: no why-card"
+        for c in cards:
+            assert c.label == tc.VERIFIED and c.source != tc.FLAVOR_SOURCE
+            assert "." in c.source, f"{knob}: source {c.source!r} does not name an engine"
+
+
+@pytest.mark.parametrize("knob, needle", [
+    ("dephosphorize", f"{sl.MAX_PHOSPHORUS_PCT:.3f} %"),
+    ("desulfurize", f"{sl.MAX_SULFUR_PCT:.3f} %"),
+    ("degas_p_H2", f"{hf.CRITICAL_FLAKING_H_PPM:.0f} ppm"),
+    ("quench_medium", f"{hs.MIN_MARTENSITE_SPEC:.0%} martensite"),
+])
+def test_knob_card_quotes_the_live_engine_threshold(knob, needle):
+    # The number a card quotes is the engine constant, formatted live — change the constant and the card
+    # follows (a baked-in string would drift). This is the per-knob analogue of the moving-oxygen catch.
+    body = tc.knob_why_cards(knob)[0].body
+    assert needle in body, f"{knob}: card does not quote the live engine threshold {needle!r}"
+
+
+def test_carbon_knob_delegates_to_the_blow_cards():
+    assert tc.knob_why_cards("carbon", carbon_target=0.40) == tc.blow_why_cards(0.40)

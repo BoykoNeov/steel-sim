@@ -8,16 +8,25 @@ turn structure is clean and needs no new history machinery: **each turn = run on
 current ``Heat``, get a new ``Heat``, advance the cursor.** The provenance trail *is* the post-mortem,
 already built — the game only drives the spine's existing one.
 
-Slice 0 (``game.md`` §6) makes the **B2 capstone chain playable**: the capstone's 4140 route, the chain
-auto-running every stage *except* the one player knob — the F2 decarb blow endpoint (:mod:`game.knobs`,
-value-selection on the C–O τ-curve). The recipe is **single-sourced from** :mod:`steel.demo_capstone`
-(``LEAN_BACKBONE``, the slag/kill/cast constants), so stepping this chain to completion reproduces
-``demo_capstone.run_chain``'s sealed-engine verdict **exactly** — the golden-run test pins that equality,
-which *is* the proof the game adds no physics. The lone seam that takes a ``Steel`` (casting) threads
-through the promoted :func:`steel.casting.cast_billet_onto`, so the whole chain is one continuous ``Heat``.
+**Slice 1 — the gauntlet (``game.md`` §6, extended).** Slice 0 made the B2 capstone chain *playable* with
+a single knob (the F2 blow endpoint); every other stage auto-ran a fixed recipe, so there was nothing else
+to get wrong. Slice 1 makes **every stage a decision**: a :class:`Recipe` carries one knob per stage, each
+field **defaulting to the capstone's reference value** (single-sourced from :mod:`steel.demo_capstone`).
+A wrong choice **plants a latent flaw** in the live ``Heat`` (carbon off the window, oxygen the kill left
+high, hydrogen the vacuum left in, sulfur the slag left, off-grade alloy) and the finished part is judged
+by the **post-mortem** (:mod:`game.postmortem`) — the sealed consequence engines, run on the part, report
+which defect each mistake became. You win by landing a sound, on-grade part; you lose by planting a defect.
+
+**The golden-run invariant is preserved exactly.** The canonical ``Heat`` is built **only** from the eight
+stage seams (the post-mortem reads the finished part, it never mutates the spine), and every ``Recipe``
+field defaults to the reference value, so stepping the *reference* recipe reproduces
+``demo_capstone.run_chain``'s sealed-engine verdict **exactly** — the golden-run test still pins that
+equality, which *is* the proof the game adds no physics. ``play_to_end(c)`` is the one-knob Slice-0 view of
+the same machine: ``Recipe(carbon=c)`` with every other knob at reference.
 
 Pure logic: no streamlit, no matplotlib (the ``app.py`` three-layer firewall). The always-green tests pin
-the turn structure (one ``ProcessStep`` per turn, immutable) and the golden-run equality.
+the turn structure (one ``ProcessStep`` per turn, immutable), the golden-run equality, and — the Slice-1
+acceptance bar — **losability**: for every claimed knob there is a wrong setting that flips the verdict.
 """
 from __future__ import annotations
 
@@ -30,88 +39,155 @@ from steel import heat_state as hs
 from steel import ladle as ld
 from steel import refining as ref
 from steel import slag as sl
-from steel.heat_state import Heat
+from steel.heat_state import Heat, ProcessStep
 from steel.sweep import evaluate
 
 
 # --------------------------------------------------------------------------- #
-# 1. The stages — each a sealed Heat → Heat seam; only the blow reads a player value
+# 1. The recipe — one knob per stage, each defaulting to the capstone reference
+# --------------------------------------------------------------------------- #
+@dataclass(frozen=True)
+class Recipe:
+    """The player's choices for a whole heat — **one knob per stage**, defaults = the capstone reference.
+
+    Every field defaults to the value :mod:`steel.demo_capstone` uses for its **sound** reference heat
+    (``game.md`` §6), so :data:`REFERENCE` (= ``Recipe()``) reproduces ``run_chain`` exactly and the
+    golden-run equality holds. A field set away from its default is a **wrong call** that plants a latent
+    flaw the post-mortem surfaces:
+
+    * ``carbon`` — the F2 blow endpoint (wt %). Off the 4140 window → off-grade; far below → a soft core.
+    * ``dephosphorize`` — run the basic converter slag, or skip it (tramp phosphorus stays → cold-short).
+    * ``deoxidizer`` — the kill metal, ``"Al"`` / ``"Si"`` / ``"Mn"`` (the F1 Ellingham strength hierarchy
+      Al ≫ Si > Mn). The strong aluminium kill drops dissolved oxygen far below the C–O line; a weak Si/Mn
+      kill cannot, leaving the bath at the carbon-set oxygen → gas porosity at the cast.
+    * ``degas_p_H2`` — the vacuum depth (atm H₂). A shallow vacuum leaves hydrogen → flaking.
+    * ``desulfurize`` — run the reducing ladle slag, or skip it (tramp sulfur stays over the cleanliness
+      spec — the trim's manganese still ties it as MnS, so it does **not** red-short, but it is off-spec).
+    * ``carbon_pickup`` — trim with high-carbon ferroalloys that carry carbon into the bath (→ off-grade).
+    * ``cast_modulus`` — the billet section modulus (m). **Not a losable knob on this grade**: it sets the
+      Chvorinov time only (segregation is ``fs``-based, judged on the centerline, not the nominal part the
+      verdict follows), so casting is an honest pass-through, kept here for golden-run fidelity.
+    * ``quench_medium`` / ``part_diameter`` — the quench severity and section; too mild / too thick → soft core.
+    """
+
+    carbon: float = dc.REF_CARBON
+    dephosphorize: bool = True
+    deoxidizer: str = "Al"
+    degas_p_H2: float = dc.DEGAS_P_H2
+    desulfurize: bool = True
+    carbon_pickup: bool = False
+    cast_modulus: float = dc.CAST_MODULUS
+    quench_medium: str = dc.QUENCH_MEDIUM
+    part_diameter: float = dc.PART_DIAMETER
+
+
+#: The reference recipe — every knob at the capstone's sound value (``run_chain`` reproduces this).
+REFERENCE = Recipe()
+
+
+# --------------------------------------------------------------------------- #
+# 2. The stages — each a sealed Heat → Heat seam reading the player's recipe
 # --------------------------------------------------------------------------- #
 @dataclass(frozen=True)
 class Stage:
     """One turn of the chain: a sealed ``Heat`` → ``Heat`` seam plus its display name.
 
-    ``run`` takes the current ``Heat`` and the :class:`GameState` (so the one knob stage can read
-    ``state.carbon_target``) and returns the next ``Heat``. ``is_knob`` marks the single stage that
-    consumes a player choice (the F2 blow); all others auto-run a fixed-recipe seam. ``blurb`` is a
-    one-line "what this step does" for the UI (prose only — the *numbers* come from the ``Heat`` the seam
-    returns).
+    ``run`` takes the current ``Heat`` and the :class:`GameState` (so each stage can read the player's
+    :class:`Recipe`) and returns the next ``Heat``. ``knob`` names the :class:`Recipe` field this stage
+    consumes (``None`` for none); ``blurb`` is a one-line "what this step does" for the UI (prose only — the
+    *numbers* come from the ``Heat`` the seam returns).
     """
 
     name: str
     run: Callable[[Heat, "GameState"], Heat]
     blurb: str
-    is_knob: bool = False
+    knob: str | None = None
+
+
+def _skipped(heat: Heat, name: str, why: str) -> Heat:
+    """A deliberately-omitted stage: append one ``ProcessStep`` that changes nothing but records the choice.
+
+    Keeps the **one ``ProcessStep`` per turn** invariant true even when the player skips a refining step —
+    the trail then *tells the story* (the omission is a node, not a gap), and the latent flaw it leaves
+    rides on to the post-mortem unchanged.
+    """
+    step = ProcessStep(name, why, in_spec=None, flags_added=())
+    return heat.evolve(step)
 
 
 def _decarburize(heat: Heat, state: "GameState") -> Heat:
-    return ref.decarburize(heat, state.carbon_target)            # THE one knob: the player's blow endpoint
+    return ref.decarburize(heat, state.recipe.carbon)            # knob: the player's blow endpoint
 
 
 def _dephosphorize(heat: Heat, state: "GameState") -> Heat:
+    if not state.recipe.dephosphorize:
+        return _skipped(heat, "dephosphorize", "skipped — no basic slag, tramp phosphorus stays in the bath")
     return sl.dephosphorize(heat, dc.CONVERTER_SLAG)
 
 
 def _deoxidize(heat: Heat, state: "GameState") -> Heat:
-    return ref.deoxidize(heat, "Al", dc.DEOX_LEVEL)
+    # knob: the kill metal (Al strong / Si, Mn weak — the F1 Ellingham hierarchy); the level is the recipe's.
+    return ref.deoxidize(heat, state.recipe.deoxidizer, dc.DEOX_LEVEL)
 
 
 def _degas(heat: Heat, state: "GameState") -> Heat:
-    return ref.degas(heat, p_H2=dc.DEGAS_P_H2)
+    return ref.degas(heat, p_H2=state.recipe.degas_p_H2)         # knob: the vacuum depth
 
 
 def _desulfurize(heat: Heat, state: "GameState") -> Heat:
+    if not state.recipe.desulfurize:
+        return _skipped(heat, "desulfurize", "skipped — no reducing slag, tramp sulfur stays in the bath")
     return sl.desulfurize(heat, dc.LADLE_SLAG)
 
 
 def _trim(heat: Heat, state: "GameState") -> Heat:
-    return ld.trim_to_grade(heat, dc.GRADE)
+    # knob: high-carbon ferroalloys carry carbon into the bath (apply_carbon_pickup); reference is a clean trim.
+    return ld.trim_to_grade(heat, dc.GRADE, apply_carbon_pickup=state.recipe.carbon_pickup)
 
 
 def _cast(heat: Heat, state: "GameState") -> Heat:
     # The lone front-end seam that takes a Steel; cast_billet_onto re-bases the nominal section onto the
     # live Heat so the trail stays continuous (the promoted public seam — game.md §3 / casting).
-    return cast.cast_billet_onto(heat, modulus=dc.CAST_MODULUS).nominal_heat
+    return cast.cast_billet_onto(heat, modulus=state.recipe.cast_modulus).nominal_heat
 
 
 def _heat_treat(heat: Heat, state: "GameState") -> Heat:
-    return hs.heat_treat(heat, medium=dc.QUENCH_MEDIUM, diameter=dc.PART_DIAMETER)
+    return hs.heat_treat(heat, medium=state.recipe.quench_medium, diameter=state.recipe.part_diameter)
 
 
-# The chain AFTER the hot-metal charge (which is the origin, created by :func:`new_game`). The decarb blow
-# is the one knob; the rest auto-run. The order is the canonical refining order the capstone documents.
+# The chain AFTER the hot-metal charge (which is the origin, created by :func:`new_game`). Every stage reads
+# the player's recipe; the order is the canonical refining order the capstone documents.
 STAGES: tuple[Stage, ...] = (
     Stage("decarburize", _decarburize,
-          "Blow carbon out of the bath to your endpoint — the one knob you set.", is_knob=True),
+          "Blow carbon out of the bath to your endpoint — too far over-blows the heat off grade.",
+          knob="carbon"),
     Stage("dephosphorize", _dephosphorize,
-          "A basic converter slag pulls tramp phosphorus out — oxidizing, while the oxygen is high."),
+          "A basic converter slag pulls tramp phosphorus out — oxidizing, while the oxygen is high.",
+          knob="dephosphorize"),
     Stage("deoxidize", _deoxidize,
-          "An aluminium kill drops the dissolved oxygen the blow raised, booking alumina inclusions."),
+          "The kill metal drops the dissolved oxygen the blow raised — a weak one (Si, Mn) can't.",
+          knob="deoxidizer"),
     Stage("degas", _degas,
-          "A deep vacuum strips hydrogen below the flaking limit (and reports nitrogen)."),
+          "A deep vacuum strips hydrogen below the flaking limit — a shallow one leaves it in.",
+          knob="degas_p_H2"),
     Stage("desulfurize", _desulfurize,
-          "A reducing ladle slag pulls tramp sulfur out — reading the now-low oxygen the kill left."),
+          "A reducing ladle slag pulls tramp sulfur out — reading the now-low oxygen the kill left.",
+          knob="desulfurize"),
     Stage("trim", _trim,
-          "Ferroalloy additions bring the lean heat up to the 4140 alloy window."),
+          "Ferroalloy additions bring the lean heat up to the 4140 window — high-carbon alloys carry carbon.",
+          knob="carbon_pickup"),
     Stage("cast", _cast,
-          "Chvorinov solidification + Scheil centerline segregation — the billet is frozen."),
+          "Chvorinov solidification + Scheil centerline segregation — the segregation band the back end "
+          "inherits (an honest pass-through: no pass/fail lever on this grade).",
+          knob=None),
     Stage("heat-treat", _heat_treat,
-          "The oil quench the whole repo judges parts with: does the section through-harden?"),
+          "The oil quench the whole repo judges parts with: does the section through-harden?",
+          knob="quench_medium"),
 )
 
 
 # --------------------------------------------------------------------------- #
-# 2. The game state — the live Heat + the cursor + the one knob + the toggle
+# 3. The game state — the live Heat + the cursor + the player's recipe + the toggle
 # --------------------------------------------------------------------------- #
 @dataclass(frozen=True)
 class GameState:
@@ -119,15 +195,20 @@ class GameState:
 
     ``heat`` the **live** ``Heat`` — the current node of the immutable, append-only chain. ``stage`` the
     cursor: the index into :data:`STAGES` of the **next** stage to run (``0``..``len(STAGES)``;
-    ``len(STAGES)`` = the part is finished). ``carbon_target`` the player's blow endpoint, the one knob,
-    fixed at the start of the heat (Slice 0). ``educational`` the opt-in education toggle (``game.md`` §5).
-    Frozen, like ``Heat`` — :func:`advance` returns a *new* ``GameState``, never mutates.
+    ``len(STAGES)`` = the part is finished). ``recipe`` the player's choices, one knob per stage (Slice 1),
+    fixed at the start of the heat. ``educational`` the opt-in education toggle (``game.md`` §5). Frozen,
+    like ``Heat`` — :func:`advance` returns a *new* ``GameState``, never mutates.
     """
 
     heat: Heat
-    carbon_target: float
+    recipe: Recipe
     stage: int = 0
     educational: bool = False
+
+    @property
+    def carbon_target(self) -> float:
+        """The F2 blow endpoint (the Slice-0 one-knob view of the recipe) — back-compat convenience."""
+        return self.recipe.carbon
 
     @property
     def done(self) -> bool:
@@ -141,27 +222,31 @@ class GameState:
 
 
 # --------------------------------------------------------------------------- #
-# 3. The turn structure — new_game / advance / play_to_end
+# 4. The turn structure — new_game / advance / play_to_end
 # --------------------------------------------------------------------------- #
-def new_game(carbon_target: float, *, educational: bool = False) -> GameState:
-    """Start a heat: the hot-metal charge origin + the chosen blow endpoint, cursor at the first stage.
+def new_game(carbon_target: float | None = None, *, recipe: Recipe | None = None,
+             educational: bool = False) -> GameState:
+    """Start a heat: the hot-metal charge origin + the player's recipe, cursor at the first stage.
 
-    The origin is :func:`steel.refining.from_hot_metal` on the capstone's seeded, alloy-lean backbone
-    (single-sourced from :mod:`steel.demo_capstone`) — the *same* origin ``run_chain`` builds, so the
-    golden-run equality holds from step one. A "restart" is just calling this again.
+    Pass a full :class:`Recipe` (the Slice-1 gauntlet), or just a ``carbon_target`` (the Slice-0 one-knob
+    view — every other knob takes its reference value). The origin is
+    :func:`steel.refining.from_hot_metal` on the capstone's seeded, alloy-lean backbone (single-sourced
+    from :mod:`steel.demo_capstone`) — the *same* origin ``run_chain`` builds, so the golden-run equality
+    holds from step one. A "restart" is just calling this again.
     """
+    if recipe is None:
+        recipe = REFERENCE if carbon_target is None else replace(REFERENCE, carbon=float(carbon_target))
     charge = ref.from_hot_metal(dc.LEAN_BACKBONE, charge_carbon=dc.CHARGE_CARBON)
-    return GameState(heat=charge, carbon_target=float(carbon_target), stage=0, educational=educational)
+    return GameState(heat=charge, recipe=recipe, stage=0, educational=educational)
 
 
 def advance(state: GameState) -> GameState:
     """Run the **next** sealed stage on the live ``Heat`` and return a new ``GameState`` (one turn).
 
-    The whole turn structure: run ``STAGES[stage]`` on ``state.heat`` (the decarb blow reads
-    ``state.carbon_target``; the rest auto-run), advance the cursor by one. Because the seam returns a new
-    ``Heat`` with exactly one ``ProcessStep`` appended, the trail grows by **one** per turn — the
-    state-transition test pins that. Raises :class:`RuntimeError` if the heat is already finished (the UI
-    checks ``state.done`` first).
+    The whole turn structure: run ``STAGES[stage]`` on ``state.heat`` (reading ``state.recipe``), advance
+    the cursor by one. Because the seam returns a new ``Heat`` with exactly one ``ProcessStep`` appended,
+    the trail grows by **one** per turn — the state-transition test pins that. Raises :class:`RuntimeError`
+    if the heat is already finished (the UI checks ``state.done`` first).
     """
     if state.done:
         raise RuntimeError("the heat is finished — no stage left to advance (check state.done first)")
@@ -169,34 +254,52 @@ def advance(state: GameState) -> GameState:
     return replace(state, heat=stage.run(state.heat, state), stage=state.stage + 1)
 
 
-def play_to_end(carbon_target: float, *, educational: bool = False) -> GameState:
+def play_to_end(carbon_target: float | None = None, *, recipe: Recipe | None = None,
+                educational: bool = False) -> GameState:
     """Run a whole heat to the finished part — the headless driver the golden-run test and the demo use."""
-    state = new_game(carbon_target, educational=educational)
+    state = new_game(carbon_target, recipe=recipe, educational=educational)
     while not state.done:
         state = advance(state)
     return state
 
 
 # --------------------------------------------------------------------------- #
-# 4. The verdict readout — read the finished part off the Heat (pure formatting)
+# 5. The verdict readout — read the finished part off the Heat (pure formatting)
 # --------------------------------------------------------------------------- #
 def final_readout(state: GameState) -> dict:
-    """The finished-part verdict, read off the live ``Heat`` — sound vs soft-core, on-grade vs off-grade.
+    """The finished-part verdict, read off the live ``Heat`` — sound vs spoiled, on-grade vs off-grade.
 
-    Reads the back-end physics (``sweep.evaluate`` on the part composition, the *same* read
-    ``run_chain`` does) and the flags the chain raised. The verdict is **emergent, not scripted**: the
-    soft core is the martensite fraction crossing :data:`steel.heat_state.MIN_MARTENSITE_SPEC`, reached
-    through the player's blow choice. All formatting here, so the UI only forwards strings (+ the flags).
-    Raises if the heat is not finished (call after :attr:`GameState.done`).
+    Reads the back-end physics (``sweep.evaluate`` on the part composition, the *same* read ``run_chain``
+    does), the flags the chain itself raised (off-grade, soft-core, and the refining risk flags), and the
+    **gauntlet post-mortem** (:func:`game.postmortem.post_mortem`) — the sealed consequence engines run on
+    the finished part, reporting which latent flaw each wrong choice became. The post-mortem **does not
+    mutate** the canonical ``Heat`` (golden-run stays exact); it is a separate read. The verdict is
+    **emergent, not scripted**. All formatting here, so the UI only forwards strings (+ the flags). Raises
+    if the heat is not finished (call after :attr:`GameState.done`).
     """
+    from . import postmortem as pm
+
     if not state.done:
         raise RuntimeError("the heat is not finished yet — advance to the end before reading the verdict")
     part = state.heat
-    o = evaluate(part.as_steel(), medium=dc.QUENCH_MEDIUM, diameter=dc.PART_DIAMETER)
+    o = evaluate(part.as_steel(), medium=state.recipe.quench_medium, diameter=state.recipe.part_diameter)
     soft = part.has_defect(hs.SOFT_CORE)
     off_grade = part.has_defect(ld.OFF_GRADE)
-    sound = part.is_clean
     spec = hs.MIN_MARTENSITE_SPEC
+
+    consequences = pm.post_mortem(part, recipe=state.recipe)     # the manifested defects, stage by stage
+    spoiled = bool(consequences) or not part.is_clean
+    sound = not spoiled
+
+    if sound:
+        verdict = (f"SOUND part — {o.result.martensite:.0%} martensite (clears the {spec:.0%} spec), on "
+                   f"grade, every spec cleared end to end.")
+    else:
+        flaws = ", ".join(c.headline for c in consequences) if consequences else "off spec"
+        verdict = (f"SPOILED — {flaws}. "
+                   f"{o.result.martensite:.0%} martensite, {o.HV:.0f} HV. "
+                   f"A wrong call upstream propagated to the finished part.")
+
     return {
         "sound": sound,
         "soft_core": soft,
@@ -207,14 +310,8 @@ def final_readout(state: GameState) -> dict:
         "carbon": float(part.composition.C),
         "label": part.label(),
         "martensite_str": f"{o.result.martensite:.0%} martensite, {o.HV:.0f} HV",
-        "verdict": (
-            f"SOUND part — {o.result.martensite:.0%} martensite (clears the {spec:.0%} spec), on grade, "
-            f"every spec cleared end to end."
-            if sound else
-            f"{'OFF-GRADE + ' if off_grade else ''}"
-            f"{'SOFT CORE' if soft else 'off spec'} — only {o.result.martensite:.0%} martensite "
-            f"(under the {spec:.0%} spec). The blow endpoint propagated to the finished part."
-        ),
+        "consequences": [c.as_dict() for c in consequences],
+        "verdict": verdict,
         "trail": [
             {
                 "name": s.name,

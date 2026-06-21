@@ -19,6 +19,10 @@ physics and defines no physics constant. Its discipline is **structural** (`game
   physics. (`tests/test_game_golden_run.py`.)
 - **State-transition / label-correctness / endpoint-consistency** — one immutable `Heat` per turn;
   every educational number read live from the engine; the knob's curve is the validated F2 reading.
+- **Losability (Slice 1)** — the gauntlet's acceptance bar: every claimed knob has a wrong setting that
+  flips the finished-part verdict to a *distinct* defect, end to end (one test apiece). A green
+  firewall/golden-run says nothing about this — a gauntlet of cosmetic knobs would pass all of them.
+  (`tests/test_game_losability.py`.)
 
 ## Slice 0 — the hero heat, interactive
 
@@ -29,13 +33,27 @@ not reflex timing). Set the endpoint → the sealed chain runs a stage per turn 
 mode** adds why-cards on the one knob (prose may live here; every *number* is read live from the engine,
 every physics claim cites the engine's own source).
 
+## Slice 1 — the gauntlet (every stage a decision)
+
+Slice 0's critique was *"nothing to get wrong in the other steps."* Slice 1 answers it: a frozen `Recipe`
+gives **every stage a knob** (defaults = the capstone reference), and a wrong call plants a latent flaw the
+finished part is judged on by the **post-mortem** (`postmortem.py`), which runs the sealed consequence
+engines (`gas_porosity`, `hydrogen_flaking`, `hot_work` red-short, `hot_tear`, `cold_short_check`) on the
+part *without* mutating the spine — so the golden run stays exact. **Seven knobs are losable** (decarb →
+off-grade/soft-core, dephos → cold-short, **deox = the kill metal** Al ≫ Si > Mn → gas porosity, degas →
+flaking, desulf → sulfur over the cleanliness spec, trim carbon-pickup → off-grade, quench/section → soft
+core); **casting is an honest no-loss pass-through** (no pass/fail lever on this grade — stated, not faked).
+Take every recommendation and the part is sound — and reproduces `run_chain` exactly.
+
 ## Layout (the `app.py` three-layer discipline)
 
 | Module | Layer | Role |
 |---|---|---|
-| `state.py` | logic | the session-state schema + turn transitions (`Heat` in → `Heat` out), the verdict readout |
+| `state.py` | logic | the `Recipe` choices vector + session-state schema + turn transitions (`Heat` in → `Heat` out), the verdict readout |
 | `knobs.py` | logic | the blow τ-curve — validated C–O reads + the labelled flavor trajectory |
-| `teach.py` | logic | educational why-cards (prose here, numbers read live) |
+| `choices.py` | logic | the per-stage decision tables (named options; the recommended one reproduces the reference) |
+| `postmortem.py` | logic | the gauntlet judge — the sealed consequence engines run on the finished part (no spine mutation) |
+| `teach.py` | logic | educational why-cards, one per knob (prose here, numbers read live) |
 | `figures.py` | figure | the blow-curve figure (matplotlib imported lazily) |
 | `demo_game.py` | demo | the headless golden run (`python -m game.demo_game`) + figure bank |
 | `app_game.py` | ui | the **only** `import streamlit`; paper-thin `main()` |
@@ -44,13 +62,15 @@ every physics claim cites the engine's own source).
 
 ```powershell
 pip install -e ".[viz,app]"          # matplotlib (viz) + streamlit (app)
-python -m game.demo_game             # headless: play the chain twice (reference vs over-blow), bank the figure
-streamlit run game/app_game.py       # interactive: set the blow endpoint, run the chain a stage at a time
+python -m game.demo_game             # headless: play the gauntlet safe (sound) then rough (spoiled), bank the figure
+streamlit run game/app_game.py       # interactive: decide every stage, run the chain, read the post-mortem
 ```
 
-## Scope ceiling (Slice 0)
+## Scope ceiling (Slices 0–1)
 
-One method, one knob; **no reflex timing** (value-selection only — real-time timing is deferred to a
-non-Streamlit surface); the economy is a placeholder; educational mode is the toggle + why-cards tier.
-Slices 1+ (second knob + visible verified/flavor chips, the method/era tech tree, economy and discrete
-events) are specified in [`docs/plans/game.md`](../docs/plans/game.md) §6.
+One method, the 4140 route; **no reflex timing** (value-selection only — real-time timing is deferred to a
+non-Streamlit surface); the economy is a placeholder. Casting carries no losable lever on this grade (an
+honest pass-through, not a faked knob). Educational mode is the toggle + a why-card per decision; surfacing
+the verified-vs-flavor labels as styled UI **chips** + the physics-shape explainer (tier 2) is deferred.
+Slices 2+ (the method/era tech tree, economy and discrete events) are specified in
+[`docs/plans/game.md`](../docs/plans/game.md) §6.

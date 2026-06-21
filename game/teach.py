@@ -21,6 +21,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from steel import heat_state as hs
+from steel import hydrogen_flaking as hf
+from steel import slag as sl
+
 from . import knobs as kn
 
 # The two label tiers (the verified-vs-flavor contract, ``game.md`` §5.3 / ``steel-making.md`` §15.5).
@@ -92,16 +96,76 @@ def blow_why_cards(carbon_target: float) -> list[WhyCard]:
     ]
 
 
+def knob_why_cards(knob: str, *, carbon_target: float | None = None) -> list[WhyCard]:
+    """The tier-1 why-cards for a stage's knob — what the decision does and what a wrong call plants.
+
+    The carbon blow delegates to :func:`blow_why_cards` (the τ-curve, numbers moving with the slider). Every
+    other knob gets a **verified** card: it names the engine's own spec/threshold (read live from the model
+    constant, so the quoted number tracks the engine, never a baked string) and the defect a wrong choice
+    becomes. The desulfurization card is the honest one — it states the manganese-tie masking outright (the
+    sulfur stays over spec, but does not red-short), turning the gauntlet's subtlest physics into the lesson.
+    """
+    if knob == "carbon":
+        return blow_why_cards(carbon_target if carbon_target is not None else kn.grade_carbon_aim())
+
+    lo, hi = kn.grade_carbon_window()
+    product = kn.carbon_oxygen_product()
+    cards = {
+        "dephosphorize": WhyCard(
+            "Why dephosphorize",
+            f"Tramp phosphorus must come below {sl.MAX_PHOSPHORUS_PCT:.3f} %. A basic, oxidizing converter "
+            f"slag pulls it out while the dissolved oxygen is still high (the right order). Skip it and the "
+            f"phosphorus rides on — it raises the ductile-to-brittle transition over service temperature, "
+            f"so the finished part is cold-short (it cracks cold).",
+            VERIFIED, "slag.MAX_PHOSPHORUS_PCT / grain Pickering DBTT"),
+        "deoxidizer": WhyCard(
+            "Why the kill metal matters",
+            f"Aluminium is a far stronger deoxidizer than silicon or manganese — the F1 Ellingham order "
+            f"Al ≫ Si > Mn. A strong Al kill drops dissolved oxygen far below the carbon–oxygen line "
+            f"([%C]·[%O] ≈ {product:.4f} at tap); a weak Si or Mn kill cannot, so at the cast the bath is "
+            f"still over the CO product and the casting blows gas-porosity holes.",
+            VERIFIED, "refining.DEOXIDIZERS / gas_porosity"),
+        "degas_p_H2": WhyCard(
+            "Why degas",
+            f"Dissolved hydrogen must be vacuum-stripped below {hf.CRITICAL_FLAKING_H_PPM:.0f} ppm. A deep "
+            f"vacuum does it; a shallow one leaves hydrogen in, and as the section cools the trapped hydrogen "
+            f"precipitates into internal hairline cracks — flakes.",
+            VERIFIED, "hydrogen_flaking.CRITICAL_FLAKING_H_PPM / Sieverts"),
+        "desulfurize": WhyCard(
+            "Why desulfurize (and the manganese catch)",
+            f"Tramp sulfur must come below {sl.MAX_SULFUR_PCT:.3f} %. A reducing ladle slag pulls it out, "
+            f"reading the now-low oxygen the kill left. Skip it and the sulfur stays — but here is the catch: "
+            f"the trim's manganese ties it up as high-melting MnS, so the heat does NOT red-short at this "
+            f"level. It is still over the cleanliness spec, though — off-grade dirty.",
+            VERIFIED, "slag.MAX_SULFUR_PCT / hot_work Mushet Mn:S"),
+        "carbon_pickup": WhyCard(
+            "Why the ferroalloy carbon matters",
+            f"High-carbon ferroalloys (FeMn, FeCr at 6–8 %C) carry carbon into the bath as they dissolve. "
+            f"On a heat already blown to the 4140 aim, that pickup pushes carbon over the {hi:.2f} % grade "
+            f"ceiling — off-grade, and over-hard. Low-carbon ferroalloys hit the alloy window cleanly.",
+            VERIFIED, "ladle.carbon_pickup_pct / GRADE_WINDOWS"),
+        "quench_medium": WhyCard(
+            "Why the quench and section matter",
+            f"The section has to through-harden to at least {hs.MIN_MARTENSITE_SPEC:.0%} martensite. Too mild "
+            f"a quench (air) or too thick a bar cools the core below the critical rate, so it transforms to "
+            f"softer products — a soft core under a hard case. Oil at the reference section clears the spec.",
+            VERIFIED, "sweep.evaluate / heat_state.MIN_MARTENSITE_SPEC"),
+    }
+    cards["part_diameter"] = cards["quench_medium"]               # the heat-treat pair share one why-card
+    return [cards[knob]] if knob in cards else []
+
+
 def intro_text(educational: bool) -> str:
     """The startup blurb — one line, longer when educational mode is on (the toggle's first visible effect)."""
     base = (
-        "Make one heat of 4140 the whole way — set the decarb blow endpoint, then run the sealed chain "
-        "and see whether the part comes out sound or soft-cored."
+        "Make one heat of 4140 the whole way — every stage is a decision (blow endpoint, slags, kill metal, "
+        "vacuum, ferroalloys, quench). Take every recommendation and the part comes out sound; one wrong "
+        "call plants a flaw — porosity, flaking, cold-short, off-grade — that the finished part is judged on."
     )
     if not educational:
         return base
     return (
-        base + " **Educational mode is on:** each knob carries why-cards explaining what it does, what "
-        "over- and under-shoot mean, and the validated target — every number read live from the engine, "
-        "every physics claim citing the model's own source (game-feel bits are labelled “plausible”)."
+        base + " **Educational mode is on:** each decision carries a why-card explaining what it does and "
+        "the defect a wrong call becomes — every number read live from the engine, every physics claim "
+        "citing the model's own source (game-feel bits are labelled “plausible”)."
     )

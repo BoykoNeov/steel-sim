@@ -7,8 +7,19 @@
 > wired. The one engine touch the slice needed was promoting `demo_capstone`'s
 > demo-local casting re-base to the public `casting.cast_billet_onto` seam (its
 > documented promotion trigger — done as a behaviour-preserving refactor, the
-> capstone's `print_summary` output byte-identical). Slices 1–3 below remain
-> plan-only. The rest of this document is the build plan that **promotes** the game
+> capstone's `print_summary` output byte-identical).
+>
+> **Status: Slice 1 BUILT ✓ (2026-06-21) — the gauntlet.** Scope was widened from the
+> plan's original "second knob (deox kill)" to **every stage a decision** (the user's
+> call): a frozen `Recipe` (one knob per stage, defaults = the capstone reference) +
+> `choices.py` (tested option tables) + `postmortem.py` (the sealed consequence
+> engines run on the finished part, never mutating the spine, so the golden run stays
+> exact). **Seven knobs are genuinely losable** (probed empirically, one losability
+> test each — the advisor's acceptance bar); **casting is an honest no-loss
+> pass-through** (no pass/fail lever on 4140 — said so, not faked); deox became the
+> **deoxidizer-choice** knob (Al ≫ Si > Mn) and desulf is losable via the **cleanliness
+> spec** (the trim's Mn masks red-short — the masking became the lesson). Slices 2–3
+> below remain plan-only. The rest of this document is the build plan that **promotes** the game
 > *doctrine* —
 > already written in depth in `steel-making.md` **§8** (the firewall), **§15**
 > (methods as paths through the built engines), and **§16** (the Tier-3
@@ -232,14 +243,30 @@ before it grows).
 - **Ceiling.** One method, one knob; **no reflex timing** (value-selection only,
   §3.3); economy is a placeholder; educational mode = toggle + why-cards only.
 
-### Slice 1 — the second knob + the verified-vs-flavor chips made visible
-- Add the **deox kill** knob (Type B — the real dissolved-O **minimum** at
-  ~0.074 % Al, `e_O^Al = −3.9`, §16.2/§16.3): a second value-selection on a
-  τ-curve, under → O retained, over → alumina clusters.
-- Surface the **verified-vs-flavor label as UI chips** (citation chip for verified
-  numbers; "plausible" watermark for feel-tuned τ) — the firewall becomes a
-  *visible feature*, not just a code rule.
-- Educational mode grows to **tier 2** (the physics-shape explainer).
+### Slice 1 — the gauntlet (every stage a decision) — **BUILT ✓ 2026-06-21**
+**As-built (scope widened from the original "second knob" plan, the user's call).** Slice 0's
+critique was *"nothing to get wrong in the other steps."* Slice 1 answers it: **every stage is a
+decision**, each wrong call planting a latent flaw the finished part is judged on by the sealed
+consequence engines.
+- **Spine.** A frozen `Recipe` carries one knob per stage, every field defaulting to the capstone
+  reference; each stage seam reads its choice. The canonical `Heat` is still built only from the eight
+  stage seams → `play_to_end(reference) == run_chain` holds **verbatim** (golden run preserved).
+- **Post-mortem (`postmortem.py`).** The consequence engines (`gas_porosity`, `hydrogen_flaking`,
+  `hot_work` red-short, `hot_tear`, `cold_short_check`) run on the **finished part** without mutating
+  the spine, attributing each defect to the stage that planted it. Cold-short is P-gated (carbon also
+  raises DBTT — that's the carbon mistake, not the dephos knob).
+- **Losability is the acceptance bar (the advisor's block).** Seven knobs are genuinely losable, each
+  with one test proving a wrong setting flips the verdict end-to-end: decarb (off-grade/soft-core),
+  dephos (cold-short), **deox = deoxidizer choice** Al ≫ Si > Mn (gas porosity), degas (flaking),
+  desulf (**sulfur over the cleanliness spec** — the trim's Mn ties it so it does *not* red-short; the
+  masking became the lesson), trim carbon-pickup (off-grade), heat-treat quench/section (soft core).
+- **Casting is an honest no-loss pass-through** — modulus only sets the Chvorinov time, segregation is
+  `fs`-based and lands on the centerline not the judged nominal, and there is no validated casting spec
+  to cross. Reported plainly (a pinned test), **not** shipped as a fake slider.
+- **`choices.py`** holds the tested option tables (every "recommended" option provably reproduces the
+  reference); **educational mode** grows a **why-card per knob** (numbers read live, the threshold each
+  engine cites). Surfacing the verified-vs-flavor labels as styled UI chips + the physics-shape
+  explainer (tier 2) is **deferred** to a later pass — the labels exist; the *chip styling* did not ship.
 
 ### Slice 2 — methods & the era ramp (the tech tree)
 - Turn the **§15.2 method→engine map** into a `game/` **method-preset table**
@@ -330,16 +357,17 @@ citation (§5.3). Flavor (τ values, economy, discrete-event rates) is original 
 ## 11. Sequencing & immediate next step
 
 **Build order:** Slice 0 (playable capstone + educational toggle) → Slice 1
-(deox knob + visible chips) → Slice 2 (methods + the era ramp) → Slice 3+
+(the gauntlet — every stage a decision) → Slice 2 (methods + the era ramp) → Slice 3+
 (economy / flavor / discrete events). **Stop and play after each.**
 
-**Immediate next step.** **Slice 0 is BUILT ✓ (2026-06-21)** — the `game/` package
-stands up with the firewall guard, the session-state surface (§3), the one Type-B
-blow knob as value-selection (§3.3), the educational toggle + why-cards (§5.2 tier
-1), and the four structural tests (§8), on the proven capstone chain. (The one
-engine touch — promoting the casting re-base to a public `casting.cast_billet_onto`
-seam — closed the capstone's documented promotion trigger; it was a
-behaviour-preserving refactor, `print_summary` byte-identical.) The next build is
-**Slice 1**: the second knob (the deox kill, §16.2/§16.3) + the verified-vs-flavor
-labels surfaced as visible UI chips + educational tier 2 (the physics-shape
-explainer). Stop and play first.
+**Immediate next step.** **Slices 0 and 1 are BUILT ✓ (2026-06-21).** Slice 0 stood up
+the `game/` package (firewall guard, the session-state surface §3, the Type-B blow knob
+§3.3, the educational toggle §5.2, the structural tests §8) on the proven capstone chain.
+Slice 1 made **every stage a decision** (the gauntlet, scope widened from the original
+"deox knob" by the user): a `Recipe` choices vector + `choices.py` option tables +
+`postmortem.py` (the sealed consequence engines judging the finished part), with
+**losability** as the acceptance bar (seven losable knobs, one test each; casting an
+honest no-loss pass-through). The next build is **Slice 2** (methods & the era ramp — the
+§15.2 method-preset table + the purity-control progression), or the **deferred Slice-1
+polish**: the verified-vs-flavor labels surfaced as styled UI chips + educational tier 2
+(the physics-shape explainer). Stop and play first.

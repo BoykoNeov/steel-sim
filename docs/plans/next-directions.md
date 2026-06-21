@@ -25,15 +25,18 @@ casting — each a `Heat` recipe + the set of §6 flags it can fire + a per-fiel
 **verified-vs-flavor** label. **Both §15.4 physics gaps are now closed** (P/S slag
 partition; wootz V/Mo banding), so this is fully grounded — orchestration + UX, no
 physics left to invent. **Size: large.** **Status: build plan written (2026-06-21)
-→ `docs/plans/game.md`; Slice 0 BUILT ✓ 2026-06-21.** The `game/` package is stood
-up — the B2 capstone chain made playable behind the one F2 blow-endpoint knob
-(value-selection on the C–O τ-curve), the stateful immutable-`Heat` turn surface,
-the opt-in educational why-cards (numbers read live), and the four structural tests
-(firewall + golden-run + state-transition + label/endpoint-consistency). The one
-engine touch the slice needed was promoting `demo_capstone`'s demo-local casting
-re-base to a public `casting.cast_billet_onto` seam (its documented promotion
-trigger). Slices 1+ (second knob, the method/era tech tree, economy) remain. The
-repo-split is deferred; the in-repo `game/` home was authorized.
+→ `docs/plans/game.md`; Slices 0 AND 1 BUILT ✓ 2026-06-21.** Slice 0 stood the
+`game/` package up (the B2 capstone chain made playable behind the F2 blow-endpoint
+knob, the immutable-`Heat` turn surface, educational why-cards, the structural tests;
+the one engine touch was promoting `demo_capstone`'s casting re-base to the public
+`casting.cast_billet_onto` seam). **Slice 1 = the gauntlet** (scope widened from the
+plan's "deox knob" by the user): **every stage a decision** (a `Recipe` choices vector
++ `choices.py` option tables + `postmortem.py`, the sealed consequence engines judging
+the finished part), with **losability** as the acceptance bar — seven losable knobs
+(decarb, dephos, deoxidizer-choice, degas, desulf-via-cleanliness-spec, carbon-pickup,
+quench), one test each; casting an honest no-loss pass-through (no pass/fail lever on
+4140). Slices 2+ (the method/era tech tree, economy) remain. The repo-split is
+deferred; the in-repo `game/` home was authorized.
 
 ### A2. P → DBTT slope — the one still-unpinned *physics* piece
 `steel-making.md` §14.5 flags it: the P→strength axis carries teeth (Thiele–Hošek,

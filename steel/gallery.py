@@ -475,17 +475,19 @@ CATALOG: tuple[Entry, ...] = (
     ),
     Entry(
         "Game (playable spinoff)", "demo_game", "steel-game-blow.png",
-        "Make one heat — the production chain, playable",
-        "The capstone chain made PLAYABLE (Slice 0 of the game/ spinoff): you set ONE knob — the F2 decarb "
-        "blow endpoint — and the sealed engines run the rest, one stage per turn, until the part is judged "
-        "sound or soft-cored. Value-selection on the C–O τ-curve: stop in the grade window and the part "
-        "through-hardens; over-blow and dissolved oxygen climbs while the carbon shortfall soft-cores it "
-        "two stages later — the back-end physics, reached through play (not a scripted failure). The live "
-        "Heat's provenance trail is the post-mortem; an opt-in educational mode adds why-cards on the knob, "
-        "every number read live from the engine. The one package that clears no physics triad by design — "
-        "game/ orchestrates, it reimplements nothing — so its discipline is structural (firewall + "
-        "golden-run determinism: stepping the chain reproduces the sealed capstone's verdict exactly), the "
-        "same class as the Heat spine and the capstone. Headless here; the interactive version is "
+        "Make one heat — the production chain, as a gauntlet",
+        "The capstone chain made PLAYABLE (the game/ spinoff, Slice 1): EVERY stage is a decision — blow "
+        "endpoint, dephosphorization, the kill metal (Al ≫ Si > Mn), the vacuum, desulfurization, the "
+        "ferroalloys, the quench. Take every recommendation and the part comes out sound — and reproduces "
+        "the sealed capstone golden run EXACTLY; one wrong call plants a latent flaw the finished part is "
+        "judged on: a weak kill blows gas porosity, a shallow vacuum flakes, skipped dephos goes cold-short, "
+        "carbon pickup runs off-grade. The verdicts are the sealed consequence engines' own, read off the "
+        "one Heat in a post-mortem — not scripted branches (the acceptance bar is losability: each knob has "
+        "a wrong setting that flips the verdict, pinned by a test). Casting is an honest pass-through (no "
+        "pass/fail lever on this grade — said so, not faked). Opt-in educational mode adds a why-card per "
+        "decision, every number read live from the engine. The one package that clears no physics triad by "
+        "design — game/ orchestrates, it reimplements nothing — so its discipline is structural (firewall + "
+        "golden-run determinism + losability). Headless here; the interactive version is "
         "`streamlit run game/app_game.py`.",
         app="make one heat", package="game",
     ),

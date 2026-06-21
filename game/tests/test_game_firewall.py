@@ -13,7 +13,7 @@ from pathlib import Path
 import game
 
 GAME_DIR = Path(game.__file__).resolve().parent
-LOGIC_MODULES = ("state", "knobs", "teach")          # the pure-logic layer (no streamlit, no matplotlib)
+LOGIC_MODULES = ("state", "knobs", "teach", "choices", "postmortem")   # pure logic (no streamlit/matplotlib)
 
 
 def _source(stem: str) -> str:

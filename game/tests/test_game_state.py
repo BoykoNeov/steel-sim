@@ -6,6 +6,8 @@ sealed stage and the trail grows by **exactly one** ``ProcessStep``, the receive
 restart resets to a fresh origin. These pin that the game *drives* the spine's history rather than
 inventing its own.
 """
+import dataclasses
+
 import pytest
 
 from game import state as gs
@@ -56,7 +58,24 @@ def test_restart_resets_cleanly():
     assert played.done and not fresh.done               # the old state is independent, unchanged
 
 
-def test_only_the_blow_stage_reads_the_player_knob():
-    # The Slice-0 ceiling: exactly one stage consumes a player value (the decarb blow); the rest auto-run.
-    knob_stages = [s.name for s in gs.STAGES if s.is_knob]
-    assert knob_stages == ["decarburize"]
+def test_every_stage_but_cast_carries_a_player_knob():
+    # The Slice-1 gauntlet: every stage is a decision except casting, which is an honest pass-through
+    # (no pass/fail lever on this grade — modulus only sets the Chvorinov time).
+    knob_stages = {s.name: s.knob for s in gs.STAGES}
+    assert knob_stages["cast"] is None
+    assert all(s.knob is not None for s in gs.STAGES if s.name != "cast")
+
+
+def test_every_stage_knob_names_a_real_recipe_field():
+    # Each stage's knob must point at an actual Recipe field, or the UI/attribution would dangle.
+    recipe_fields = {f.name for f in dataclasses.fields(gs.Recipe)}
+    for stage in gs.STAGES:
+        if stage.knob is not None:
+            assert stage.knob in recipe_fields, f"{stage.name} knob {stage.knob!r} not a Recipe field"
+
+
+def test_reference_recipe_reproduces_the_capstone_and_is_the_default():
+    # REFERENCE = every knob at the capstone's sound value; new_game() with no args plays it.
+    assert gs.REFERENCE == gs.Recipe()
+    assert gs.new_game().recipe == gs.REFERENCE
+    assert gs.new_game(REF_CARBON).recipe.carbon == REF_CARBON

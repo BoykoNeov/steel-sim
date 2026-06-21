@@ -1,12 +1,12 @@
-"""The game's headless golden run — play the Slice-0 heat twice and bank the blow-curve figure.
+"""The game's headless golden run — play the gauntlet sound, then rough, and bank the blow-curve figure.
 
 The runnable face of the ``game/`` package (the gallery card's ``python -m game.demo_game``): it plays the
-playable chain headless at two blow endpoints — the **reference** (on-aim) and an **over-blow** — and
-prints the contrast the interactive app lets you reach by hand. It is the same golden run the
-``test_game_golden_run`` tooth pins: stepping the game chain reproduces ``demo_capstone.run_chain``'s
-sealed verdict exactly, so the reference lands a sound part and the over-blow soft-cores — **no physics
-here, only orchestration** (``game.md`` §2). It also banks the blow-endpoint τ-curve figure (the value
-selection surface) for the gallery's *Game* card.
+chain headless two ways — the **reference** (take every recommendation → a sound part, reproducing
+``demo_capstone.run_chain`` exactly) and a **rough heat** (several wrong calls → a part the post-mortem
+condemns) — and prints the contrast the interactive app lets you reach by hand. The sound run is the same
+golden run the ``test_game_golden_run`` tooth pins (the recipe never drifts off the reference), and every
+losing defect is the sealed engines' own verdict on the one ``Heat`` — **no physics here, only orchestration**
+(``game.md`` §2). It also banks the blow-endpoint τ-curve figure for the gallery's *Game* card.
 
 Run it::
 
@@ -15,37 +15,53 @@ Run it::
 """
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 
-from . import knobs as kn
+from steel.demo_capstone import REF_CARBON
+
+from . import choices as ch
 from . import state as gs
-from steel.demo_capstone import FOIL_CARBON, REF_CARBON
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
+# A rough heat — a handful of deliberate wrong calls, each planting a different latent flaw the sealed
+# post-mortem engines surface on the finished part (skipped dephos → cold-short; a weak Mn kill → gas
+# porosity; a shallow vacuum → flaking; skipped desulf → sulfur over the cleanliness spec).
+ROUGH = dataclasses.replace(
+    gs.REFERENCE, dephosphorize=False, deoxidizer="Mn", degas_p_H2=ch.DEGAS_SHALLOW, desulfurize=False,
+)
 
-def _play(carbon_target: float) -> dict:
+
+def _play(recipe: gs.Recipe) -> dict:
     """Play one heat to the finished part and return its verdict readout (the tested helper)."""
-    return gs.final_readout(gs.play_to_end(carbon_target))
+    return gs.final_readout(gs.play_to_end(recipe=recipe))
+
+
+def _print_heat(title: str, recipe: gs.Recipe) -> None:
+    r = _play(recipe)
+    print(f"{title}:")
+    for step in r["trail"]:
+        print(f"    {step['mark']} {step['name']}: {step['summary']}")
+    print(f"    → {r['verdict']}")
+    if r["consequences"]:
+        print("    post-mortem — what each wrong call became:")
+        for c in r["consequences"]:
+            print(f"        ✗ {c['headline']} (planted at {c['planted_by']}): {c['detail']}")
+    print()
 
 
 def print_summary() -> None:
-    """Print the two-endpoint contrast — the same single-knob story the app surfaces, played headless."""
-    lo, hi = kn.grade_carbon_window()
-    print("\nThe playable chain (Slice 0) — one heat of 4140, you set the F2 decarb blow endpoint.\n")
-    print(f"The grade carbon window is {lo:.2f}–{hi:.2f} % (aim {kn.grade_carbon_aim():.2f} %); the only "
-          "knob is where you stop the blow. Two heats, the identical chain otherwise:\n")
+    """Print the gauntlet contrast — the same chain, played safe then rough, judged by the sealed engines."""
+    print("\nThe gauntlet (Slice 1) — one heat of 4140, every stage a decision.\n")
+    print("Take every recommendation and the heat comes out sound — and reproduces the capstone reference "
+          "exactly. Get a stage wrong and you plant a flaw the finished part is judged on:\n")
 
-    for label, carbon in (("Reference — on aim", REF_CARBON), ("Over-blow — too far", FOIL_CARBON)):
-        r = _play(carbon)
-        pos = kn.endpoint_position(carbon)
-        print(f"{label} ({carbon:.2f} %C, {pos.oxygen_ppm:.0f} ppm O at the blow):")
-        for step in r["trail"]:
-            print(f"    {step['mark']} {step['name']}: {step['summary']}")
-        print(f"    → {r['verdict']}\n")
+    _print_heat(f"Reference — every recommendation (blow {REF_CARBON:.2f} %C)", gs.REFERENCE)
+    _print_heat("Rough heat — skip the dephos, a weak Mn kill, a shallow vacuum, skip the desulf", ROUGH)
 
-    print("Same chain, one knob: stop in the window and the part through-hardens; over-blow and the carbon "
-          "shortfall soft-cores it two stages later — the back-end physics, reached through play.")
+    print("Same chain, same sealed engines: the recommendations land a sound part; the wrong calls each "
+          "leave a latent flaw — over-oxidized, gassy, dirty — that surfaces only when the part is judged.")
 
 
 def main() -> None:
@@ -57,9 +73,9 @@ def main() -> None:
     try:
         from .figures import save_figure
         saved = save_figure(REF_CARBON)
-        print(f"\nFigure saved → {saved.relative_to(_REPO_ROOT)}")
+        print(f"Figure saved → {saved.relative_to(_REPO_ROOT)}")
     except ImportError:
-        print("\n(matplotlib not installed — install the viz extra to render the figure: "
+        print("(matplotlib not installed — install the viz extra to render the figure: "
               "pip install -e .[viz])")
 
 
