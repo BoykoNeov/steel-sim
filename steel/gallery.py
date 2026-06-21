@@ -469,6 +469,7 @@ CATALOG: tuple[Entry, ...] = (
         "the longest propagation in the repo, one mistake surfaced two stages apart. Integration, not new "
         "physics: every number comes from a sealed engine, and the lone seam that takes a Steel (casting) "
         "is re-based onto the Heat so the trail stays continuous.",
+        notebook="§capstone",
     ),
 )
 
