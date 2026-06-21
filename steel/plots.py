@@ -2032,6 +2032,91 @@ def heat_state_figure(d):
     return fig
 
 
+def capstone_figure(d):
+    """The full-chain capstone: one Heat threaded ore → billet → part, the front-meets-back seam made concrete.
+
+    ``d`` is a :class:`~steel.demo_capstone.CapstoneDemo` (already-computed scalars — this layer only draws
+    them, ADR 0002). Like :func:`heat_state_figure`, the capstone adds no physics; the figure draws the two
+    structural teeth of the integration. Two panels:
+
+    * **left — the finished part (the back-end verdict).** The reference and the over-blown foil take the
+      *identical* chain and the *same* oil quench; only the F2 blow endpoint differs. The core-martensite
+      bars straddle the :data:`~steel.heat_state.MIN_MARTENSITE_SPEC` line: the reference clears it (a sound
+      part); the foil falls under → the **soft-core** flag (and **off-grade** caught upstream at the trim).
+      The failure is not scripted — it is the back-end martensite fraction crossing the spec line, carried
+      on the same ``Heat`` that came from the furnace.
+    * **right — the heat through the full chain (the front-end proof).** The seeded tramp phosphorus and
+      sulfur, traced as residual wt % across the route (charge → dephos → desulf → cast part) on a log axis,
+      driven below their spec lines: phosphorus out in the oxidizing converter, sulfur out in the reducing
+      ladle — the ore→billet half that made the on-spec billet the back end then judged.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_part, ax_ps) = plt.subplots(1, 2, figsize=(13.0, 5.4),
+                                         gridspec_kw={"width_ratios": [1.0, 1.25]})
+    warn = "#c0392b"
+    ref_c, foil_c = d.reference, d.foil
+
+    # --- left: the finished part — same chain, same quench, the blow endpoint decides --------- #
+    fracs = [ref_c.part_martensite, foil_c.part_martensite]
+    hvs = [ref_c.part_HV, foil_c.part_HV]
+    labels = [f"reference\n(blown to {ref_c.carbon_target:.2f} %C)",
+              f"over-blown foil\n({foil_c.carbon_target:.2f} %C)"]
+    colors = [PHASE_COLORS["martensite"], warn]
+    x = np.arange(2)
+    ax_part.bar(x, fracs, width=0.58, color=colors, edgecolor="0.25", zorder=3)
+    ax_part.axhline(d.spec, color="0.35", ls="--", lw=1.6, zorder=2)
+    # The spec label sits in the empty gap between the two bars, so it never collides with the foil
+    # bar's value annotation (the foil lands just under the line — close enough to clash on the right).
+    ax_part.annotate(f"soft-core spec  (≥ {d.spec:.0%} martensite)", (0.5, d.spec),
+                     textcoords="offset points", xytext=(0, 4), ha="center", va="bottom",
+                     fontsize=8.6, color="0.3")
+    for xi, frac, hv in zip(x, fracs, hvs):
+        ax_part.annotate(f"{frac:.0%}\n{hv:.0f} HV", (xi, frac), textcoords="offset points",
+                         xytext=(0, 5), ha="center", va="bottom", fontsize=10, fontweight="bold",
+                         color="0.15")
+    ax_part.annotate("OFF GRADE (F3)\n+ SOFT CORE", (1, foil_c.part_martensite),
+                     textcoords="offset points", xytext=(0, 34), ha="center", fontsize=9,
+                     color=warn, fontweight="bold",
+                     bbox=dict(boxstyle="round,pad=0.3", fc="white", ec=warn, lw=1.0))
+    ax_part.set_xticks(x)
+    ax_part.set_xticklabels(labels, fontsize=9)
+    ax_part.set_ylabel("core martensite fraction")
+    ax_part.set_ylim(0.0, 1.12)
+    ax_part.set_title("The finished part — one mistake at the blow,\nthe soft core at the quench",
+                      fontsize=10.2)
+    ax_part.grid(True, axis="y", alpha=0.25)
+
+    # --- right: the seeded tramp driven below spec across the route ---------------------------- #
+    stages = ["hot-metal\ncharge", "after\ndephos", "after\ndesulf", "cast\npart"]
+    p_color, s_color = _SOLUTE_COLORS["P"], _SOLUTE_COLORS["S"]
+    xs = np.arange(len(stages))
+    w = 0.38
+    ax_ps.bar(xs - w / 2, ref_c.p_trail, w, color=p_color, edgecolor="0.25", zorder=3, label="phosphorus")
+    ax_ps.bar(xs + w / 2, ref_c.s_trail, w, color=s_color, edgecolor="0.25", zorder=3, label="sulfur")
+    ax_ps.axhline(d.p_spec, color=p_color, ls="--", lw=1.3, alpha=0.8)
+    ax_ps.axhline(d.s_spec, color=s_color, ls="--", lw=1.3, alpha=0.8)
+    # P / S spec lines sit close on the log axis — label P below its line in the clear central gap and
+    # S above its line at the right end, so they never overprint each other or the tall charge bars.
+    ax_ps.annotate(f"P spec {d.p_spec:.3f} %", (1.5, d.p_spec), ha="center", va="top",
+                   fontsize=7.8, color=p_color)
+    ax_ps.annotate(f"S spec {d.s_spec:.3f} %", (len(stages) - 1 + 0.4, d.s_spec), ha="right", va="bottom",
+                   fontsize=7.8, color=s_color)
+    ax_ps.set_xticks(xs)
+    ax_ps.set_xticklabels(stages, fontsize=8.6)
+    ax_ps.set_yscale("log")
+    ax_ps.set_ylabel("residual content  (wt %)")
+    ax_ps.set_title("The front end did its job — seeded tramp P/S\ndriven below spec along the chain",
+                    fontsize=10.2)
+    ax_ps.grid(True, which="both", axis="y", alpha=0.22)
+    ax_ps.legend(fontsize=8.6, loc="upper right")
+
+    fig.suptitle("Full-chain capstone — one Heat carried from the furnace to a judged part",
+                 fontsize=12.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.86, bottom=0.13, wspace=0.24)
+    return fig
+
+
 # Solute line colours for the Scheil profile — impurities (S, P) hot/dark (the dangerous segregators),
 # carbon warm (over-predicted), the substitutional alloys cool.
 _SOLUTE_COLORS = {

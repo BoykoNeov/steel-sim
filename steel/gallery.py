@@ -456,6 +456,20 @@ CATALOG: tuple[Entry, ...] = (
         "the empirical worst — the exact worst-carbon needs δ→γ kinetics + shell mechanics (underdetermined).",
         notebook="§D7",
     ),
+    Entry(
+        "Full-chain capstone (front-end)", "demo_capstone", "steel-capstone.png",
+        "Ore → billet → part — one Heat, the whole chain",
+        "The synthesis the front and back halves were each built toward: ONE Heat threaded the whole way "
+        "— hot-metal charge → decarburize → dephosphorize → deoxidize → degas → desulfurize → trim to "
+        "grade → cast → quench — on a single, un-rewritten provenance trail (until now the stages were "
+        "only ever shown independently). Two heats take the identical chain and differ by a SINGLE knob, "
+        "the F2 blow endpoint: the reference (blown to the grade carbon) lands a sound part — on grade, "
+        "through-hardened, the seeded tramp P/S driven below spec end to end; the over-blown foil "
+        "(0.25 %C) is wrong from the blow, caught off-grade at the trim, and soft-cores at the quench — "
+        "the longest propagation in the repo, one mistake surfaced two stages apart. Integration, not new "
+        "physics: every number comes from a sealed engine, and the lone seam that takes a Steel (casting) "
+        "is re-based onto the Heat so the trail stays continuous.",
+    ),
 )
 
 

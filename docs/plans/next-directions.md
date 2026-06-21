@@ -71,12 +71,24 @@ critical-flaw-size gate). It is the one direction here that needs *new* cited
 physics and its own validation triad. **Size: medium–large.** **Status: discussed,
 unscoped** (the user's stated interest as of 2026-06-15).
 
-### B2. Full-chain capstone — ore→billet→part in one narrated run
-The apps and notebooks are currently split front (`making`) / back (heat-treat). A
-single capstone run/notebook that threads one `Heat` from reduction through casting,
-refining, ladle trim, and heat treatment to a finished part would make the
-front-meets-back seam concrete. **Integration + pedagogy, no new physics.** **Size:
-small–medium.** **Status: idea.**
+### B2. Full-chain capstone — ore→billet→part in one narrated run — **BUILT ✓ 2026-06-21**
+The apps and notebooks were split front (`making`) / back (heat-treat), and even within `app_making`
+each stage was shown **independently** (every stage started from its own fresh origin —
+`refining.from_hot_metal` preloads the alloys, `ladle.from_tap` is a separate lean origin,
+`casting.cast_billet` emits fresh-trail heats — so nothing ever threaded **one** `Heat` end to end).
+**Status: BUILT** (`demo_capstone.py` + `plots.capstone_figure` + 9 tests; gallery entry; no engine
+touch, no ADR). One `Heat` is threaded the whole way — hot-metal charge → decarburize → dephosphorize →
+deoxidize → degas → desulfurize → trim to grade → cast → quench — on a **single, un-rewritten provenance
+trail**. Two heats take the identical chain and differ by a **single knob**, the F2 blow endpoint: the
+reference (blown to the grade carbon) lands a **sound** part (on grade, through-hardened, the seeded tramp
+P/S driven below spec end to end); the over-blown foil (0.25 %C) is wrong from the blow, caught
+**off-grade** at the trim, and **soft-cores** at the quench — the longest propagation in the repo, one
+mistake surfaced two stages apart. **Integration + pedagogy, no new physics** — the spine's posture
+(structural teeth: continuous trail, ordered field-fill, cross-chain propagation; the reference clears
+every sealed-engine spec). The lone front-end seam that takes a `Steel` (casting) is **re-based** onto the
+`Heat` via `evolve` (Option A, demo-local; **promotion trigger** = a second surface needing the same glue
+→ promote to a `Heat`-consuming casting seam). **Still open:** the notebook section (slice 2 — the heavy
+surgical banked-figure op, deferred per the notebook-discipline lesson).
 
 ### B3. Front-end validation deepening — **BUILT ✓ 2026-06-20** (sulfide-capacity slice)
 Replicate the §20 bainite cross-composition validation pattern (`cct_validation.py`)
