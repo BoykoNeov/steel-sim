@@ -37,6 +37,8 @@ python steel/demo_jominy.py             # any demo prints its validation table +
 streamlit run steel/app.py              # the back-end what-if app (needs .[viz,app])
 streamlit run steel/app_making.py       # the front-end (ore→billet) what-if twin (needs .[viz,app])
 streamlit run steel/app_consequences.py # the defect-consequences app (needs .[viz,app])
+streamlit run game/app_game.py          # the playable spinoff — make one heat (Slice 0; needs .[viz,app])
+python -m game.demo_game                # the game's headless golden run (prints the contrast, banks a figure)
 jupyter lab steel/steel.ipynb           # the back-end teaching notebook (needs .[viz,notebook])
 jupyter lab steel/making.ipynb          # the front-end (ore→billet→defects) teaching notebook
 ```
@@ -95,6 +97,14 @@ Three ways into the same validated core (install + launch commands are in
   CO porosity, hot-tearing, peritectic surface cracking) and see the flat upstream risk line disagree
   with the real consequence — then the *signed* foils, where the same impurity is an asset (the
   free-machining sulfide, the Wootz/Damascus carbide pattern), not only a defect.
+- **Game** (`game/app_game.py`, headless `python -m game.demo_game`) — the playable spinoff (Slice 0 of
+  the `game/` build plan, [`docs/plans/game.md`](docs/plans/game.md)): the full-chain capstone made
+  *playable*. Set **one** knob — the F2 decarb blow endpoint — and the sealed engines run the rest, one
+  stage per turn, until the part is judged sound or soft-cored; the live `Heat`'s provenance trail is the
+  post-mortem, and an opt-in educational mode adds why-cards (every number read live from the engine).
+  `game/` orchestrates the validated engines and reimplements **no** physics — its discipline is
+  structural (a firewall guard + golden-run determinism: stepping the chain reproduces the sealed
+  capstone's verdict exactly).
 
 The table is ordered as a suggested path — top rows first. Every demo is its own
 `python -m steel.<name>`; the *Also interactive* column points to where the same idea lives in

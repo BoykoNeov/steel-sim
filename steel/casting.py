@@ -59,7 +59,7 @@ Units: wt % for composition, °C for temperature, metres for the casting modulus
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .heat_state import Heat, ProcessStep
 from .sweep import Steel
@@ -342,3 +342,41 @@ def cast_billet(
         nominal_heat=cast_heat(steel, "nominal section"),
         centerline_heat=cast_heat(centerline, "segregated centerline"),
     )
+
+
+def cast_billet_onto(
+    parent: Heat,
+    *,
+    modulus: float = 0.025,
+    fs_centerline: float = FS_CENTERLINE,
+    phase: str = "delta",
+    B: float = B_STEEL_SAND,
+) -> CastSection:
+    """Cast ``parent``'s steel, **re-basing** the nominal billet onto ``parent``'s provenance trail.
+
+    The ``Heat``-consuming twin of :func:`cast_billet`. Where :func:`cast_billet` takes a
+    :class:`~steel.sweep.Steel` and emits two **fresh-trail** Heats (a real front-end *origin*, the
+    ``"cast"`` step starting a new history), this takes a live ``Heat`` already carrying its upstream
+    history and threads it *through* casting: the returned :class:`CastSection`'s ``nominal_heat`` inherits
+    ``parent``'s whole trail with the ``"cast"`` step appended — **one** continuous ``Heat`` across F4 — so a
+    full-chain run never has to start a fresh trail at the casting seam. The ``centerline_heat`` (and every
+    other field) is exactly :func:`cast_billet`'s: the segregation read is a property of the *casting*, not
+    of the upstream trail.
+
+    Pure repack — **no new physics, no triad** (the same structural class as
+    :meth:`~steel.heat_state.Heat.evolve`). The nominal composition *equals* ``parent``'s, because
+    :func:`cast_billet` Scheil-enriches only the *centerline* (the nominal section carries the input
+    composition through), so the re-base appends the cast step and the solidus-cooled temperature and
+    changes nothing else. This **promotes** ``demo_capstone``'s demo-local ``_cast_onto`` (next-directions
+    B2, Option A) to a public seam — the move that demo's docstring named as the promotion trigger, now that
+    a second surface (the ``game/`` spine) needs the same glue and the trigger says *promote, don't
+    duplicate*.
+    """
+    section = cast_billet(parent.as_steel(), modulus=modulus, fs_centerline=fs_centerline, phase=phase, B=B)
+    cast_step = section.nominal_heat.history[-1]                   # the "cast" origin step cast_billet made
+    nominal_onto_parent = parent.evolve(
+        cast_step,
+        composition=section.nominal_heat.composition,
+        temperature_C=section.nominal_heat.temperature_C,
+    )
+    return replace(section, nominal_heat=nominal_onto_parent)

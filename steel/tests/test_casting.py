@@ -21,9 +21,9 @@ from steel.casting import (
     SOLUTES, scheil_solid_composition, scheil_liquid_composition, segregation_ratio,
     solute_in_solid, solute_in_liquid, scheil_mass_balance, liquidus_temperature,
     casting_modulus, chvorinov_time, centerline_enriched_composition, cast_billet,
-    partition_coefficient, T_PURE_FE, PERITECTIC_C, FS_CENTERLINE,
+    cast_billet_onto, partition_coefficient, T_PURE_FE, PERITECTIC_C, FS_CENTERLINE,
 )
-from steel.heat_state import Heat
+from steel.heat_state import Heat, ProcessStep
 from steel.sweep import Steel, STEELS
 
 
@@ -185,3 +185,45 @@ def test_cast_billet_accepts_a_raw_steel():
     s = Steel(C=0.35, Mn=0.8, Cr=0.5, name="custom")
     section = cast_billet(s, modulus=0.03)
     assert section.centerline_heat.composition.Cr > s.Cr
+
+
+# --------------------------------------------------------------------------- #
+# cast_billet_onto — the Heat-consuming seam (the promoted demo-local re-base)
+# --------------------------------------------------------------------------- #
+def _parent_with_history() -> Heat:
+    """A live Heat already carrying an upstream trail + a filled field + a defect — what a real chain hands
+    the casting seam (so the re-base has a non-trivial provenance to thread through)."""
+    origin = ProcessStep("trim", "trim to 4140", in_spec=True, flags_added=())
+    return Heat(composition=STEELS["4140"], temperature_C=1550.0, oxygen_ppm=4.4,
+                defects=("off-grade-composition",), history=(origin,))
+
+
+def test_cast_billet_onto_rebases_the_nominal_onto_the_parents_trail():
+    # The Heat-consuming twin threads ONE continuous trail across F4: the nominal section inherits the
+    # parent's whole history (and filled fields + defects) with the SAME "cast" step appended — it does not
+    # start a fresh trail the way bare cast_billet does.
+    parent = _parent_with_history()
+    onto = cast_billet_onto(parent, modulus=0.025)
+    bare = cast_billet(parent.as_steel(), modulus=0.025)
+
+    nominal = onto.nominal_heat
+    assert nominal.history[:-1] == parent.history                  # the upstream trail is carried, unbroken
+    assert nominal.history[-1] == bare.nominal_heat.history[-1]    # the appended step IS cast_billet's "cast"
+    assert nominal.history[-1].name == "cast"
+    assert nominal.defects == parent.defects                       # carried-forward flags ride the re-base
+    assert nominal.oxygen_ppm == parent.oxygen_ppm                 # and the filled upstream fields
+
+
+def test_cast_billet_onto_changes_nothing_but_the_nominal_trail():
+    # The re-base is a pure repack: the nominal composition equals the parent's (cast_billet enriches only
+    # the centerline), and every other CastSection field — centerline, Chvorinov time, liquidus — is exactly
+    # bare cast_billet's. The seam adds no physics, only a continuous trail.
+    parent = _parent_with_history()
+    onto = cast_billet_onto(parent, modulus=0.025)
+    bare = cast_billet(parent.as_steel(), modulus=0.025)
+
+    assert onto.nominal_heat.as_steel() is parent.composition      # nominal == input (no enrichment)
+    assert onto.nominal_heat.temperature_C == 25.0                 # solidus-cooled, like bare cast_billet
+    assert onto.centerline_heat == bare.centerline_heat            # the segregation read is untouched
+    for f in ("steel", "fs_centerline", "phase", "modulus", "solidification_time", "liquidus"):
+        assert getattr(onto, f) == getattr(bare, f)

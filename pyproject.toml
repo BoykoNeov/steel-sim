@@ -8,7 +8,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["engines*", "steel*"]
+include = ["engines*", "steel*", "game*"]
 
 [project]
 name = "steel-sim"
@@ -62,7 +62,7 @@ calphad = ["pycalphad>=0.11"]
 # `slow` marks the handful of tests that drive a live external solver / kernel / subprocess.
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["engines", "steel"]
+testpaths = ["engines", "steel", "game"]
 # `-n auto` parallelises the suite (pytest-xdist, in [test]); ADR 0003 deferred this to a
 # ~30 s fast-lane trigger that has not fired (~13 s serial, still well under 30 s) — enabled
 # early at the user's direction (see that ADR's xdist amendment). `conftest.py` caps the worker

@@ -732,6 +732,21 @@ streamlit run steel/app.py
 > sharing the executor + retry-on-wedge logic with `test_steel_notebook.py` via `tests/_notebook_exec.py`
 > (timeouts sized per notebook — `making.ipynb` is heavier, ~16 s clean vs ~7 s). Needs `.[viz,notebook]`.
 
+> **The playable spinoff (`game/`, plan [`docs/plans/game.md`](../docs/plans/game.md) — Slice 0, built ✓).**
+> A **separate top-level package** (not under `steel/`): the full-chain capstone made *playable*. It is the
+> one package that clears **no** physics validation triad — by design (`game.md` §2): it **orchestrates**
+> the sealed `steel` engines into a stateful, multi-turn game and reimplements no material behaviour. Its
+> discipline is **structural** — a firewall guard (`game` imports only public engine surfaces; the one
+> `import streamlit` is the lazy one in `game/app_game.py`), and **golden-run determinism**: stepping the
+> game chain to completion reproduces `demo_capstone.run_chain`'s sealed verdict *exactly* (`game/tests/`
+> pins that equality — the proof it adds no physics). Slice 0 makes the capstone chain playable behind one
+> knob, the F2 decarb blow endpoint (value-selection on the C–O τ-curve), with the live `Heat`'s provenance
+> trail as the post-mortem and an opt-in educational mode (why-cards, every number read live from the
+> engine). Same three-layer split as the apps — pure logic (`state`/`knobs`/`teach`), lazy figures
+> (`figures`), paper-thin UI (`app_game`); headless golden run `python -m game.demo_game`, interactive
+> `streamlit run game/app_game.py`. The one engine touch the slice needed was promoting `demo_capstone`'s
+> demo-local casting re-base to a public `casting.cast_billet_onto` seam (its documented promotion trigger).
+
 It is laid out in **three layers** so the deliverable is both testable and runnable:
 
 - **Compute helpers** (`single_steel_outcomes` / `evaluate_one` / `comparison_grid` /

@@ -13,8 +13,21 @@ back-half Phases 1–7, the §11 menu — all built; wootz closed the last front
 gap). It is a **catalogue, not a build plan**: paragraph + honest size/status per
 direction. Consult it when "what's next" recurs.
 
-- **A1** `game/` historical-methods spinoff (large, unstarted; both §15.4 physics gaps now
-  closed so it's pure orchestration/UX behind the firewall).
+- **A1** `game/` historical-methods spinoff (large; both §15.4 physics gaps now closed so it's
+  pure orchestration/UX behind the firewall). **Build plan WRITTEN 2026-06-21 → `docs/plans/game.md`;
+  Slice 0 BUILT ✓ 2026-06-21 → [[game-slice0-built]].** The `game/` package is stood up — capstone chain
+  made playable, one F2 blow-endpoint knob (value-selection on the C–O τ-curve), immutable-`Heat` turn
+  surface, educational why-cards (numbers read live), 4 structural tests; lone engine touch = promoted
+  `casting.cast_billet_onto` (the capstone's named trigger). It **promotes** the doctrine in
+  steel-making.md §8 (firewall) / §15 (method map) / §16 (Tier-3 dynamics) into a sliced build order —
+  cross-refs, does NOT restate. Durable advisor-driven calls baked into the plan: **`game/` clears NO
+  physics triad** → structural discipline (firewall guard + endpoint-consistency + label-correctness +
+  golden-run determinism); **Streamlit is stateless** → `st.session_state` schema + immutable-`Heat` turn
+  structure, and **reframe the Type-B blow as value-selection on the τ-curve** (over-blow = position
+  readout, NOT a reflex timer — real-time timing deferred to a non-Streamlit surface); **educational mode =
+  info-overlay only** (not a difficulty axis), prose may live in `game/` but every number read LIVE from
+  the engine + every physics claim cites the engine's own source. Slices 1+ (2nd knob, method/era tech
+  tree, economy) remain. Sibling [[full-chain-capstone-built]] (the spine Slice 0 wraps).
 - **A2** P→DBTT slope (small physics gap, needs sourcing; the one still-unpinned piece).
 - **A3** yield/case-depth inversion → **BUILT 2026-06-15** → [[yield-case-depth-inversion-built]].
 - **B1** fracture-side coupling (the one genuine NEW-physics thread — inclusion-as-stress-

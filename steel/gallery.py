@@ -42,10 +42,11 @@ STEEL_README_URL = f"{GH}/steel/README.md"
 
 @dataclass(frozen=True)
 class Entry:
-    """One runnable surface. `module` is the `demo_*` stem under steel/ (so the run command is
-    `python -m steel.<module>` and the source link is steel/<module>.py); `figure` is the banked
+    """One runnable surface. `module` is the `demo_*` stem under `package`/ (so the run command is
+    `python -m <package>.<module>` and the source link is <package>/<module>.py); `figure` is the banked
     PNG filename under docs/figures/; `notebook`/`app` name where the same idea lives interactively
-    (None when that surface doesn't cover it)."""
+    (None when that surface doesn't cover it). `package` is the top-level package the demo lives in —
+    "steel" for the library demos, "game" for the playable spinoff (its source/run-command resolve there)."""
 
     topic: str
     module: str
@@ -54,6 +55,7 @@ class Entry:
     blurb: str
     notebook: str | None = None  # e.g. "§1-2" — links to the notebook on GitHub
     app: str | None = None  # e.g. "four fates" — text cue only (the app runs locally)
+    package: str = "steel"  # the top-level package: "steel" (library) or "game" (the playable spinoff)
 
 
 # The single source of truth. Order = the suggested learning path (it also drives the README
@@ -471,6 +473,22 @@ CATALOG: tuple[Entry, ...] = (
         "is re-based onto the Heat so the trail stays continuous.",
         notebook="§capstone",
     ),
+    Entry(
+        "Game (playable spinoff)", "demo_game", "steel-game-blow.png",
+        "Make one heat — the production chain, playable",
+        "The capstone chain made PLAYABLE (Slice 0 of the game/ spinoff): you set ONE knob — the F2 decarb "
+        "blow endpoint — and the sealed engines run the rest, one stage per turn, until the part is judged "
+        "sound or soft-cored. Value-selection on the C–O τ-curve: stop in the grade window and the part "
+        "through-hardens; over-blow and dissolved oxygen climbs while the carbon shortfall soft-cores it "
+        "two stages later — the back-end physics, reached through play (not a scripted failure). The live "
+        "Heat's provenance trail is the post-mortem; an opt-in educational mode adds why-cards on the knob, "
+        "every number read live from the engine. The one package that clears no physics triad by design — "
+        "game/ orchestrates, it reimplements nothing — so its discipline is structural (firewall + "
+        "golden-run determinism: stepping the chain reproduces the sealed capstone's verdict exactly), the "
+        "same class as the Heat spine and the capstone. Headless here; the interactive version is "
+        "`streamlit run game/app_game.py`.",
+        app="make one heat", package="game",
+    ),
 )
 
 
@@ -527,7 +545,7 @@ def _esc(s: str) -> str:
 
 def _card_html(e: Entry) -> str:
     fig_rel = f"figures/{e.figure}"
-    src = f"{GH}/steel/{e.module}.py"
+    src = f"{GH}/{e.package}/{e.module}.py"
     links = [
         f'<a href="{fig_rel}" target="_blank" rel="noopener">figure ↗</a>',
         f'<a href="{src}" target="_blank" rel="noopener">source ↗</a>',
@@ -549,7 +567,7 @@ def _card_html(e: Entry) -> str:
         '      <div class="body">\n'
         f'        <h3>{_esc(e.title)}</h3>\n'
         f'        <p class="blurb">{_esc(e.blurb)}</p>\n'
-        f'        <code class="cmd">python -m steel.{e.module}</code>\n'
+        f'        <code class="cmd">python -m {e.package}.{e.module}</code>\n'
         f'        <div class="links">{links_html}</div>\n'
         '      </div>\n'
         '    </article>'

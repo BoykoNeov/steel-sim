@@ -20,18 +20,22 @@ from steel import gallery
 from steel.gallery import CATALOG
 
 _REPO_ROOT = Path(gallery.__file__).resolve().parent.parent
-_STEEL = _REPO_ROOT / "steel"
 _FIGURES = _REPO_ROOT / "docs" / "figures"
 _INDEX = _REPO_ROOT / "docs" / "index.html"
 _README = _REPO_ROOT / "README.md"
 
+# The packages a gallery demo can live in (the library + the playable spinoff). Each entry's `package`
+# field says which; the coverage check resolves the demo file under that package's directory.
+_PACKAGES = ("steel", "game")
 
-def _disk_demo_modules() -> set[str]:
-    return {p.stem for p in _STEEL.glob("demo_*.py")}
+
+def _disk_demo_modules() -> set[tuple[str, str]]:
+    """`(package, module)` for every `demo_*.py` on disk across the catalogued packages."""
+    return {(pkg, p.stem) for pkg in _PACKAGES for p in (_REPO_ROOT / pkg).glob("demo_*.py")}
 
 
 def test_catalog_covers_exactly_the_demos_on_disk():
-    catalogued = {e.module for e in CATALOG}
+    catalogued = {(e.package, e.module) for e in CATALOG}
     on_disk = _disk_demo_modules()
     missing = on_disk - catalogued
     extra = catalogued - on_disk

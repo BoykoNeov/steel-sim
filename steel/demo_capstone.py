@@ -55,15 +55,16 @@ What is real here vs what is scaffolding — the honesty discipline (carried fro
 * **The knobs are a good-practice recipe, not a calibration.** Deep vacuum, basic converter slag, a proper
   aluminium kill, a reducing ladle slag — the choices a clean heat actually uses. They are *chosen* so the
   reference clears every sealed-engine spec; none is fitted.
-* **The one seam that needs glue — and why it stays demo-local.** Casting is the lone front-end stage whose
-  seam takes a :class:`~steel.sweep.Steel` and emits a **fresh-trail** ``Heat`` (its siblings
+* **The one seam that needs glue — now a public casting seam.** Casting is the lone front-end stage whose
+  bare seam takes a :class:`~steel.sweep.Steel` and emits a **fresh-trail** ``Heat`` (its siblings
   :func:`~steel.refining.deoxidize`, :func:`~steel.slag.desulfurize`, :func:`~steel.ladle.trim_to_grade`
-  all consume a ``Heat``). To keep one continuous trail across F4 without touching a sealed module, this
-  demo **re-bases** the cast composition onto the incoming ``Heat`` (:func:`_cast_onto`, an
-  :meth:`~steel.heat_state.Heat.evolve` call — the same repack primitive the seams use). That is the
-  minimal, zero-engine-touch choice (next-directions B2, Option A). **Deferral / promotion trigger:** if a
-  second surface (the making notebook) needs the same glue, that is the signal to promote it to a
-  ``Heat``-consuming casting seam rather than duplicate the re-base here.
+  all consume a ``Heat``). To keep one continuous trail across F4 this chain casts through
+  :func:`~steel.casting.cast_billet_onto`, the ``Heat``-consuming twin that **re-bases** the nominal section
+  onto the incoming ``Heat`` (a :meth:`~steel.heat_state.Heat.evolve` repack — no new physics). That seam is
+  the **promotion** of this demo's original demo-local ``_cast_onto`` (next-directions B2, Option A): its
+  named trigger — *a second surface needs the same glue → promote, don't duplicate* — fired when the
+  ``game/`` spine was built on this chain, so the re-base now lives once, in :mod:`steel.casting`, and both
+  surfaces call it.
 * **Casting forks; the headline follows the nominal section.** A casting produces a nominal section *and* a
   Scheil-enriched centerline. The headline thread follows the **nominal** section to the part (apples to
   apples for the reference/foil contrast); the centerline is surfaced as the segregation read — the harder
@@ -84,7 +85,7 @@ from . import ladle as ld
 from . import reduction as red
 from . import refining as ref
 from . import slag as sl
-from .heat_state import Heat, ProcessStep
+from .heat_state import Heat
 from .sweep import Steel, evaluate
 
 # --------------------------------------------------------------------------- #
@@ -142,19 +143,6 @@ def _refine(carbon_target: float) -> Heat:
     return heat
 
 
-def _cast_onto(parent: Heat, comp: Steel, origin: ProcessStep) -> Heat:
-    """Re-base a casting-produced composition onto ``parent`` — the one demo-local seam (Option A).
-
-    Casting is the only front-end stage whose seam emits a *fresh-trail* ``Heat`` (it takes a
-    :class:`~steel.sweep.Steel`, not a ``Heat``). To keep **one** continuous trail across F4 without
-    touching the sealed :mod:`casting` module, we evolve ``parent`` with the casting step and composition —
-    so the part inherits the whole upstream history, the filled gas/inclusion fields, and any defect flags.
-    This is :meth:`~steel.heat_state.Heat.evolve`, the same repack primitive the seams use (next-directions
-    B2, Option A; promotion trigger in the module docstring).
-    """
-    return parent.evolve(origin, composition=comp, temperature_C=25.0)
-
-
 @dataclass(frozen=True)
 class Chain:
     """One full ore → billet → part run — the threaded ``Heat`` plus the reads the figure draws.
@@ -183,11 +171,11 @@ def run_chain(carbon_target: float) -> Chain:
     refined = _refine(carbon_target)
     trimmed = ld.trim_to_grade(refined, GRADE)
 
-    section = cast.cast_billet(trimmed.as_steel(), modulus=CAST_MODULUS)
-    # The nominal section is the headline thread; re-base it onto the trimmed heat (Option A) so the part
-    # carries one continuous trail. The centerline is heat-treated too, for the segregation-band read.
-    part_heat = _cast_onto(trimmed, section.nominal_heat.composition, section.nominal_heat.history[-1])
-    part = hs.heat_treat(part_heat, medium=QUENCH_MEDIUM, diameter=PART_DIAMETER)
+    # Casting is the lone front-end seam that takes a Steel; the promoted casting.cast_billet_onto re-bases
+    # the nominal section onto the trimmed heat so one continuous trail threads across F4 (see *the one seam
+    # that needs glue* in the module docstring). The centerline is the segregation-band read.
+    section = cast.cast_billet_onto(trimmed, modulus=CAST_MODULUS)
+    part = hs.heat_treat(section.nominal_heat, medium=QUENCH_MEDIUM, diameter=PART_DIAMETER)
 
     nom_o = evaluate(section.nominal_heat.composition, medium=QUENCH_MEDIUM, diameter=PART_DIAMETER)
     ctr_o = evaluate(section.centerline_heat.composition, medium=QUENCH_MEDIUM, diameter=PART_DIAMETER)

@@ -1,7 +1,15 @@
 # The `game/` build plan — the playable spine on the proven chain
 
-> **Status: plan-only (2026-06-21). Nothing here is built yet** (no `game/`
-> package). This is the build plan that **promotes** the game *doctrine* —
+> **Status: Slice 0 BUILT ✓ (2026-06-21).** The `game/` package is stood up —
+> `state.py` / `knobs.py` / `teach.py` (logic) + `figures.py` + `app_game.py` +
+> `demo_game.py` + `tests/` (the four structural checks), banked figure
+> `steel-game-blow.png`, a gallery *Game* card, and the root + `steel/` READMEs
+> wired. The one engine touch the slice needed was promoting `demo_capstone`'s
+> demo-local casting re-base to the public `casting.cast_billet_onto` seam (its
+> documented promotion trigger — done as a behaviour-preserving refactor, the
+> capstone's `print_summary` output byte-identical). Slices 1–3 below remain
+> plan-only. The rest of this document is the build plan that **promotes** the game
+> *doctrine* —
 > already written in depth in `steel-making.md` **§8** (the firewall), **§15**
 > (methods as paths through the built engines), and **§16** (the Tier-3
 > physics-shaped dynamics) — into a **sliced, testable build order**. It does
@@ -194,7 +202,17 @@ Each slice banks one playable artifact + its structural tests; each names its
 scope ceiling. **Build in order; stop and play after each** (the loop must be fun
 before it grows).
 
-### Slice 0 — the hero heat, interactive (the playable capstone) — *first build*
+### Slice 0 — the hero heat, interactive (the playable capstone) — **BUILT ✓ 2026-06-21**
+- **As built.** The `game/` package stood up exactly to this spec: the immutable-`Heat` turn
+  surface (`state.advance` runs one sealed stage per turn — the golden-run test asserts stepping the
+  chain reproduces `demo_capstone.run_chain`'s sealed verdict *exactly*, the proof it adds no physics);
+  the one F2 blow-endpoint knob as value-selection on the C–O τ-curve (`knobs.py`, over
+  `refining.equilibrium_oxygen`); the opt-in educational why-cards with every number read live from the
+  engine (`teach.py`); the blow-curve figure (`figures.py`); the paper-thin Streamlit skin (`app_game.py`,
+  the only `import streamlit`); the headless golden run `demo_game.py`; and the four structural tests
+  (firewall + golden-run + state-transition + label/endpoint-consistency). The lone engine touch — promoting
+  the casting re-base to `casting.cast_billet_onto` — closed the capstone's named promotion trigger. The
+  per-knob-click vs auto-run choice was left cosmetic (the UI drives `advance`; the tested unit is `advance`).
 - **Goal.** Make the **already-built B2 capstone chain playable**: one method
   (the capstone's 4140 BOF/EAF route), the chain auto-running every stage **except
   one** player knob — the **F2 decarb blow endpoint** (§3.3, value-selection on
@@ -315,8 +333,13 @@ citation (§5.3). Flavor (τ values, economy, discrete-event rates) is original 
 (deox knob + visible chips) → Slice 2 (methods + the era ramp) → Slice 3+
 (economy / flavor / discrete events). **Stop and play after each.**
 
-**Immediate next step.** Plan-only — this document. The first build is **Slice 0**:
-stand up the `game/` package with the firewall guard, the session-state surface
-(§3), the one Type-B blow knob as value-selection (§3.3), the educational toggle +
-why-cards (§5.2 tier 1), and the four structural tests (§8) — all on the
-**already-proven** capstone chain, no engine touched.
+**Immediate next step.** **Slice 0 is BUILT ✓ (2026-06-21)** — the `game/` package
+stands up with the firewall guard, the session-state surface (§3), the one Type-B
+blow knob as value-selection (§3.3), the educational toggle + why-cards (§5.2 tier
+1), and the four structural tests (§8), on the proven capstone chain. (The one
+engine touch — promoting the casting re-base to a public `casting.cast_billet_onto`
+seam — closed the capstone's documented promotion trigger; it was a
+behaviour-preserving refactor, `print_summary` byte-identical.) The next build is
+**Slice 1**: the second knob (the deox kill, §16.2/§16.3) + the verified-vs-flavor
+labels surfaced as visible UI chips + educational tier 2 (the physics-shape
+explainer). Stop and play first.
