@@ -38,13 +38,20 @@ quench), one test each; casting an honest no-loss pass-through (no pass/fail lev
 4140). Slices 2+ (the method/era tech tree, economy) remain. The repo-split is
 deferred; the in-repo `game/` home was authorized.
 
-### A2. P → DBTT slope — the one still-unpinned *physics* piece
-`steel-making.md` §14.5 flags it: the P→strength axis carries teeth (Thiele–Hošek,
+### A2. P → DBTT slope — **Outcome A BUILT ✓ 2026-06-22**
+`steel-making.md` §14.5 flagged it: the P→strength axis carries teeth (Thiele–Hošek,
 +237 MPa/at%), but `grain.cottrell_petch_dbtt_C`'s P→ductile-brittle-transition
-slope (`ITT_K_P`) is **representative, not pinned** — clean relations use
-grain-boundary-segregation at%, not bulk wt%. Candidate sources are located (one
-medieval-bloomery Charpy PDF needs a working mirror). **Size: small, self-contained
-sourcing + calibration.** **Status: research record, assess-only.**
+slope (`ITT_K_P`) was **representative, not pinned**. **The sourcing gate was run
+(2026-06-22) and the slope CANNOT earn teeth** — the bulk-wt% slope is a
+path-dependent *reduced form* of grain-boundary *coverage* physics (the clean
+teeth-bearing form is GB at% → DBTT, Song 2011, via a McLean isotherm). **Outcome A
+(chosen over the new-physics B-escalation):** keep `ITT_K_P` a *flagged* bulk
+coefficient but make it **traceable** — re-pinned 500 → **600 °C/wt%** (≈ 60 °C/0.1
+wt%), the centre of a documented bracket ≈ 40–78 °C/0.1 wt% (upper anchor 7–7.8 °C/
+0.01 % P, IDOT PRR-174). Bloomery PDF assessed (RT-only + slag-confounded, unusable);
+the **McLean GB-coverage model (B) remains deferred** as new physics with its own
+triad. One constant + its test band + §14.5; no engine semantics change, no ADR.
+**Size: small (as filed).** **Status: BUILT (Outcome A); B-escalation deferred.**
 
 ### A3. Yield- / case-depth inversion — Phase 7 v2 → **IN PROGRESS (2026-06-15)**
 Inverse design (`design.py`) shipped **hardness-only**; the §14 as-built record
@@ -72,15 +79,16 @@ deepening (§19), and inverse design (Phase 7) are all built. **Nothing left her
 
 ## B. New directions (not in the older plans)
 
-### B1. Fracture-side coupling — the one genuine *new-physics* thread
-`steel-making.md` §14.5 gestures at it without scoping it: a P/S **inclusion as the
-stress concentrator** that turns §18's sub-critical residual-stress field into an
-actual quench crack. This would couple the two existing axes — impurity inclusions
+### B1. Fracture-side coupling — the one genuine *new-physics* thread — **BUILT ✓ 2026-06-20**
+`steel-making.md` §14.5 gestured at it: a P/S **inclusion as the stress
+concentrator** that turns §18's sub-critical residual-stress field into an actual
+quench crack. It coupled the two existing axes — impurity inclusions
 (`slag`/`sulfide_morphology`) and the residual-stress profile (§18) — into a
-**fracture-initiation criterion** (a linear-elastic-fracture-mechanics or
-critical-flaw-size gate). It is the one direction here that needs *new* cited
-physics and its own validation triad. **Size: medium–large.** **Status: discussed,
-unscoped** (the user's stated interest as of 2026-06-15).
+**fracture-initiation criterion** (Murakami √area vs as-quenched K_Ic, a two-tier
+`quench-crack-risk`→`quench-crack` gate). The advisor crux was a **phase-split
+yield** (the uniform-raise was falsified by experiment); √area is a *representative*
+input (the slag/sulfide-morphology bridge is a named deferral). **Size: medium.**
+**Status: BUILT** — no tooth (sign-reversal + martemper consumed from residual).
 
 ### B2. Full-chain capstone — ore→billet→part in one narrated run — **BUILT ✓ 2026-06-21**
 The apps and notebooks were split front (`making`) / back (heat-treat), and even within `app_making`

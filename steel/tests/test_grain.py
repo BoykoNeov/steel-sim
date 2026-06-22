@@ -470,13 +470,15 @@ def test_phosphorus_yield_term_linear_in_atomic_fraction():
 
 
 def test_phosphorus_dbtt_slope_is_flagged_representative():
-    # NOT teeth — guard only the wiring (P raises DBTT, linearly) and that the flagged slope sits in the
-    # literature band ~40–70 °C per 0.1 wt% P. The strength term carries the teeth, this slope does not.
+    # NOT teeth — guard only the wiring (P raises DBTT, linearly) and that the flagged slope sits inside the
+    # DOCUMENTED engineering bracket ~40–78 °C per 0.1 wt% P (upper anchor 7–7.8 °C/0.01 % P, IDOT PRR-174;
+    # lower ~40). The A2 sourcing gate (2026-06-22) confirmed the bulk slope is a reduced form of GB-coverage
+    # physics and cannot carry teeth — the strength term (YIELD_K_P_PER_AT) does. See grain.ITT_K_P.
     d = 15.0
     base = grain.cottrell_petch_dbtt_C(d, comp=_MILD)
     bump = grain.cottrell_petch_dbtt_C(d, comp=_MILD, P_pct=0.10) - base
     assert bump == pytest.approx(grain.ITT_K_P * 0.10, rel=1e-9)
-    assert 40.0 <= grain.ITT_K_P * 0.10 <= 70.0       # representative band, per 0.1 wt% P
+    assert 40.0 <= grain.ITT_K_P * 0.10 <= 78.0       # documented bracket, per 0.1 wt% P
 
 
 def test_phosphorus_is_the_signed_foil_raises_both():

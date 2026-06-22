@@ -241,12 +241,25 @@ M_P = 30.974                 # g/mol — phosphorus
 AT_PCT_PER_WT_PCT_P = M_FE / M_P     # ≈ 1.803 (1 wt% P ≈ 1.803 at% P; so 1 at% P ≈ 0.555 wt%)
 
 # DBTT term — NOT teeth, FLAGGED representative (the FERRITE_PAGS_RATIO posture). The P→DBTT slope
-# is the one number §14 flagged as *not cleanly pinnable*: clean modern relations express
-# embrittlement vs grain-boundary **segregation** concentration (at% at the boundary), not bulk
-# wt%, and the bulk slope is a scattered, path-dependent reduced form (literature ~40–70 °C per
-# 0.1 wt% P). We pin a representative mid-band value and flag it — it carries the *direction and
-# rough magnitude* of the cold-shortness story, not a benchmark. Override per call.
-ITT_K_P = 500.0              # °C per wt% P  (representative ≈ 50 °C/0.1 wt%; FLAGGED — not teeth)
+# is the one number §14 flagged as *not cleanly pinnable*, and a 2026-06-22 sourcing pass
+# (next-directions A2) CONFIRMED it cannot earn teeth: the bulk-wt% slope is a path-dependent
+# **reduced form** of grain-boundary segregation physics. The clean modern relations express
+# embrittlement vs GB **coverage** — e.g. Song et al., *Mater. Sci. Eng. A* 528 (2011) for a
+# Ti-stabilized IF steel, DBTT = 3.12·C_P − 118.87 with C_P in at% AT THE BOUNDARY — and bulk P maps
+# onto that coverage through a Langmuir–McLean isotherm (ΔG_seg(P) ≈ 45 kJ/mol) whose enrichment
+# depends on grain size, thermal history and C co-segregation. So this stays a flagged bulk
+# coefficient — but now a *traceable* one, pinned to the centre of a documented engineering bracket
+# rather than a bare mid-band guess:
+#   * UPPER anchor (the most-cited reduced-form figure): P raises the impact transition temperature by
+#     ~7–7.8 °C per 0.01 wt% P ("based on several investigations" — IDOT structural-steels report
+#     PRR-174) ⇒ ~70–78 °C per 0.1 wt%.
+#   * LOWER anchor: other reduced-form readings give ~40 °C per 0.1 wt% (the §14.1 spread).
+# Documented bracket ≈ 40–78 °C per 0.1 wt% P (≈ 400–780 °C/wt%); we pin its centre. That 40–78 spread
+# is NOT cross-source coherence — it is consensus that the bulk number is processing-dependent — so this
+# carries *direction and rough magnitude*, never a benchmark; the strength term (YIELD_K_P_PER_AT) holds
+# the teeth. Override per call. (Modelling the McLean coverage pathway, so the bulk scatter becomes an
+# *output*, is the named B-escalation deferred as new physics with its own triad.)
+ITT_K_P = 600.0             # °C per wt% P  (≈ 60 °C/0.1 wt%, centre of the documented 40–78 band; FLAGGED — not teeth)
 
 # Free nitrogen is not in the STEELS registry → a flagged default (a typical small value, wt%).
 # It enters BOTH laws under a √ (raises strength AND DBTT — an embrittler), so it does NOT
@@ -353,9 +366,10 @@ def cottrell_petch_dbtt_C(
 
     ``P_pct`` (wt%, default 0) adds phosphorus embrittlement — P raises DBTT *and* yield, the
     signed foil that makes grain refinement special. **This slope is FLAGGED representative**
-    (:data:`ITT_K_P`), not a benchmark: it carries the *direction and rough magnitude* of
-    cold-shortness, the one number §14 could not cleanly pin (clean relations use grain-boundary
-    segregation at%, not bulk wt%). The strength term carries this slice's teeth, not this one.
+    (:data:`ITT_K_P`), not a benchmark: it is the centre of a documented engineering bracket
+    (≈ 40–78 °C per 0.1 wt% P) and carries the *direction and rough magnitude* of cold-shortness,
+    the one number §14 could not cleanly pin — the bulk slope is a reduced form of grain-boundary
+    *coverage* physics, not a falsifiable bulk law. The strength term carries this slice's teeth.
 
     This is a transition **temperature**, *not* a Charpy energy: no shelf energies, no
     absolute J, no tempering-axis non-monotonicity — those stay Phase 3b's named ceiling
