@@ -254,12 +254,15 @@ AT_PCT_PER_WT_PCT_P = M_FE / M_P     # ≈ 1.803 (1 wt% P ≈ 1.803 at% P; so 1 
 #     ~7–7.8 °C per 0.01 wt% P ("based on several investigations" — IDOT structural-steels report
 #     PRR-174) ⇒ ~70–78 °C per 0.1 wt%.
 #   * LOWER anchor: other reduced-form readings give ~40 °C per 0.1 wt% (the §14.1 spread).
-# Documented bracket ≈ 40–78 °C per 0.1 wt% P (≈ 400–780 °C/wt%); we pin its centre. That 40–78 spread
-# is NOT cross-source coherence — it is consensus that the bulk number is processing-dependent — so this
-# carries *direction and rough magnitude*, never a benchmark; the strength term (YIELD_K_P_PER_AT) holds
-# the teeth. Override per call. (Modelling the McLean coverage pathway, so the bulk scatter becomes an
-# *output*, is the named B-escalation deferred as new physics with its own triad.)
-ITT_K_P = 600.0             # °C per wt% P  (≈ 60 °C/0.1 wt%, centre of the documented 40–78 band; FLAGGED — not teeth)
+# Documented bracket ≈ 40–78 °C per 0.1 wt% P (≈ 400–780 °C/wt%). The value below is DELIBERATELY left at its
+# original representative 500 (≈ 50 °C/0.1 wt%, which sits inside the bracket): the digit is arbitrary *within*
+# a flagged band, so moving it buys nothing but drift in every illustrative DBTT magnitude downstream — the
+# Outcome-A deliverable is the *traceable bracket*, not a re-centred number. That 40–78 spread is NOT
+# cross-source coherence — it is consensus that the bulk number is processing-dependent — so this carries
+# *direction and rough magnitude*, never a benchmark; the strength term (YIELD_K_P_PER_AT) holds the teeth.
+# Override per call. (Modelling the McLean coverage pathway, so the bulk scatter becomes an *output*, is the
+# named B-escalation deferred as new physics with its own triad.)
+ITT_K_P = 500.0             # °C per wt% P  (≈ 50 °C/0.1 wt%, within the documented 40–78 band; FLAGGED — not teeth)
 
 # Free nitrogen is not in the STEELS registry → a flagged default (a typical small value, wt%).
 # It enters BOTH laws under a √ (raises strength AND DBTT — an embrittler), so it does NOT
@@ -366,8 +369,8 @@ def cottrell_petch_dbtt_C(
 
     ``P_pct`` (wt%, default 0) adds phosphorus embrittlement — P raises DBTT *and* yield, the
     signed foil that makes grain refinement special. **This slope is FLAGGED representative**
-    (:data:`ITT_K_P`), not a benchmark: it is the centre of a documented engineering bracket
-    (≈ 40–78 °C per 0.1 wt% P) and carries the *direction and rough magnitude* of cold-shortness,
+    (:data:`ITT_K_P`), not a benchmark: it is a representative value within a documented engineering
+    bracket (≈ 40–78 °C per 0.1 wt% P) and carries the *direction and rough magnitude* of cold-shortness,
     the one number §14 could not cleanly pin — the bulk slope is a reduced form of grain-boundary
     *coverage* physics, not a falsifiable bulk law. The strength term carries this slice's teeth.
 

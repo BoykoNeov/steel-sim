@@ -862,9 +862,9 @@ deferred state extensions (P/S on `Steel`) — then **`game/` last**, on the pro
 >   Fe/P radii), not snippet-level — and the teeth are *cross-source coherence*: ≈427 MPa/wt% (after the
 >   ×1.803 at%→wt% conversion, the registered unit trap) sits inside Total Materia's independent
 >   365–620 MPa/wt% bracket, and the hardness increment 119.8 vs lit 123–125 vs theoretical 127 HV/wt%
->   coheres within ~6 %. **The P→DBTT slope stays FLAGGED representative** (`grain.ITT_K_P` ≈ 500 °C/wt% as
->   built here; re-pinned to ≈ 600 = the documented-bracket centre by A2, §14.5) — clean relations use
->   grain-boundary *segregation* at%, not bulk wt%; the strength term carries the teeth, the slope does not.
+>   coheres within ~6 %. **The P→DBTT slope stays FLAGGED representative** (`grain.ITT_K_P` ≈ 500 °C/wt%;
+>   A2 (§14.5) kept the value but made it traceable to a documented ≈ 40–78 °C/0.1 wt% bracket) — clean
+>   relations use grain-boundary *segregation* at%, not bulk wt%; the strength term carries the teeth.
 > - **Sulfur → red-shortness = a NEW consumer with NO strict tooth.** New module `hot_work.py` (`hot_work`
 >   orchestrator → **red-short** flag): free sulfur (the slag-reused `manganese_sulfide` balance) forms a
 >   Fe–FeS grain-boundary film above the eutectic when forged. This slice is **cited constants +
@@ -1059,10 +1059,12 @@ history *corroborates* the verified/plausible split rather than overturning it.
     The A2 sourcing pass (2026-06-22, §14.5) **confirmed** this is *inherently* a
     flagged coefficient, not an un-done one: the bulk-wt% slope is a path-dependent
     **reduced form** of grain-boundary *coverage* physics, so no single bulk number
-    is falsifiable. `grain.ITT_K_P` now pins the **centre of that documented
-    bracket** (≈ 60 °C/0.1 wt% = 600 °C/wt%) and stays flagged. (Symmetry with the
-    prior turn: then "don't let the strengthening number masquerade as the DBTT
-    term"; now "don't let *having* a DBTT number imply it's calibrated.")
+    is falsifiable. `grain.ITT_K_P` **keeps its representative value** (≈ 50 °C/0.1
+    wt% = 500 °C/wt%, inside that documented bracket) and stays flagged — the digit
+    is deliberately unchanged (arbitrary within a flagged band), and what A2 adds is
+    the *traceable bracket*, not a re-pinned number. (Symmetry with the prior turn:
+    then "don't let the strengthening number masquerade as the DBTT term"; now "don't
+    let *having* a DBTT number imply it's calibrated.")
   - *Unit-basis trap (before comparing or pinning either number):* the strength
     number is quoted **per at% P**, the toughness slope **per wt% P** — and
     **1 at% P ≈ 0.56 wt% P**, so the two are ~5.6× apart in their P basis.
@@ -1137,13 +1139,16 @@ fracture-side coupling).
 > enrichment depends on grain size, thermal history and C co-segregation — that is
 > the named **B-escalation** (new physics, own triad), deferred. **Outcome A
 > (chosen):** keep `grain.ITT_K_P` a *flagged* bulk coefficient but make it
-> **traceable** — re-pinned from a bare 500 to **600 °C/wt% P** (≈ 60 °C/0.1 wt%),
-> the centre of a documented engineering bracket **≈ 40–78 °C/0.1 wt%** (upper
-> anchor 7–7.8 °C/0.01 % P, IDOT structural-steels report PRR-174; lower ~40). The
-> number barely moves; the deliverable is the traceable bracket + the explicit "why
-> it can't be teeth", not a changed coefficient. The 40–78 spread is **consensus
-> that the bulk number is processing-dependent**, *not* cross-source coherence — so
-> it is never dressed as teeth (the strength axis, `YIELD_K_P_PER_AT`, holds those).
+> **traceable** — anchored to a documented engineering bracket **≈ 40–78 °C/0.1 wt%**
+> (upper anchor 7–7.8 °C/0.01 % P, IDOT structural-steels report PRR-174; lower ~40).
+> The **number does not move** — it stays the original representative **500 °C/wt%**
+> (≈ 50 °C/0.1 wt%, inside the bracket); the digit is arbitrary within a flagged band,
+> so moving it would only drift the illustrative DBTT magnitudes downstream (the
+> demo's +96 °C, the notebook's +85 °C) for zero physics gain. The deliverable is the
+> traceable bracket + the explicit "why it can't be teeth", **not a changed
+> coefficient**. The 40–78 spread is **consensus that the bulk number is
+> processing-dependent**, *not* cross-source coherence — so it is never dressed as
+> teeth (the strength axis, `YIELD_K_P_PER_AT`, holds those).
 
 **Sources assessed (the primary-source verification, di-crosscheck discipline):**
 - **Thiele–Hošek 2015** — P-from-hardness; the +237 MPa/at%, 142 HV numbers.
@@ -1158,8 +1163,8 @@ fracture-side coupling).
   figure: P raises the impact transition temperature **~7–7.8 °C per 0.01 wt% P**
   ("based on several investigations", **IDOT structural-steels report PRR-174**) ⇒
   ~70–78 °C/0.1 wt%; with the lower ~40 reading this is the documented **40–78 °C/
-  0.1 wt%** bracket whose centre `grain.ITT_K_P` now pins. A consensus spread, not
-  falsifiable agreement — flagged, never teeth.
+  0.1 wt%** bracket that `grain.ITT_K_P` (≈ 50 °C/0.1 wt% = 500 °C/wt%) sits inside.
+  A consensus spread, not falsifiable agreement — flagged, never teeth.
 - **GB-coverage → DBTT (the clean, teeth-bearing form — the B-escalation source).**
   Song et al., *Mater. Sci. Eng. A* **528** (2011): `DBTT = 3.12·C_P − 118.87` for a
   Ti-IF steel, **C_P in at% at the grain boundary**; with the Langmuir–McLean
@@ -1190,9 +1195,10 @@ fracture-side coupling).
   remaining future-research piece.)*
 
 **Status: the wootz caveat is BUILT** (2026-06-15 banner) and the **P → DBTT slope
-sourcing is now closed — Outcome A ✓ 2026-06-22**: `grain.ITT_K_P` re-pinned to the
-centre of a documented, cited bracket and kept flagged (one constant + its test
-band + this record; no engine semantics change, no new module, no ADR). The
+sourcing is now closed — Outcome A ✓ 2026-06-22**: `grain.ITT_K_P` kept at its
+representative 500 °C/wt% but anchored to a documented, cited bracket and flagged
+(the test band + this record; no value change, no engine semantics change, no new
+module, no ADR). The
 **B-escalation** (the McLean GB-coverage model, where the slope could earn teeth)
 remains future research — new physics with its own triad. Sources are listed above
 and in the [[historical-impurity-pedagogy]] memory.

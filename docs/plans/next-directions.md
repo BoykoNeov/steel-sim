@@ -46,9 +46,12 @@ slope (`ITT_K_P`) was **representative, not pinned**. **The sourcing gate was ru
 path-dependent *reduced form* of grain-boundary *coverage* physics (the clean
 teeth-bearing form is GB at% → DBTT, Song 2011, via a McLean isotherm). **Outcome A
 (chosen over the new-physics B-escalation):** keep `ITT_K_P` a *flagged* bulk
-coefficient but make it **traceable** — re-pinned 500 → **600 °C/wt%** (≈ 60 °C/0.1
-wt%), the centre of a documented bracket ≈ 40–78 °C/0.1 wt% (upper anchor 7–7.8 °C/
-0.01 % P, IDOT PRR-174). Bloomery PDF assessed (RT-only + slag-confounded, unusable);
+coefficient but make it **traceable** — anchored to a documented bracket ≈ 40–78 °C/
+0.1 wt% (upper anchor 7–7.8 °C/0.01 % P, IDOT PRR-174). The **value does not move** —
+it stays the representative **500 °C/wt%** (≈ 50 °C/0.1 wt%, inside the bracket); the
+digit is arbitrary within a flagged band, so moving it would only drift the
+illustrative DBTT magnitudes downstream. Bloomery PDF assessed (RT-only +
+slag-confounded, unusable);
 the **McLean GB-coverage model (B) remains deferred** as new physics with its own
 triad. One constant + its test band + §14.5; no engine semantics change, no ADR.
 **Size: small (as filed).** **Status: BUILT (Outcome A); B-escalation deferred.**

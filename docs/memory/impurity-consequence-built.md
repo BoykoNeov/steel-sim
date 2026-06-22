@@ -34,11 +34,12 @@ green.** The honest map:
   MPa/wt%**; hardness increment **119.8 vs lit 123–125 vs theoretical 127 HV/wt% within ~6%** (the tightest
   leg). Could have missed (a unit-basis slip → ~237/wt%, below bracket).
 - **EVERYTHING ELSE = cited / flagged / by-construction, NO tooth:** P→DBTT slope **FLAGGED representative**
-  (`grain.ITT_K_P` — built here ≈500, **re-pinned 2026-06-22 to ≈600 °C/wt% by A2** = centre of a documented
+  (`grain.ITT_K_P` ≈500 °C/wt%, **A2 2026-06-22 kept the value but made it traceable** to a documented
   ≈40–78 °C/0.1wt% bracket, IDOT PRR-174 7–7.8 °C/0.01%P anchor; the A2 gate CONFIRMED the bulk slope can't
   earn teeth — a reduced form of GB *coverage* physics, clean form GB at%→DBTT Song 2011 via McLean = the
-  deferred B-escalation; see [[next-directions-catalogue]] A2); the cold-short verdict + the **demo's +96 °C =
-  ILLUSTRATIVE** (ride the flagged slope);
+  deferred B-escalation; **advisor catch: a first pass re-pinned to 600 but the digit is arbitrary within a
+  flagged band → reverted to 500 to avoid drifting the illustrative magnitudes**; see [[next-directions-catalogue]]
+  A2); the cold-short verdict + the **demo's +96 °C = ILLUSTRATIVE** (ride the flagged slope);
   the S slice = cited constants + by-construction, **symmetric with slag.py** (a thin honest consumer, which
   is FINE — just don't dress it as a tooth). Mushet 1.71 = the **historical-coherence ANCHOR (a result,
   by-construction)**.

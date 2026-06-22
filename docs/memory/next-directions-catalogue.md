@@ -32,9 +32,12 @@ direction. Consult it when "what's next" recurs.
 - **A2** P→DBTT slope → **Outcome A BUILT ✓ 2026-06-22**. The sourcing gate CONFIRMED the bulk-wt% slope
   **cannot earn teeth** (it's a path-dependent reduced form of grain-boundary *coverage* physics — clean
   teeth-bearing form is GB at%→DBTT, Song 2011, via a McLean isotherm). Outcome A (chosen over the new-physics
-  B-escalation): keep `grain.ITT_K_P` a *flagged* coefficient but **traceable** — re-pinned 500→**600 °C/wt%**
-  = centre of a documented bracket ≈40–78 °C/0.1wt% (upper anchor 7–7.8 °C/0.01%P, IDOT PRR-174). Bloomery
-  PDF assessed = RT-only + slag-confounded, unusable. 1 constant + test band + §14.5; no engine/ADR; 1098
+  B-escalation): keep `grain.ITT_K_P` a *flagged* coefficient but **traceable** — anchored to a documented
+  bracket ≈40–78 °C/0.1wt% (upper anchor 7–7.8 °C/0.01%P, IDOT PRR-174). **VALUE UNCHANGED (stays 500 °C/wt%
+  = 50 °C/0.1wt%, inside the bracket)** — advisor catch: the digit is arbitrary within a flagged band, and
+  moving it (a first pass tried 600) only drifts illustrative DBTT magnitudes downstream (demo +96, notebook
+  +85) for zero physics gain; traceability lives in the docstring/bracket/test band, not the digit. Bloomery
+  PDF assessed = RT-only + slag-confounded, unusable. Test band + §14.5; no value/engine change, no ADR; 1098
   green. **B-escalation (McLean GB-coverage model, where the slope could earn teeth) deferred.** Amends
   [[impurity-consequence-built]].
 - **A3** yield/case-depth inversion → **BUILT 2026-06-15** → [[yield-case-depth-inversion-built]].
