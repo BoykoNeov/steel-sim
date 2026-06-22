@@ -109,6 +109,10 @@ def print_summary(demo: MethodsDemo | None = None) -> None:
     print("Each era is the SAME validated chain with the era's refining chemistry: acid vs basic "
           "dephosphorization slag, and whether the era has a reducing ladle. The history is the difficulty "
           "curve — a dirty ore walks you up the tree.\n")
+    print(f"'SPOILED' is measured against a MODERN 4140 spec (P ≤ {demo.p_spec:.3f} %, S ≤ {demo.s_spec:.3f} %): "
+          "it means the era can't make clean modern alloy steel from this ore, NOT that the era made bad steel "
+          "— Thomas, open-hearth and BOF steel were sound for their day; they simply couldn't take the sulfur "
+          "out without a ladle.\n")
 
     for ore in pr.ORES:
         print(f"{ore.name} — P {ore.P:.3f} %, S {ore.S:.3f} % on the charge:")
@@ -122,6 +126,9 @@ def print_summary(demo: MethodsDemo | None = None) -> None:
           "basic slag), sulfur only at the modern ladle. Each era conquers one more tramp — the §14 "
           "purity-control ramp, played. The clean ore is sound even in acid Bessemer: the non-phosphoric "
           "ore the early Bessemer trade was built on.")
+    print("\n(Thomas, the basic open hearth and the BOF print identical rows — by this model's chemistry they "
+          "make the same heat, all conquering phosphorus the same basic-slag way. Their real differences — "
+          "scale, speed, the BOF's low nitrogen — are flavor, not modelled here.)")
     print(f"\n{pr.BLOOMERY_NOTE}")
 
 
