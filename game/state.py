@@ -24,6 +24,15 @@ field defaults to the reference value, so stepping the *reference* recipe reprod
 equality, which *is* the proof the game adds no physics. ``play_to_end(c)`` is the one-knob Slice-0 view of
 the same machine: ``Recipe(carbon=c)`` with every other knob at reference.
 
+**Slice 2 — methods & the era ramp (``game.md`` §6).** The gauntlet plays one technology; Slice 2 layers the
+**§15.2 method→engine map** on top: a :class:`~game.presets.Method` (the era — which dephosphorization slag
+runs, whether the era has ladle desulfurization / vacuum degassing) and an :class:`~game.presets.Ore` (the
+charge's tramp load) become the new top-level choices. The stage seams read the method for the era's refining
+*chemistry* and the ore for the origin; the **purity-control ramp** is the difficulty curve — a phosphoric
+ore is cold-short in acid Bessemer (acid slag, L_P≈1), phosphorus-fixed-but-still-dirty in Thomas (basic
+slag, no ladle desulf), and sound only in the modern ladle era. Both default to the modern chain on the
+phosphoric ore, so the golden-run equality is untouched.
+
 Pure logic: no streamlit, no matplotlib (the ``app.py`` three-layer firewall). The always-green tests pin
 the turn structure (one ``ProcessStep`` per turn, immutable), the golden-run equality, and — the Slice-1
 acceptance bar — **losability**: for every claimed knob there is a wrong setting that flips the verdict.
@@ -31,7 +40,7 @@ acceptance bar — **losability**: for every claimed knob there is a wrong setti
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
 
 from steel import casting as cast
 from steel import demo_capstone as dc
@@ -41,6 +50,23 @@ from steel import refining as ref
 from steel import slag as sl
 from steel.heat_state import Heat, ProcessStep
 from steel.sweep import evaluate
+
+if TYPE_CHECKING:                                    # avoid a presets↔state import cycle at module load
+    from .presets import Method, Ore
+
+
+def _method_of(state: "GameState") -> "Method":
+    """The state's method, defaulting to the modern full chain (lazy import avoids a presets↔state cycle).
+
+    Slice 2 layers the era tech tree (:mod:`game.presets`) on the gauntlet: a method fixes the era's refining
+    chemistry (which dephosphorization slag runs, whether the era has ladle desulfurization / vacuum
+    degassing). A ``GameState`` built without one (back-compat, e.g. a hand-built state) plays the modern
+    method — the same route Slices 0/1 always played.
+    """
+    if state.method is not None:
+        return state.method
+    from . import presets
+    return presets.MODERN
 
 
 # --------------------------------------------------------------------------- #
@@ -120,9 +146,12 @@ def _decarburize(heat: Heat, state: "GameState") -> Heat:
 
 
 def _dephosphorize(heat: Heat, state: "GameState") -> Heat:
+    # The era's slag runs (Slice 2): an acid Bessemer slag lands L_P≈1 (phosphorus stays — you watch it
+    # fail), a basic Thomas/BOF slag L_P in the hundreds (phosphorus conquered). The player can additionally
+    # SKIP the stage in the modern gauntlet. Defaults to the modern basic slag (= the golden-run path).
     if not state.recipe.dephosphorize:
         return _skipped(heat, "dephosphorize", "skipped — no basic slag, tramp phosphorus stays in the bath")
-    return sl.dephosphorize(heat, dc.CONVERTER_SLAG)
+    return sl.dephosphorize(heat, _method_of(state).dephos_slag)
 
 
 def _deoxidize(heat: Heat, state: "GameState") -> Heat:
@@ -131,10 +160,20 @@ def _deoxidize(heat: Heat, state: "GameState") -> Heat:
 
 
 def _degas(heat: Heat, state: "GameState") -> Heat:
+    # Vacuum degassing is a modern (secondary-metallurgy) capability (Slice 2): pre-modern eras have no
+    # vacuum, and since this model introduces no charge hydrogen there is nothing to strip, so they make no
+    # flaking claim (the field stays unset). The modern era reads the player's vacuum-depth knob.
+    if not _method_of(state).can_degas:
+        return _skipped(heat, "degas", "no vacuum in this era — a 20th-century step (no hydrogen claim made)")
     return ref.degas(heat, p_H2=state.recipe.degas_p_H2)         # knob: the vacuum depth
 
 
 def _desulfurize(heat: Heat, state: "GameState") -> Heat:
+    # Desulfurization is a reducing LADLE step (the Slice-2 sulfur unlock): pre-ladle eras have no such
+    # stage, so tramp sulfur rides through (off-grade dirty, or red-short if Mn can't tie it as MnS). In the
+    # modern era the player can additionally skip it (the gauntlet knob).
+    if not _method_of(state).can_desulfurize:
+        return _skipped(heat, "desulfurize", "no ladle desulfurization in this era — tramp sulfur stays in")
     if not state.recipe.desulfurize:
         return _skipped(heat, "desulfurize", "skipped — no reducing slag, tramp sulfur stays in the bath")
     return sl.desulfurize(heat, dc.LADLE_SLAG)
@@ -204,6 +243,8 @@ class GameState:
     recipe: Recipe
     stage: int = 0
     educational: bool = False
+    method: "Method | None" = None       # the era/technology (Slice 2); None → the modern full chain
+    ore: "Ore | None" = None             # the charge feedstock (Slice 2); None → the phosphoric ore
 
     @property
     def carbon_target(self) -> float:
@@ -225,19 +266,25 @@ class GameState:
 # 4. The turn structure — new_game / advance / play_to_end
 # --------------------------------------------------------------------------- #
 def new_game(carbon_target: float | None = None, *, recipe: Recipe | None = None,
+             method: "Method | None" = None, ore: "Ore | None" = None,
              educational: bool = False) -> GameState:
     """Start a heat: the hot-metal charge origin + the player's recipe, cursor at the first stage.
 
     Pass a full :class:`Recipe` (the Slice-1 gauntlet), or just a ``carbon_target`` (the Slice-0 one-knob
-    view — every other knob takes its reference value). The origin is
-    :func:`steel.refining.from_hot_metal` on the capstone's seeded, alloy-lean backbone (single-sourced
-    from :mod:`steel.demo_capstone`) — the *same* origin ``run_chain`` builds, so the golden-run equality
-    holds from step one. A "restart" is just calling this again.
+    view — every other knob takes its reference value). Slice 2 adds the era ``method`` (the technology — see
+    :mod:`game.presets`) and the ``ore`` (the charge's tramp load); both default to the modern full chain on
+    the phosphoric ore, so ``new_game()`` is the *same* origin ``run_chain`` builds and the golden-run
+    equality holds from step one. The origin is :func:`steel.refining.from_hot_metal` on the chosen ore's
+    alloy-lean backbone (single-sourced from :mod:`steel.demo_capstone`). A "restart" is just calling this
+    again.
     """
+    from . import presets
+    method = method if method is not None else presets.MODERN
+    ore = ore if ore is not None else presets.PHOSPHORIC_ORE
     if recipe is None:
         recipe = REFERENCE if carbon_target is None else replace(REFERENCE, carbon=float(carbon_target))
-    charge = ref.from_hot_metal(dc.LEAN_BACKBONE, charge_carbon=dc.CHARGE_CARBON)
-    return GameState(heat=charge, recipe=recipe, stage=0, educational=educational)
+    charge = ref.from_hot_metal(ore.backbone, charge_carbon=dc.CHARGE_CARBON)
+    return GameState(heat=charge, recipe=recipe, stage=0, method=method, ore=ore, educational=educational)
 
 
 def advance(state: GameState) -> GameState:
@@ -255,9 +302,10 @@ def advance(state: GameState) -> GameState:
 
 
 def play_to_end(carbon_target: float | None = None, *, recipe: Recipe | None = None,
+                method: "Method | None" = None, ore: "Ore | None" = None,
                 educational: bool = False) -> GameState:
     """Run a whole heat to the finished part — the headless driver the golden-run test and the demo use."""
-    state = new_game(carbon_target, recipe=recipe, educational=educational)
+    state = new_game(carbon_target, recipe=recipe, method=method, ore=ore, educational=educational)
     while not state.done:
         state = advance(state)
     return state

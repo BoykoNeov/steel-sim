@@ -42,6 +42,12 @@ class FakeSt:
             format_func(options[i])                      # exercise the label formatter too
         return options[i]
 
+    def selectbox(self, label, options, index=0, format_func=None, help=None):
+        opt = options[index]
+        if format_func is not None:
+            format_func(opt)                             # exercise the label formatter too
+        return opt
+
     def checkbox(self, *a, **k): return self._checkbox
     def button(self, *a, **k): return self._button
     def columns(self, n): return [_Col() for _ in range(n)]
@@ -86,3 +92,8 @@ def test_start_screen_starts_a_heat_on_the_button():
     pressed = FakeSt(button=True)
     app._start_screen(pressed)
     assert app._SESSION_KEY in pressed.session_state and not pressed.session_state[app._SESSION_KEY].done
+
+
+def test_start_screen_renders_the_educational_era_panels():
+    # Educational on → the Slice-2 method why-cards + the purity-ramp timeline render (the tier-3 overlay).
+    app._start_screen(FakeSt(checkbox=True))

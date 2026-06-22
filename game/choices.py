@@ -14,8 +14,12 @@ every other knob is a small set of named choices defined here.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from steel import demo_capstone as dc
+
+if TYPE_CHECKING:
+    from .presets import Method
 
 # Vacuum depths for the degassing decision (atm H₂): the reference deep vacuum + two shallow traps that
 # leave hydrogen above the flaking limit (probed losable).
@@ -97,8 +101,9 @@ DECISIONS: dict[str, Decision] = {
 }
 
 
-#: What each stage asks the player. The carbon slider is named here but rendered specially (the τ-curve);
-#: casting asks nothing (an honest pass-through); heat-treat asks two (medium + section).
+#: What each stage asks the player **in the modern full-gauntlet era**. The carbon slider is named here but
+#: rendered specially (the τ-curve); casting asks nothing (an honest pass-through); heat-treat asks two
+#: (medium + section). Historical eras expose fewer knobs — see :func:`stage_decisions`.
 STAGE_DECISIONS: dict[str, tuple[str, ...]] = {
     "decarburize": ("carbon",),
     "dephosphorize": ("dephosphorize",),
@@ -109,3 +114,18 @@ STAGE_DECISIONS: dict[str, tuple[str, ...]] = {
     "cast": (),
     "heat-treat": ("quench_medium", "part_diameter"),
 }
+
+
+def stage_decisions(stage_name: str, method: "Method") -> tuple[str, ...]:
+    """The knobs the player chooses at ``stage_name`` **in this era** (Slice 2 gating).
+
+    The modern secondary-metallurgy era exposes the full gauntlet (every :data:`STAGE_DECISIONS` knob). The
+    historical eras expose only the **carbon blow** — decarburization is the one stage every converter shares
+    — while the rest of the chain runs the era's fixed good-practice recipe under the method's chemistry
+    (acid vs basic dephos slag; no ladle desulf / no vacuum). The era's *technology* is then the decision, and
+    the purity ramp is the lesson; the gauntlet's per-knob lessons stay in the modern era where they belong.
+    """
+    knobs = STAGE_DECISIONS.get(stage_name, ())
+    if method.is_modern:
+        return knobs
+    return tuple(k for k in knobs if k == "carbon")

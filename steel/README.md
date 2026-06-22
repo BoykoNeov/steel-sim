@@ -732,7 +732,7 @@ streamlit run steel/app.py
 > sharing the executor + retry-on-wedge logic with `test_steel_notebook.py` via `tests/_notebook_exec.py`
 > (timeouts sized per notebook — `making.ipynb` is heavier, ~16 s clean vs ~7 s). Needs `.[viz,notebook]`.
 
-> **The playable spinoff (`game/`, plan [`docs/plans/game.md`](../docs/plans/game.md) — Slices 0–1, built ✓).**
+> **The playable spinoff (`game/`, plan [`docs/plans/game.md`](../docs/plans/game.md) — Slices 0–2, built ✓).**
 > A **separate top-level package** (not under `steel/`): the full-chain capstone made *playable*. It is the
 > one package that clears **no** physics validation triad — by design (`game.md` §2): it **orchestrates**
 > the sealed `steel` engines into a stateful, multi-turn game and reimplements no material behaviour. Its
@@ -746,10 +746,19 @@ streamlit run steel/app.py
 > skipped dephos goes cold-short, carbon pickup runs off-grade. Take every recommendation and the part is
 > sound (and reproduces the capstone). Casting is an honest no-loss pass-through (no pass/fail lever on
 > 4140 — said so, not faked); opt-in educational mode carries a why-card per decision (numbers read live).
-> Same three-layer split as the apps — pure logic (`state`/`knobs`/`teach`/`choices`/`postmortem`), lazy
-> figures (`figures`), paper-thin UI (`app_game`); headless `python -m game.demo_game`, interactive
-> `streamlit run game/app_game.py`. The one engine touch (Slice 0) was promoting `demo_capstone`'s
-> demo-local casting re-base to a public `casting.cast_billet_onto` seam (its documented promotion trigger).
+> **Slice 2 is *the era tech tree*** (`presets.py`): the §15.2 method→engine map made playable — make the
+> same grade (4140) through the methods of history (acid Bessemer → Thomas → open hearth → BOF → modern EAF +
+> ladle), each a constrained walk through the same engines, with the **purity-control ramp** the difficulty
+> curve. A `Method` fixes the era's dephosphorization slag (acid `L_P≈1` vs basic `L_P` in the hundreds) and
+> whether it has the reducing ladle / vacuum; an `Ore` sets the tramp load. A phosphoric ore is cold-short in
+> acid Bessemer, phosphorus-fixed-but-dirty in Thomas, sound only in the modern ladle era; a clean ore is
+> sound even in acid Bessemer — the two era-gated tramps (P, S) are the benchmarked slag physics, the rest
+> (H, kill, speed, scale, N) labelled flavor (the acceptance bar is the ramp, pinned by tests). Same
+> three-layer split as the apps — pure logic (`state`/`knobs`/`teach`/`choices`/`presets`/`postmortem`), lazy
+> figures (`figures`), paper-thin UI (`app_game`); headless `python -m game.demo_game` /
+> `python -m game.demo_game_methods`, interactive `streamlit run game/app_game.py`. The one engine touch
+> (Slice 0) was promoting `demo_capstone`'s demo-local casting re-base to a public `casting.cast_billet_onto`
+> seam (its documented promotion trigger).
 
 It is laid out in **three layers** so the deliverable is both testable and runnable:
 

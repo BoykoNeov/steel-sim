@@ -23,6 +23,10 @@ physics and defines no physics constant. Its discipline is **structural** (`game
   flips the finished-part verdict to a *distinct* defect, end to end (one test apiece). A green
   firewall/golden-run says nothing about this — a gauntlet of cosmetic knobs would pass all of them.
   (`tests/test_game_losability.py`.)
+- **The purity-control ramp (Slice 2)** — the tech tree's acceptance bar: each era conquers *exactly* the
+  tramp the history says it did, so a dirty ore walks the player up the tree (acid Bessemer cold-shorts on
+  phosphorus, Thomas fixes it, only the modern ladle takes the sulfur), and the modern reference still
+  reproduces the golden run. (`tests/test_game_methods.py`.)
 
 ## Slice 0 — the hero heat, interactive
 
@@ -45,32 +49,61 @@ flaking, desulf → sulfur over the cleanliness spec, trim carbon-pickup → off
 core); **casting is an honest no-loss pass-through** (no pass/fail lever on this grade — stated, not faked).
 Take every recommendation and the part is sound — and reproduces `run_chain` exactly.
 
+## Slice 2 — methods & the era ramp (the tech tree)
+
+The `steel-making.md` §15.2 method→engine map made playable: make the **same** grade (4140) through the
+methods of history — **acid Bessemer** (1856), **Thomas / basic Bessemer** (1879), **basic open hearth**,
+the **BOF**, and modern **EAF + ladle metallurgy** — each a *constrained walk* through the same validated
+F1–F4 engines. A `Method` (`presets.py`) fixes the era's refining chemistry: which dephosphorization slag
+runs (acid `slag.ACID_BESSEMER_SLAG`, L_P≈1 → phosphorus stays; basic `slag.BASIC_CONVERTER_SLAG`, L_P in the
+hundreds → conquered) and whether the era has the secondary-metallurgy stages (reducing-ladle desulfurization;
+vacuum degassing). An `Ore` sets the charge's **tramp load**, and the **purity-control ramp** is the
+difficulty curve:
+
+- a **phosphoric** ore is cold-short in acid Bessemer, phosphorus-fixed-but-still-dirty in Thomas (no ladle
+  desulf yet), and **sound only in the modern ladle era**;
+- a **clean (non-phosphoric)** ore is sound even in acid Bessemer — exactly why the early Bessemer trade
+  fought over it.
+
+The two era-gated tramps are **phosphorus and sulfur** (the benchmarked slag-partition physics). Hydrogen is
+**not** era-gated (the model introduces no charge hydrogen, so "no vacuum" makes no flaking claim), and the
+kill, speed, scale, and nitrogen are **flavor** (labelled). The basic open hearth and the BOF share Thomas'
+chemistry in this model — their distinction is flavor, *said and pinned by a test*; the **bloomery** is the
+named era-0 floor (a different product below the F1 crossover), not a played 4140 route. In a historical era
+the **method and ore are the decision** (the blow endpoint is still yours); the full per-stage gauntlet is
+the modern era.
+
 ## Layout (the `app.py` three-layer discipline)
 
 | Module | Layer | Role |
 |---|---|---|
-| `state.py` | logic | the `Recipe` choices vector + session-state schema + turn transitions (`Heat` in → `Heat` out), the verdict readout |
+| `state.py` | logic | the `Recipe` choices vector + session-state schema + turn transitions (`Heat` in → `Heat` out), the verdict readout; the era method/ore wiring (Slice 2) |
 | `knobs.py` | logic | the blow τ-curve — validated C–O reads + the labelled flavor trajectory |
-| `choices.py` | logic | the per-stage decision tables (named options; the recommended one reproduces the reference) |
+| `choices.py` | logic | the per-stage decision tables (named options; the recommended one reproduces the reference); the era knob-gating |
+| `presets.py` | logic | the method/era tech tree + the ore table (Slice 2) — each era a constrained walk through the engines |
 | `postmortem.py` | logic | the gauntlet judge — the sealed consequence engines run on the finished part (no spine mutation) |
-| `teach.py` | logic | educational why-cards, one per knob (prose here, numbers read live) |
-| `figures.py` | figure | the blow-curve figure (matplotlib imported lazily) |
-| `demo_game.py` | demo | the headless golden run (`python -m game.demo_game`) + figure bank |
+| `teach.py` | logic | educational why-cards — one per knob (Slice 1) + one per era + the purity-ramp timeline (Slice 2); prose here, numbers read live |
+| `figures.py` | figure | the blow-curve figure + the purity-ramp figure (matplotlib imported lazily) |
+| `demo_game.py` | demo | the headless gauntlet golden run (`python -m game.demo_game`) + figure bank |
+| `demo_game_methods.py` | demo | the headless era tech tree (`python -m game.demo_game_methods`) + figure bank |
 | `app_game.py` | ui | the **only** `import streamlit`; paper-thin `main()` |
 
 ## Run it
 
 ```powershell
-pip install -e ".[viz,app]"          # matplotlib (viz) + streamlit (app)
-python -m game.demo_game             # headless: play the gauntlet safe (sound) then rough (spoiled), bank the figure
-streamlit run game/app_game.py       # interactive: decide every stage, run the chain, read the post-mortem
+pip install -e ".[viz,app]"             # matplotlib (viz) + streamlit (app)
+python -m game.demo_game                # headless: play the gauntlet safe (sound) then rough (spoiled), bank the figure
+python -m game.demo_game_methods        # headless: the era tech tree — the purity ramp across the methods of history
+streamlit run game/app_game.py          # interactive: pick a method + ore, decide the stages, read the post-mortem
 ```
 
-## Scope ceiling (Slices 0–1)
+## Scope ceiling (Slices 0–2)
 
-One method, the 4140 route; **no reflex timing** (value-selection only — real-time timing is deferred to a
+The methods are the **converter-era purity ramp judged as 4140** — every era makes the same grade and they
+differ in *which tramp they can clean*. The §15.2 methods that make a **different product on a different
+walk** (the bloomery's wrought iron, cementation, crucible, wootz) each need their own win-condition and are
+a **named deferral**. **No reflex timing** (value-selection only — real-time timing is deferred to a
 non-Streamlit surface); the economy is a placeholder. Casting carries no losable lever on this grade (an
-honest pass-through, not a faked knob). Educational mode is the toggle + a why-card per decision; surfacing
-the verified-vs-flavor labels as styled UI **chips** + the physics-shape explainer (tier 2) is deferred.
-Slices 2+ (the method/era tech tree, economy and discrete events) are specified in
+honest pass-through, not a faked knob). The verified-vs-flavor labels as styled UI **chips** + the
+physics-shape explainer (tier 2) remain deferred. Slice 3+ (economy, scale, discrete events) is specified in
 [`docs/plans/game.md`](../docs/plans/game.md) §6.

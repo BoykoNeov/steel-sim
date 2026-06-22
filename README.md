@@ -37,8 +37,9 @@ python steel/demo_jominy.py             # any demo prints its validation table +
 streamlit run steel/app.py              # the back-end what-if app (needs .[viz,app])
 streamlit run steel/app_making.py       # the front-end (ore→billet) what-if twin (needs .[viz,app])
 streamlit run steel/app_consequences.py # the defect-consequences app (needs .[viz,app])
-streamlit run game/app_game.py          # the playable spinoff — make one heat, the gauntlet (needs .[viz,app])
+streamlit run game/app_game.py          # the playable spinoff — pick an era + ore, make one heat (needs .[viz,app])
 python -m game.demo_game                # the game's headless golden run (prints the contrast, banks a figure)
+python -m game.demo_game_methods        # the era tech tree — the purity ramp across the methods of history
 jupyter lab steel/steel.ipynb           # the back-end teaching notebook (needs .[viz,notebook])
 jupyter lab steel/making.ipynb          # the front-end (ore→billet→defects) teaching notebook
 ```
@@ -97,16 +98,19 @@ Three ways into the same validated core (install + launch commands are in
   CO porosity, hot-tearing, peritectic surface cracking) and see the flat upstream risk line disagree
   with the real consequence — then the *signed* foils, where the same impurity is an asset (the
   free-machining sulfide, the Wootz/Damascus carbide pattern), not only a defect.
-- **Game** (`game/app_game.py`, headless `python -m game.demo_game`) — the playable spinoff (the `game/`
-  build plan, [`docs/plans/game.md`](docs/plans/game.md), Slice 1 — *the gauntlet*): the full-chain capstone
-  made *playable*, where **every stage is a decision**. Take every recommendation and the part comes out
-  sound (and reproduces the capstone golden run exactly); one wrong call — a weak kill, a shallow vacuum,
-  skipped dephos, carbon pickup — plants a latent flaw the finished part is judged on by the sealed
-  consequence engines (porosity, flaking, cold-short, off-grade). The verdicts are emergent, not scripted
-  (the acceptance bar is *losability*: each knob has a wrong setting that flips the verdict, pinned by a
-  test); casting is an honest no-loss pass-through. `game/` orchestrates the validated engines and
-  reimplements **no** physics — its discipline is structural (a firewall guard + golden-run determinism +
-  losability).
+- **Game** (`game/app_game.py`, headless `python -m game.demo_game` / `python -m game.demo_game_methods`) —
+  the playable spinoff (the `game/` build plan, [`docs/plans/game.md`](docs/plans/game.md)). **Slice 1 — *the
+  gauntlet*:** the full-chain capstone made *playable*, where **every stage is a decision**. Take every
+  recommendation and the part comes out sound (and reproduces the capstone golden run exactly); one wrong
+  call — a weak kill, a shallow vacuum, skipped dephos, carbon pickup — plants a latent flaw the finished
+  part is judged on by the sealed consequence engines (porosity, flaking, cold-short, off-grade), emergent
+  not scripted (the bar is *losability*). **Slice 2 — *the era tech tree*:** make the same grade through the
+  methods of history (acid Bessemer → Thomas → open hearth → BOF → modern EAF + ladle), each a constrained
+  walk through the same engines, with the **purity-control ramp** the difficulty curve — a phosphoric ore is
+  cold-short in acid Bessemer (acid slag, L_P≈1), phosphorus-fixed-but-dirty in Thomas, and sound only in the
+  modern ladle era; a clean ore is sound even in acid Bessemer. `game/` orchestrates the validated engines
+  and reimplements **no** physics — its discipline is structural (a firewall guard + golden-run determinism +
+  losability + the purity ramp).
 
 The table is ordered as a suggested path — top rows first. Every demo is its own
 `python -m steel.<name>`; the *Also interactive* column points to where the same idea lives in

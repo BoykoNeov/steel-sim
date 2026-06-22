@@ -491,6 +491,26 @@ CATALOG: tuple[Entry, ...] = (
         "`streamlit run game/app_game.py`.",
         app="make one heat", package="game",
     ),
+    Entry(
+        "Game — the era tech tree", "demo_game_methods", "steel-game-methods.png",
+        "The purity-control ramp — make 4140 across the methods of history",
+        "The §15.2 method→engine map made playable (the game/ spinoff, Slice 2): make the SAME grade (4140) "
+        "through the methods of history — acid Bessemer (1856), Thomas/basic Bessemer (1879), basic open "
+        "hearth, the BOF, modern EAF + ladle metallurgy — each a constrained walk through the same validated "
+        "F1–F4 engines, with the era fixing the refining chemistry (which dephosphorization slag runs, "
+        "whether the era has a reducing ladle). The PURITY-CONTROL RAMP is the difficulty curve: a phosphoric "
+        "ore is cold-short in acid Bessemer (acid slag, L_P≈1 — why Bessemer rails cracked), "
+        "phosphorus-fixed-but-still-dirty in Thomas (basic slag, L_P in the hundreds — no ladle desulf yet), "
+        "and sound only in the modern ladle era (the reducing slag takes the sulfur). A clean, non-phosphoric "
+        "ore is sound even in acid Bessemer — exactly why the early Bessemer trade fought over it. The two "
+        "era-gated tramps are phosphorus and sulfur (the benchmarked slag-partition physics); hydrogen, the "
+        "kill, speed, scale, and nitrogen are flavor, labelled. The open hearth and BOF share Thomas' "
+        "chemistry in this model (their distinction is flavor) — said, and pinned by a test; the bloomery is "
+        "the named era-0 floor, not a played 4140 route. No new physics — game/ orchestrates the sealed "
+        "engines (firewall + the golden run preserved). Headless here; the interactive version "
+        "(pick a method + ore) is `streamlit run game/app_game.py`.",
+        app="make one heat", package="game",
+    ),
 )
 
 

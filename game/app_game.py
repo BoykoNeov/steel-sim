@@ -33,6 +33,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 from game import choices as ch
 from game import knobs as kn
+from game import presets as pr
 from game import state as gs
 from game import teach as tc
 from game.figures import blow_curve_figure
@@ -89,10 +90,14 @@ def _named_decision(st, state: gs.GameState, knob: str) -> dict:
 
 def _render_decision(st, state: gs.GameState, stage: gs.Stage) -> dict:
     """Render the upcoming stage's decision(s) and return the chosen recipe overrides (``{}`` for casting)."""
-    knobs = ch.STAGE_DECISIONS[stage.name]
-    if not knobs:                                          # casting — the honest pass-through
-        st.caption("No decision here: on this grade casting can't spoil the part — it sets the segregation "
-                   "band the heat-treat inherits (Chvorinov time + Scheil centerline).")
+    knobs = ch.stage_decisions(stage.name, state.method)  # era-gated (Slice 2): historical eras → carbon only
+    if not knobs:                                          # casting / a method-fixed stage — no player knob
+        if stage.name == "cast":
+            st.caption("No decision here: on this grade casting can't spoil the part — it sets the segregation "
+                       "band the heat-treat inherits (Chvorinov time + Scheil centerline).")
+        else:
+            st.caption(f"No decision here — {state.method.name} runs this stage with its era's fixed "
+                       f"good-practice chemistry. The era (and the ore) was the decision.")
         return {}
     overrides: dict = {}
     for knob in knobs:
@@ -125,22 +130,64 @@ def _post_mortem_block(st, r: dict) -> None:
                "no physics (`game.md` §2).")
 
 
+def _method_panel(st, method: pr.Method) -> None:
+    """The tier-3 era panel (educational): what this era conquered, numbers read live; verified/flavor chipped."""
+    for card in tc.method_why_cards(method):
+        chip = "✅ verified" if card.label == tc.VERIFIED else "🟡 flavor"
+        with st.expander(f"{chip} · {card.title}"):
+            st.markdown(card.body)
+            st.caption(f"source: {card.source}")
+
+
+def _timeline_panel(st) -> None:
+    """The purity-control ramp as a timeline — the history is the difficulty curve (educational)."""
+    st.markdown("##### The purity-control ramp — the history is the difficulty curve")
+    for row in tc.timeline():
+        st.markdown(f"**{row['year']} · {row['name']}** — conquers: {row['conquers']}")
+    st.caption(pr.BLOOMERY_NOTE)
+
+
 def _start_screen(st) -> None:
-    """The startup: opt into educational mode, then start the heat (decisions happen stage by stage)."""
+    """The startup: pick the era + ore (Slice 2), opt into educational mode, then start the heat."""
     st.subheader("Start a heat")
+
+    method = st.selectbox(
+        "Method (era)", pr.METHODS, index=pr.METHODS.index(pr.MODERN),
+        format_func=lambda m: f"{m.year} · {m.name}",
+        help="The steelmaking technology — it fixes the era's refining chemistry (which dephosphorization "
+             "slag runs, whether the era has a reducing ladle / vacuum).",
+    )
+    st.caption(method.blurb)
+    ore = st.selectbox(
+        "Ore (feedstock)", pr.ORES, index=0, format_func=lambda o: f"{o.name}  (P {o.P:.3f} %, S {o.S:.3f} %)",
+        help="The charge's tramp load — a phosphoric ore needs a basic process and a ladle to clean it.",
+    )
+    st.caption(ore.note)
+
     educational = st.checkbox(
         "Educational mode — a why-card on every decision, the validated targets named", value=False,
         help="An information overlay only: it explains more, it does not change the physics or difficulty.",
     )
     st.markdown(tc.intro_text(educational))
+    if not method.is_modern:
+        st.info("Historical era: the **method and the ore are the decision**. The blow endpoint is still "
+                "yours; the rest of the chain runs this era's fixed chemistry. (The full per-stage gauntlet "
+                "is the modern EAF + ladle era.)")
+    if educational:
+        _method_panel(st, method)
+        _timeline_panel(st)
+
     if st.button("Start the heat ▶", type="primary"):
-        st.session_state[_SESSION_KEY] = gs.new_game(educational=educational)
+        st.session_state[_SESSION_KEY] = gs.new_game(method=method, ore=ore, educational=educational)
         st.rerun()
 
 
 def _play_screen(st, state: gs.GameState) -> None:
     """The turn loop: choose the upcoming stage, run it, build the trail, judge the part at the end."""
-    st.subheader("Making one heat of 4140")
+    st.subheader(f"Making 4140 — {state.method.name} · {state.ore.name}")
+    st.caption(f"{state.method.year} · {state.method.era}.  Conquers: {state.method.conquers}.")
+    if state.educational:
+        _method_panel(st, state.method)
     st.progress(state.stage / len(gs.STAGES), text=f"stage {state.stage} of {len(gs.STAGES)}")
 
     if not state.done:
@@ -167,10 +214,12 @@ def main() -> None:
     st.set_page_config(page_title="Steel — make one heat", layout="centered")
     st.title("Make one heat — ore to part")
     st.caption(
-        "A playable run of the validated production chain (Steel `game/` plan, Slice 1). **Every stage is a "
-        "decision** — take every recommendation and the part comes out sound (and reproduces the capstone "
-        "exactly); one wrong call plants a flaw the finished part is judged on. Every number is produced by "
-        "a model behind its own validation triad; the game only chooses and threads the `Heat`."
+        "A playable run of the validated production chain (Steel `game/` plan, Slice 2). Pick a **method "
+        "(era)** and an **ore**, then make 4140: in the modern era every stage is a decision; in the "
+        "historical eras the method and ore *are* the decision, and the **purity-control ramp** is the "
+        "difficulty curve (acid Bessemer can't take the phosphorus out, Thomas can, the ladle takes the "
+        "sulfur). Every number is produced by a model behind its own validation triad; the game only chooses "
+        "and threads the `Heat`."
     )
 
     state = st.session_state.get(_SESSION_KEY)

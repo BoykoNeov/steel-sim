@@ -18,8 +18,29 @@
 > test each — the advisor's acceptance bar); **casting is an honest no-loss
 > pass-through** (no pass/fail lever on 4140 — said so, not faked); deox became the
 > **deoxidizer-choice** knob (Al ≫ Si > Mn) and desulf is losable via the **cleanliness
-> spec** (the trim's Mn masks red-short — the masking became the lesson). Slices 2–3
-> below remain plan-only. The rest of this document is the build plan that **promotes** the game
+> spec** (the trim's Mn masks red-short — the masking became the lesson).
+>
+> **Status: Slice 2 BUILT ✓ (2026-06-22) — the era tech tree.** The §15.2 method→engine
+> map made playable: a `presets.py` table of **methods** (acid Bessemer → Thomas → basic
+> open hearth → BOF → modern EAF + ladle) and **ores** (a phosphoric and a clean charge),
+> each method a *constrained walk* through the same validated F1–F4 engines. A `Method`
+> fixes the era's refining chemistry — which dephosphorization slag runs (acid `L_P≈1` vs
+> basic `L_P` in the hundreds, read live from `slag.phosphorus_partition`) and whether the
+> era has the secondary-metallurgy stages (reducing-ladle desulf, vacuum degas) — and the
+> **purity-control ramp** is the difficulty curve: a phosphoric ore is cold-short in acid
+> Bessemer, phosphorus-fixed-but-dirty in Thomas, sound only in the modern ladle era; a
+> clean ore is sound even in acid Bessemer. The acceptance bar (the Slice-2 analogue of
+> losability) is **the ramp** — each era conquers exactly the tramp the history says it did,
+> pinned by `test_game_methods.py`, with the modern reference still reproducing the golden
+> run exactly. The two era-gated tramps are **P and S** (the benchmarked slag physics);
+> **hydrogen is deliberately not era-gated** (the model carries no charge H, so "no vacuum"
+> makes no flaking claim), and the kill / speed / scale / nitrogen / the Al & vacuum
+> anachronism are **flavor** (labelled). The basic open hearth and BOF share Thomas'
+> chemistry in this model — *said and pinned by a test*; the **bloomery** is the named era-0
+> floor, not a played 4140 route (a different product, deferred). **No engine touch, no
+> ADR** (`presets.py` + the `state.py`/`choices.py`/`teach.py` wiring + `demo_game_methods.py`
+> + the purity-ramp figure + 35 new tests, 95 game). Slice 3 remains plan-only.
+> The rest of this document is the build plan that **promotes** the game
 > *doctrine* —
 > already written in depth in `steel-making.md` **§8** (the firewall), **§15**
 > (methods as paths through the built engines), and **§16** (the Tier-3
@@ -268,18 +289,36 @@ consequence engines.
   engine cites). Surfacing the verified-vs-flavor labels as styled UI chips + the physics-shape
   explainer (tier 2) is **deferred** to a later pass — the labels exist; the *chip styling* did not ship.
 
-### Slice 2 — methods & the era ramp (the tech tree)
-- Turn the **§15.2 method→engine map** into a `game/` **method-preset table**
-  behind the firewall: each preset = a `Heat` **recipe** over F1–F4 + the set of §6
-  flags it can fire + a **verified-vs-flavor label per field** (§15.5).
-- The **purity-control ramp is the progression** (§14 theme C / §15.2): start at
-  the **bloomery** (few knobs, forgiving — but hard-capped: below the F1 C/CO
-  crossover you **cannot** make hardenable alloy steel); earn each era, and **each
-  era unlocks one tramp element you can finally control** — P with Thomas (basic
-  slag), N with the BOF, S with ladle desulfurization. *The history is the
-  difficulty curve.*
-- Educational mode grows to **tier 3** (cited post-mortem + links into the
-  notebook / gallery; pairs with the §14 historical timeline).
+### Slice 2 — methods & the era ramp (the tech tree) — **BUILT ✓ 2026-06-22**
+**As built (Cut A — the converter-era purity ramp judged as 4140, the user's `AskUserQuestion` choice over
+the fuller different-product tree).** The **§15.2 method→engine map** became a `presets.py` table of
+`Method`s (acid Bessemer 1856 → Thomas 1879 → basic open hearth → BOF → modern EAF + ladle) and `Ore`s (a
+phosphoric and a clean charge), each method a **constrained walk** through the same validated F1–F4 engines
+behind the firewall — no `Heat` flag it fires is new, the era only chooses *which sealed seams run with what
+chemistry*.
+- **The era lever is the slag regime + the secondary-metallurgy unlocks**, all already built in `slag.py`:
+  a `Method` carries the dephosphorization slag (`ACID_BESSEMER_SLAG`, `L_P≈1` — *runs and visibly fails* —
+  vs `BASIC_CONVERTER_SLAG`, `L_P` in the hundreds) and the `can_desulfurize` / `can_degas` capability flags.
+  More honest than "skip the stage": acid Bessemer *runs* a dephos stage that barely moves P.
+- **The purity-control ramp is the difficulty curve** (§14 theme C / §15.2), driven by a new **ore axis**
+  (the charge's tramp load) so the gates bite: a **phosphoric** ore is cold-short in acid Bessemer,
+  phosphorus-fixed-but-still-dirty in Thomas/OH/BOF (no ladle desulf), sound only in the modern ladle era; a
+  **clean** ore is sound even in acid Bessemer (*the* reason early Bessemer needed non-phosphoric ore).
+- **The two era-gated tramps are P and S** — the benchmarked slag-partition physics. **Hydrogen is
+  deliberately NOT era-gated** (probe-confirmed: the model introduces no charge H — `degas` only *sets* a
+  Sieverts equilibrium — so "no vacuum" makes no flaking claim, rather than faking one). The kill, process
+  speed, scale, nitrogen, and the **aluminium/vacuum anachronism** in old eras are **flavor**, labelled
+  (§15.5). The basic open hearth and BOF **share Thomas' chemistry** in this model — said outright and
+  **pinned by a test** (their distinction is flavor). The **bloomery** is named as the era-0 floor (a
+  different product below the F1 crossover), **not** a played 4140 route (a named deferral).
+- **The acceptance bar** (the Slice-2 analogue of Slice-1 losability) is **the ramp itself**: each era
+  conquers exactly the tramp the history says it did, the modern reference still reproduces the golden run
+  exactly, and the verdict matrix was **probed empirically before** `presets.py` was written.
+- Educational mode grew to **tier 3** — per-era cited why-cards (`teach.method_why_cards`, numbers read live
+  from the slag engine) + the purity-ramp `timeline`, pairing with the §14 historical surface.
+- **Deferred (named):** the different-product methods (bloomery wrought iron, cementation, crucible, wootz —
+  each needs its own win-condition); the verified-vs-flavor **chip styling** + the tier-2 physics-shape
+  explainer (still open from Slice 1).
 
 ### Slice 3+ — economy, scale, discrete events (flavor, last)
 - **Economy-scale anchors** (§16.3) — bloomery ~kg/day → crucible ~tens-of-kg →
@@ -360,14 +399,15 @@ citation (§5.3). Flavor (τ values, economy, discrete-event rates) is original 
 (the gauntlet — every stage a decision) → Slice 2 (methods + the era ramp) → Slice 3+
 (economy / flavor / discrete events). **Stop and play after each.**
 
-**Immediate next step.** **Slices 0 and 1 are BUILT ✓ (2026-06-21).** Slice 0 stood up
+**Immediate next step.** **Slices 0, 1 and 2 are BUILT ✓ (0/1 2026-06-21, 2 2026-06-22).** Slice 0 stood up
 the `game/` package (firewall guard, the session-state surface §3, the Type-B blow knob
 §3.3, the educational toggle §5.2, the structural tests §8) on the proven capstone chain.
-Slice 1 made **every stage a decision** (the gauntlet, scope widened from the original
-"deox knob" by the user): a `Recipe` choices vector + `choices.py` option tables +
-`postmortem.py` (the sealed consequence engines judging the finished part), with
-**losability** as the acceptance bar (seven losable knobs, one test each; casting an
-honest no-loss pass-through). The next build is **Slice 2** (methods & the era ramp — the
-§15.2 method-preset table + the purity-control progression), or the **deferred Slice-1
-polish**: the verified-vs-flavor labels surfaced as styled UI chips + educational tier 2
-(the physics-shape explainer). Stop and play first.
+Slice 1 made **every stage a decision** (the gauntlet): a `Recipe` choices vector + `choices.py` option
+tables + `postmortem.py` (the sealed consequence engines judging the finished part), with **losability** as
+the acceptance bar. Slice 2 made **the methods of history playable** (the era tech tree, Cut A — the
+converter-era purity ramp judged as 4140): `presets.py` (the `Method`/`Ore` tables), the era-aware stage
+seams, per-era tier-3 cards + the purity-ramp timeline, with **the ramp itself** as the acceptance bar
+(probed first, pinned by `test_game_methods.py`). The next build is **Slice 3** (economy / scale / discrete
+events, §6), the **different-product methods** (bloomery wrought iron, cementation, crucible, wootz — each a
+new win-condition), or the long-**deferred Slice-1 polish** (the verified-vs-flavor labels as styled UI chips
++ the tier-2 physics-shape explainer). Stop and play first.

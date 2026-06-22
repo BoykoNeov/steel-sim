@@ -19,9 +19,13 @@ install and the logic layers stay headless. It invents no validated physics — 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from . import knobs as kn
 from steel.demo_capstone import REF_CARBON
+
+if TYPE_CHECKING:
+    from .demo_game_methods import MethodsDemo
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_FIGURE = _REPO_ROOT / "docs" / "figures" / "steel-game-blow.png"
@@ -76,6 +80,53 @@ def blow_curve_figure(carbon_target: float = REF_CARBON):
     ax_o.legend(loc="upper left", fontsize=8.5, framealpha=0.3)
 
     fig.suptitle(f"Set the blow endpoint  —  {pos.zone.replace('-', ' ')}", fontsize=13, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    return fig
+
+
+def methods_figure(demo: "MethodsDemo"):
+    """Build the purity-ramp figure (``game.md`` §6 Slice 2) — residual P and S down the era tech tree.
+
+    Two stacked panels for the **phosphoric** ore (the "hard mode" that needs the full chain): residual
+    phosphorus (top) and sulfur (bottom) after each era, with the cleanliness spec lines drawn. Each era's
+    point is coloured by whether that run came out sound, so the eye reads the ramp directly — phosphorus
+    drops below spec at Thomas (the basic slag), sulfur only at the modern ladle. Every datum is a played run
+    (:func:`game.demo_game_methods.compute`), i.e. the sealed engines' own output — the figure invents nothing.
+    """
+    import matplotlib.pyplot as plt
+
+    # The phosphoric ore is the informative column (the clean ore is sound everywhere — nothing to ramp).
+    ore = next((o for o in demo.outcomes if o.P > 0.05), demo.outcomes[0]).ore
+    row = [o for o in demo.outcomes if o.ore is ore]
+    labels = [f"{o.method.year}\n{o.method.name}" for o in row]
+    x = list(range(len(row)))
+    good, bad = "#2e9e5b", "#d2483a"
+    # Colour each panel by THAT tramp's own spec status (not the whole run's verdict): so the phosphorus
+    # panel goes green exactly when phosphorus is conquered (Thomas), the sulfur panel when sulfur is (ladle).
+    p_colors = [good if o.P <= demo.p_spec else bad for o in row]
+    s_colors = [good if o.S <= demo.s_spec else bad for o in row]
+
+    fig, (ax_p, ax_s) = plt.subplots(2, 1, figsize=(8.5, 7.4), sharex=True)
+
+    ax_p.plot(x, [o.P * 100 for o in row], color="#1f2a44", lw=1.6, zorder=2)
+    ax_p.scatter(x, [o.P * 100 for o in row], c=p_colors, s=80, zorder=3, edgecolor="k", linewidth=0.5)
+    ax_p.axhline(demo.p_spec * 100, color=bad, ls="--", lw=1.3,
+                 label=f"cold-short spec ≤ {demo.p_spec * 100:.3f} %P")
+    ax_p.set_ylabel("residual phosphorus (·10⁻² wt %)")
+    ax_p.set_title("Phosphorus — conquered at Thomas (the basic slag)  ·  validated (Healy L_P)", fontsize=11)
+    ax_p.legend(loc="upper right", fontsize=8.5, framealpha=0.3)
+
+    ax_s.plot(x, [o.S * 100 for o in row], color="#1f2a44", lw=1.6, zorder=2)
+    ax_s.scatter(x, [o.S * 100 for o in row], c=s_colors, s=80, zorder=3, edgecolor="k", linewidth=0.5)
+    ax_s.axhline(demo.s_spec * 100, color=bad, ls="--", lw=1.3,
+                 label=f"cleanliness spec ≤ {demo.s_spec * 100:.3f} %S")
+    ax_s.set_ylabel("residual sulfur (·10⁻² wt %)")
+    ax_s.set_title("Sulfur — conquered only at the modern ladle  ·  validated (sulfide capacity L_S)", fontsize=11)
+    ax_s.set_xticks(x)
+    ax_s.set_xticklabels(labels, fontsize=8.5)
+    ax_s.legend(loc="lower left", fontsize=8.5, framealpha=0.3)
+
+    fig.suptitle(f"The purity-control ramp  —  {ore.name} up the §15.2 tech tree", fontsize=13, fontweight="bold")
     fig.tight_layout(rect=(0, 0, 1, 0.97))
     return fig
 

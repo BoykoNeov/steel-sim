@@ -30,3 +30,15 @@ def test_blow_curve_figure_builds_at_the_grade_aim():
     fig = blow_curve_figure(kn.grade_carbon_aim())
     assert len(fig.axes) == 2
     plt.pyplot.close(fig)
+
+
+def test_methods_figure_builds():
+    # Slice 2's purity-ramp figure: the two panels (residual P and S down the era tech tree). Smoke only.
+    plt = pytest.importorskip("matplotlib")
+    plt.use("Agg")
+    from game.demo_game_methods import compute
+    from game.figures import methods_figure
+
+    fig = methods_figure(compute())
+    assert len(fig.axes) == 2                            # residual phosphorus + residual sulfur
+    plt.pyplot.close(fig)

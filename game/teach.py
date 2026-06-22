@@ -2,7 +2,10 @@
 
 The user's first-class requirement: at the start the player can switch on an **educational mode** with
 more help and explanation. Slice 0 lands **tier 1** — *why-cards on the one knob* (``game.md`` §5.2): for
-the F2 decarb blow, what the step does, what over- and under-shoot mean, the validated target named.
+the F2 decarb blow, what the step does, what over- and under-shoot mean, the validated target named. Slice 1
+grows a why-card per gauntlet knob (:func:`knob_why_cards`); **Slice 2** adds **tier 3** — per-era cards
+(:func:`method_why_cards`) and the purity-ramp :func:`timeline`, teaching why each historical method conquered
+the tramp it did (the §14 history surface, the §15.2 method map).
 
 The educational-mode firewall line (``game.md`` §5.3, sharpened by the advisor) — two rules keep teaching
 text from becoming a backdoor for un-sourced claims:
@@ -26,6 +29,7 @@ from steel import hydrogen_flaking as hf
 from steel import slag as sl
 
 from . import knobs as kn
+from . import presets as pr
 
 # The two label tiers (the verified-vs-flavor contract, ``game.md`` §5.3 / ``steel-making.md`` §15.5).
 VERIFIED: str = "verified"
@@ -153,6 +157,62 @@ def knob_why_cards(knob: str, *, carbon_target: float | None = None) -> list[Why
     }
     cards["part_diameter"] = cards["quench_medium"]               # the heat-treat pair share one why-card
     return [cards[knob]] if knob in cards else []
+
+
+def method_why_cards(method: "pr.Method") -> list[WhyCard]:
+    """Tier-3 educational cards for an era/method (``game.md`` §6 Slice 2) — the purity-ramp physics, live.
+
+    Two **verified** cards — the phosphorus slag lever and the sulfur capability — each reading the sealed
+    slag engine *live* (so a baked constant would fail the label test), plus one **flavor** card for the era's
+    period detail / speed / scale (labelled "plausible, not validated"). Together they teach why each era
+    conquered the tramp it did: phosphorus with the basic slag (Thomas), sulfur with the reducing ladle.
+    """
+    Lp = sl.phosphorus_partition(method.dephos_slag)
+    cards: list[WhyCard] = []
+
+    if method.removes_phosphorus:
+        p_body = (
+            f"This era runs a **basic** dephosphorization slag ({method.dephos_slag.label()}, "
+            f"B = {method.dephos_slag.basicity:.1f}): the lime fixes phosphorus as a stable phosphate, so "
+            f"L_P ≈ {Lp:.0f} — phosphorus partitions hundreds-to-one into the slag, taking it below the "
+            f"{sl.MAX_PHOSPHORUS_PCT:.3f} % spec. Phosphorus conquered (Thomas' 1879 fix)."
+        )
+    else:
+        p_body = (
+            f"This era's slag is **acid** ({method.dephos_slag.label()}, B = {method.dephos_slag.basicity:.1f}): "
+            f"oxidizing, but lime-poor, so it cannot fix the phosphate — L_P ≈ {Lp:.1f}, barely one-to-one. "
+            f"Tramp phosphorus stays in the steel and the part comes out cold-short. This is exactly why acid "
+            f"Bessemer needed a non-phosphoric ore — and why Thomas' basic lining changed history."
+        )
+    cards.append(WhyCard("Phosphorus — the slag", p_body, VERIFIED, "slag.phosphorus_partition (Healy 1970)"))
+
+    if method.can_desulfurize:
+        s_body = (
+            f"This era has secondary metallurgy: a **reducing ladle** slag on the killed (low-oxygen) bath "
+            f"pulls sulfur below the {sl.MAX_SULFUR_PCT:.3f} % spec. Desulfurization is a *reducing* partition "
+            f"— it needs the low oxygen the kill leaves, which is why it is a ladle step, not a converter one."
+        )
+    else:
+        s_body = (
+            f"This era has no reducing ladle step, so tramp sulfur rides through. If the manganese can tie it "
+            f"as high-melting MnS it does not red-short, but it stays over the {sl.MAX_SULFUR_PCT:.3f} % "
+            f"cleanliness spec — off-grade dirty. Sulfur was the last tramp conquered; it waited for the ladle."
+        )
+    cards.append(WhyCard("Sulfur — the ladle", s_body, VERIFIED, "slag.sulfur_partition / slag.MAX_SULFUR_PCT"))
+
+    if method.flavor:
+        cards.append(WhyCard("The era's feel", "; ".join(method.flavor) + ".", FLAVOR, FLAVOR_SOURCE))
+    return cards
+
+
+def timeline() -> list[dict]:
+    """The era ladder for the educational timeline (the §14 purity ramp) — what each era newly conquered.
+
+    Prose, drawn from :data:`game.presets.METHODS` (oldest → newest); the bloomery floor is named separately
+    (:data:`game.presets.BLOOMERY_NOTE`) since it is not a playable 4140 route. The UI renders this as the
+    "history is the difficulty curve" panel.
+    """
+    return [{"name": m.name, "year": m.year, "era": m.era, "conquers": m.conquers} for m in pr.METHODS]
 
 
 def intro_text(educational: bool) -> str:
