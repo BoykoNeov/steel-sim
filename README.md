@@ -50,8 +50,8 @@ below — a map of every demo, notebook section, and app view, with a suggested 
 **Run the tests** (the tiered gate — [ADR 0003](docs/decisions/0003-test-execution-policy.md)):
 
 ```powershell
-./run_tests.ps1 -m "not slow"     # routine fast lane — 458 tests
-./run_tests.ps1                   # full suite — 467 tests (adds slow live-CALPHAD, notebook + kinetics checks)
+./run_tests.ps1 -m "not slow"     # routine fast lane — 1082 tests
+./run_tests.ps1                   # full suite — 1100 tests (adds slow live-CALPHAD, notebook + kinetics checks)
 ./run_tests.ps1 -n0               # force serial (the default is `-n auto`, parallel)
 ```
 
@@ -63,7 +63,7 @@ cores** (the slow tail is internally threaded, so one-worker-per-core oversubscr
 on **one** worker (`xdist_group("heavy")`) so solvers build once and no two heavy tests run at
 once — see the [ADR 0003 xdist amendment](docs/decisions/0003-test-execution-policy.md).
 
-The suite is **467 tests**, all green (2 env-skips). The **live-CALPHAD** cross-checks need the
+The suite is **1100 tests**, all green (2 env-skips). The **live-CALPHAD** cross-checks need the
 `[calphad]` extra (pycalphad) and otherwise skip — they run in CI on Python 3.12, where
 `pip install -e .[calphad]` resolves cleanly (on 3.14 see the `[calphad]` note in
 `pyproject.toml`). The frozen-table Phase-4 validation runs pycalphad-free. Optional stacks
@@ -178,3 +178,10 @@ restated locally where it is used (`docs/decisions/` ADRs, `docs/plans/steel-pro
 each module's docstring). Where the dated plan and ADRs still cite them, that is a record of what
 the build was authored against — like a commit message naming a since-removed file — not a live
 dependency.
+
+## License
+
+Licensed under the **Boyko Non-Commercial License v1.0 (BNCL-1.0)** — see
+[`LICENSE`](LICENSE). Commercial use is prohibited unless separately licensed by the copyright
+holder. Redistributions and derivative works must retain both the [`LICENSE`](LICENSE) and
+[`NOTICE`](NOTICE) files.

@@ -10,10 +10,18 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["engines*", "steel*", "game*"]
 
+# BNCL-1.0 is a custom, non-SPDX license, so a bare PEP 639 `license = "BNCL-1.0"` expression
+# string would fail SPDX validation on modern setuptools/packaging. Ship both files (the NOTICE
+# requires redistributions to retain them; recent setuptools' default glob already grabs NOTICE*,
+# this is belt-and-suspenders and 61+ compatible).
+[tool.setuptools]
+license-files = ["LICENSE", "NOTICE"]
+
 [project]
 name = "steel-sim"
 version = "0.1.0"
-description = "Educational steel heat-treatment simulator on a frozen, separately-validated diffusion/heat solver engine."
+description = "Educational simulator for the full steel chain — ore → billet → part — plus a playable spinoff, on a frozen, separately-validated diffusion/heat solver engine."
+license = {text = "BNCL-1.0 (Boyko Non-Commercial License v1.0) — commercial use prohibited unless separately licensed; see LICENSE."}
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.24",
