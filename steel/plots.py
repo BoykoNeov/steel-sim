@@ -4056,3 +4056,77 @@ def slag_validation_figure(d):
                  "(Nzotta 1998), within the basic domain", fontsize=11.0, fontweight="bold")
     fig.subplots_adjust(left=0.07, right=0.985, top=0.9, bottom=0.12, wspace=0.22)
     return fig
+
+
+def slag_lp_validation_figure(d):
+    """The B3 phosphorus artifact: cited Healy L_P model vs an independent measured dataset (Drain 2018).
+
+    ``d`` is a :class:`~steel.demo_slag_lp_validation.SlagLpValidationDemo` (validated residual list
+    only — this layer draws, ADR 0002). Two panels tell the *quantified-bias-map* story:
+
+    * **left — predicted vs measured log10 L_P.** Points coloured by experiment series (ascending
+      basicity, cool → warm). The moderate-basicity families (B2, R) hug the 1:1 line inside the
+      ±factor-2 band; the high-lime families (B4, B5) ride *above* it — Healy over-predicts there.
+    * **right — the residual vs slag basicity (the diagnosis).** log10(model/measured) against
+      ``v = %CaO/%SiO₂``: a monotone climb from ≈ 0 at ``v≈2`` (Healy's fit domain) to ≈ +0.3 (×2) at
+      ``v≈5`` — the linear ``+0.08·%CaO`` term failing to saturate. The per-series means are drawn as
+      the trend the bias follows.
+    """
+    import matplotlib.pyplot as plt
+    import statistics
+
+    fig, (ax_sc, ax_re) = plt.subplots(1, 2, figsize=(13.6, 5.7))
+    v = d.verdict
+    # series in ascending basicity, cool → warm (blue moderate-lime → red high-lime)
+    s_color = {"B2": "#2471a3", "R": "#16a085", "T": "#27ae60", "B4": "#e67e22", "B5": "#c0392b"}
+    s_label = {"B2": "B2  (v≈2, Healy domain)", "R": "R  (v≈2.8, repro.)", "T": "T  (temperature series)",
+               "B4": "B4  (v≈4)", "B5": "B5  (v≈5, high lime)"}
+
+    # --- left: predicted vs measured log L_P ---------------------------------- #
+    lo, hi = 1.4, 3.2
+    ax_sc.fill_between([lo, hi], [lo - 0.301, hi - 0.301], [lo + 0.301, hi + 0.301],
+                       color="0.85", alpha=0.6, zorder=0, label="±factor-2")
+    ax_sc.plot([lo, hi], [lo, hi], color="0.4", ls="--", lw=1.2, zorder=1, label="perfect (1:1)")
+    seen = set()
+    for r in d.holdout:
+        lab = s_label.get(r.series) if r.series not in seen else None
+        seen.add(r.series)
+        ax_sc.scatter([r.measured], [r.predicted], s=58, color=s_color.get(r.series, "0.3"),
+                      edgecolor="0.2", lw=0.6, zorder=4, label=lab)
+    ax_sc.set_xlim(lo, hi); ax_sc.set_ylim(lo, hi)
+    ax_sc.set_xlabel("measured  log10 L_P  (Drain 2018)")
+    ax_sc.set_ylabel("predicted  log10 L_P  (Healy 1970)")
+    ax_sc.set_title("moderate basicity hugs 1:1; high lime rides above → over-predicts", fontsize=10.2)
+    ax_sc.legend(loc="upper left", fontsize=7.4, framealpha=0.92)
+    ax_sc.grid(True, alpha=0.2)
+
+    # --- right: residual vs basicity (the diagnosis) -------------------------- #
+    ax_re.axhline(0.0, color="0.4", ls="--", lw=1.2, zorder=1)
+    ax_re.fill_between([1.5, 6.0], [-0.301, -0.301], [0.301, 0.301], color="0.9", alpha=0.6,
+                       zorder=0, label="±factor-2")
+    for r in d.holdout:
+        ax_re.scatter([r.v_ratio], [r.resid], s=52, color=s_color.get(r.series, "0.3"),
+                      edgecolor="0.2", lw=0.5, zorder=3)
+    # the per-series trend the bias climbs along
+    trend_v = [mean_v for _, mean_v, _, _ in v.per_series]
+    trend_r = [mean_r for _, _, mean_r, _ in v.per_series]
+    ax_re.plot(trend_v, trend_r, color="#8e44ad", lw=1.8, marker="D", ms=6, zorder=5,
+               label="per-series mean bias")
+    ax_re.set_xlim(1.5, 6.0); ax_re.set_ylim(-0.4, 0.75)
+    ax_re.set_xlabel("slag basicity  v = %CaO / %SiO₂")
+    ax_re.set_ylabel("log10(model / measured)")
+    ax_re.set_title("the diagnosis: bias climbs with basicity (linear-CaO term won't saturate)", fontsize=10.2)
+    lo_b, hi_b = v.by_lime["low"], v.by_lime["high"]
+    ax_re.annotate(
+        "VERDICT — benchmarked, with a MEASURED bias map:\n"
+        f"  near-exact at v≈2 (×{10 ** trend_r[0]:.2f}) → ~×2 at v≈5 (×{10 ** trend_r[-1]:.2f})\n"
+        f"  %CaO<50 ×{10 ** lo_b[0]:.2f}  vs  %CaO≥55 ×{10 ** hi_b[0]:.2f}\n"
+        "  NOT upgraded to 'validated' — the high-lime over-prediction is real",
+        (0.5, 0.02), xycoords="axes fraction", ha="center", va="bottom", fontsize=7.6,
+        bbox=dict(boxstyle="round,pad=0.4", fc="#f5eef8", ec="#8e44ad", alpha=0.92))
+    ax_re.legend(loc="upper left", fontsize=7.6, framealpha=0.9)
+
+    fig.suptitle("B3 — front-end validation: the cited Healy phosphorus-partition model out-of-sample "
+                 "(Drain 2018) — benchmarked, over-predicts at high lime", fontsize=11.0, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.985, top=0.9, bottom=0.12, wspace=0.22)
+    return fig

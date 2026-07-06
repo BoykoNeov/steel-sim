@@ -156,6 +156,14 @@ CATALOG: tuple[Entry, ...] = (
         "and MnO edges where it doesn't.",
     ),
     Entry(
+        "Validation", "demo_slag_lp_validation", "steel-slag-lp-validation.png",
+        "Phosphorus partition — a measured bias map",
+        "Does the cited Healy phosphorus-partition (L_P) model predict dephosphorization "
+        "*out-of-sample*? An independent measured dataset (Drain 2018, 48 years after the 1970 fit) "
+        "says it carries at moderate basicity but over-predicts ~×2 at high lime — the vague "
+        "'over-predicts at high lime' caveat turned into a quantified, benchmarked bias map.",
+    ),
+    Entry(
         "Stress", "demo_residual", "steel-residual-stress.png",
         "Residual stress & distortion",
         "The residual stress and distortion a quench locks into a section — the "

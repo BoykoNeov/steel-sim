@@ -77,8 +77,19 @@ What is CITED vs the named ceiling — the two-tier provenance (as in reduction 
   temperature slope reproduced. So C_S earns "holdout-validated within the basic domain (Λ ≳ 0.65)"
   rather than "order-of-magnitude only" there. Two **named edges** remain source-sensitive and were
   *quantified*, not removed: the **acidic** side (Λ ≲ 0.6) under-predicts ~×4, and **MnO**-rich slags
-  over-predict ~×5 (the optical-basicity scale's weak spots). The L_P / Healy and the metal-partition
-  conversions are *not* covered by this holdout — they stay order-of-magnitude.
+  over-predict ~×5 (the optical-basicity scale's weak spots).
+
+  **Healy's L_P is now holdout-graded too (B3 phosphorus leg, ADR 0007 — see** :mod:`steel.slag_lp_validation`
+  **).** Graded against an *independent* measured dataset (Drain et al., ISIJ Int. 58 (2018) 1965,
+  Table 4 — 33 equilibrium heats, measured 48 years after Healy's 1970 fit, L_P defined exactly as the
+  ``(%P)/[%P]`` mass ratio), the correlation comes out **honestly benchmarked with a measured,
+  basicity-dependent bias**: near-exact in Healy's own fit domain (B2, ``v≈2``: ≈ ×1.0) but
+  **over-predicting ≈ ×2 at high lime** (B5, ``v≈5``; ``%CaO ≥ 55`` ≈ ×2.3). The mechanism is the
+  ``+0.08·%CaO`` term being *linear and unbounded* where the real L_P *saturates* beyond ``v ≈ 2.5``.
+  So the flagged "over-predicts at high lime" caveat below is now a **quantified map** (≈ ×1.0 at
+  ``v≈2`` rising to ≈ ×2 at ``v≈5``) — but L_P stays **benchmarked / order-of-magnitude**, *not*
+  upgraded to "validated" like C_S (the high-lime bias is real). The metal-partition conversions
+  (C_S→L_S) are still uncovered by any holdout — they stay order-of-magnitude.
 * **The named ceiling.** Equilibrium partition endpoints, never the *rate* (slag–metal mass-transfer /
   emulsion kinetics — the front-end tar pit, §4); a single lumped slag of fixed mass ratio (no slag
   evolution through the heat); dilute 1-wt% Henrian metal (``a_O ≈ [%O]``, ``f_X ≈ 1``); the optical
@@ -212,8 +223,9 @@ LADLE_DESULF_SLAG = Slag(CaO=52.0, SiO2=8.0, Al2O3=33.0, MgO=7.0, FeO=0.5, name=
 # --------------------------------------------------------------------------- #
 # Healy 1970: log[(%P)/[%P]] = 22350/T + 0.08·(%CaO) + 2.5·log₁₀(%Fe_t) − 16  (T in K). The
 # source-sensitive tier (one of several published models — Suito–Inoue, Turkdogan — and known to OVER-predict
-# at high lime). The robust reads: the +2.5·log %Fe_t **oxidizing** dependence (the sign), the basicity jump
-# from acid to basic, and the order of magnitude vs measured BOF L_P ≈ 50–200.
+# at high lime; the holdout in slag_lp_validation quantifies that: ≈ ×1.0 at v≈2 rising to ≈ ×2 at v≈5). The
+# robust reads: the +2.5·log %Fe_t **oxidizing** dependence (the sign), the basicity jump from acid to basic,
+# and the order of magnitude vs measured BOF L_P ≈ 50–200.
 HEALY_T: float = 22350.0
 HEALY_CAO: float = 0.08
 HEALY_FE: float = 2.5

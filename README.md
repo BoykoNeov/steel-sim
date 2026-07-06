@@ -50,8 +50,8 @@ below — a map of every demo, notebook section, and app view, with a suggested 
 **Run the tests** (the tiered gate — [ADR 0003](docs/decisions/0003-test-execution-policy.md)):
 
 ```powershell
-./run_tests.ps1 -m "not slow"     # routine fast lane — 1082 tests
-./run_tests.ps1                   # full suite — 1100 tests (adds slow live-CALPHAD, notebook + kinetics checks)
+./run_tests.ps1 -m "not slow"     # routine fast lane — 1096 tests
+./run_tests.ps1                   # full suite — 1114 tests (adds slow live-CALPHAD, notebook + kinetics checks)
 ./run_tests.ps1 -n0               # force serial (the default is `-n auto`, parallel)
 ```
 
@@ -63,7 +63,7 @@ cores** (the slow tail is internally threaded, so one-worker-per-core oversubscr
 on **one** worker (`xdist_group("heavy")`) so solvers build once and no two heavy tests run at
 once — see the [ADR 0003 xdist amendment](docs/decisions/0003-test-execution-policy.md).
 
-The suite is **1100 tests**, all green (2 env-skips). The **live-CALPHAD** cross-checks need the
+The suite is **1114 tests**, all green (2 env-skips). The **live-CALPHAD** cross-checks need the
 `[calphad]` extra (pycalphad) and otherwise skip — they run in CI on Python 3.12, where
 `pip install -e .[calphad]` resolves cleanly (on 3.14 see the `[calphad]` note in
 `pyproject.toml`). The frozen-table Phase-4 validation runs pycalphad-free. Optional stacks
@@ -131,6 +131,7 @@ the notebook (§) and the app.
 | **Process routes** | `demo_bainite` | — | The cited bainite reaction, and why its bay can't form in a plain continuous cool (the negative-result companion). |
 | **Validation** | `demo_cct_validation` | notebook §6c | Does any cited composition factor predict bainite kinetics *across* steels? Eight atlas steels say no — the per-steel-only wall, measured and quantified. |
 | **Validation** | `demo_slag_validation` | — | Does the cited optical-basicity sulfide-capacity model predict C_S *out-of-sample*? An independent measured dataset (Nzotta 1998, post-1986, MnO/FeO-free) says yes for basic slags — ~×1.4, tight, perfect ranking — and names the acidic and MnO edges. |
+| **Validation** | `demo_slag_lp_validation` | — | Does the cited Healy phosphorus-partition (L_P) model predict dephosphorization *out-of-sample*? An independent measured dataset (Drain 2018, 48 years after the fit) says it carries at moderate basicity but over-predicts ~×2 at high lime — the vague "over-predicts at high lime" caveat turned into a quantified bias map. |
 | **Stress** | `demo_residual` | notebook §6e · app *residual stress* | The residual stress and distortion a quench locks into a section (the solid-mechanics axis). |
 | **Stress** | `demo_fracture` | — | Quench cracking as the coupling of two axes: the residual-stress field (§18, consumed as code) and a **representative** cleanliness input — a worst-case surface flaw `√area` — joined by a linear-elastic fracture-mechanics gate (Murakami √area vs the as-quenched martensite K_Ic). Hero: one thick 4340, one direct water quench, **one** surface tension — a clean heat (largest surface flaw √area ≈ 30 µm) sits below the critical flaw size and survives, while a dirty heat (√area ≈ 400 µm) in the *identical* field exceeds it and **quench-cracks**. So the flat `quench-crack-risk` (surface in tension) splits two-tier into a realized `quench-crack` only when tension **and** a critical flaw coincide — cleanliness is load-bearing, not a relabel. Martempering the dirty part collapses the surface tension (→ compression), √area_c → ∞, crack clears (the §17/§18 distortion benefit, now in fracture). Needs the **phase-split yield** path (hard martensite surface holds the tension a single-yield solve caps at σ_Y,20) — lifting residual.py's own named scope edge, the one genuine new mechanics here. **No claimable tooth** (sign reversal + martemper benefit consumed from residual; LEFM + Murakami factor cited; as-quenched K_Ic, martensite-yield base and clean/dirty √area representative — the absolute threshold ∝ K_Ic² is a named scope edge). Ceilings: surface-initiated only, atlas-steel (4340) only, one flaw per heat, and the `√area` input is **not** wired to the inclusion engines (`slag` / `sulfide_morphology`) — a bulk volume fraction is not a largest-flaw size, so that bridge is a named deferral, not a tuned number. |
 | **Case hardening** | `demo_carburize` | notebook §8 · app *carburizing* | A carburized gear tooth: carbon diffused in at the surface, case hardness out. |

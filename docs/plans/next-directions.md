@@ -132,13 +132,18 @@ model **carries** for basic slags (~×1.4, ×1.2 scatter, *exact* within-tempera
 T-slope reproduced) — a *positive* out-of-sample result that upgraded `slag.py`'s C_S posture;
 the **acidic** (Λ ≲ 0.6, ~×4 low) and **MnO** (~×5 high) edges are named, not tuned away. The
 data-gate that deferred the scoping spike was cleared by getting the **primary source in hand**
-(open-access tabular data, not figure-scraped). **Still open:** the Healy L_P leg (needs an
-independent measured-partition dataset) and a second slag system beyond Al₂O₃–CaO–MgO–SiO₂.
+(open-access tabular data, not figure-scraped).
 
----
-
-## C. Program horizon (different repo)
-The ADRs (`docs/decisions/`) reference the program build order **Steel → Microchip →
-Planet**. **Microchip** (project #2) and then **Planet** (#3) are the next
-*simulators* — "something new entirely" at program scale, but outside this repo. The
-per-project test gate (ADR 0003) is explicitly scheduled to land *after* Microchip.
+**Healy L_P leg — BUILT ✓ 2026-07-06 (ADR 0007, `steel/slag_lp_validation.py`).** The second leg
+cleared the same way: the primary source in hand — Drain et al., *ISIJ Int.* **58** (2018) 1965,
+Table 4 (open-access CC BY-NC-ND; 33 measured equilibrium heats, L_P defined exactly as Healy's
+`(%P)/[%P]` mass ratio, measured 48 years after the 1970 fit → airtight temporal independence, and no
+optical basicity in Healy's formula → even cleaner parametric independence than the C_S leg). The
+verdict is deliberately **weaker** than C_S's: Healy comes out **benchmarked with a measured,
+basicity-dependent bias map**, *not* upgraded to "validated" — near-exact in its fit domain (B2,
+`v≈2`: ×1.02) but over-predicting **~×2 at high lime** (B5, `v≈5`; `%CaO ≥ 55` ≈ ×2.3), because the
+linear `+0.08·%CaO` term doesn't saturate where the real L_P does. The temperature direction is
+reproduced (magnitude confounded); the ~20 % FetO maximum is a named structural ceiling. Two
+transcription guards (per-row `(%P₂O₅)/[%P]/L_P` consistency; the R-series reproducibility
+cross-checked against the paper's prose "190 ± 7"). No refit, no engine touch. **Still open:** a
+second slag system beyond these BOS/ladle systems.
