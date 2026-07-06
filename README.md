@@ -168,9 +168,8 @@ For the physics behind each demo, the validation discipline, and per-module deep
 
 This repository is **standalone and self-contained** — everything needed to use, test, and
 develop it is here, and nothing depends on any other repository existing. It was originally
-developed inside the **BigSim** monorepo (an educational program of three simulators — steel,
-microchip, planet — sharing two separately-validated solver engines) and then extracted with its
-history. steel is where the diffusion/heat engine was first frozen and the sibling sims reused it.
+developed inside a larger monorepo and then extracted with its history; the reusable diffusion/heat
+engine under `engines/` was first frozen here.
 
 That origin is why some docs cite `ARCHITECTURE.md §N` or `PORTFOLIO.md`: those were the
 monorepo's **program-level** doctrine and catalog files. They are **historical context — not part

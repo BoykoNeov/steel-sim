@@ -1,8 +1,8 @@
 # 0004 — Unfreeze the diffusion engine for native nonlinear `D(u)`
 
 Status: Accepted — 2026-06-11
-Scope: `engines/diffusion` (the program spine). Re-seals the v1.0 `CONTRACT.md`
-at **v1.1**; inherited by every consumer (Steel now; Microchip / Planet later).
+Scope: `engines/diffusion` (the reusable spine). Re-seals the v1.0 `CONTRACT.md`
+at **v1.1**; inherited by every consumer of the engine.
 
 ## Context
 
@@ -31,8 +31,8 @@ Two routes were on the table:
 
 The contract's own rule is explicit: *changing the sealed surface means a new ADR
 + re-running the seal.* This ADR is that record. **Route (B) was chosen** (the
-capability belongs in the spine, and the consumers — carburizing now, possibly
-Chip's dopant profiles later — should not each re-implement a lagged nonlinear
+capability belongs in the spine, and the consumers — carburizing now, and any
+future consumer — should not each re-implement a lagged nonlinear
 solve around the engine).
 
 ## Decision
@@ -88,8 +88,8 @@ band) and is validated against the consumer-level Boltzmann reference.
 - `+` The nonlinear capability lives in the **spine**, validated once, inherited by
   every consumer; carburizing's `D(C)` consumer code is simpler and cleaner than the
   array-seam workaround would have been.
-- `+` **Backward-compatible.** Microchip and Planet inherit a *richer* contract; the
-  linear behaviour they depend on is byte-identical, so nothing downstream breaks.
+- `+` **Backward-compatible.** Any consumer of the engine inherits a *richer* contract; the
+  linear behaviour it depends on is byte-identical, so nothing downstream breaks.
 - `+` **ADR 0001 data-boundary is preserved.** `D_of_u` is *construction-time
   configuration* that is evaluated *inside* matrix assembly and reduces to numbers; it
   never enters or crosses the plain-array `state` boundary. A compiled reimplementation

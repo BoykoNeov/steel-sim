@@ -111,7 +111,7 @@ A lightweight **`Heat`** record is the object that flows through the chain and
   **steel-sim *data*, threaded by a thin orchestrator — it is NOT passed into
   the frozen engines.** The engines stay **array-in / array-out** (the existing
   loose-coupling boundary, `steel-production.md` §5); the frozen diffusion core
-  must stay untouched so Chip/Planet keep inheriting it. The orchestrator
+  must stay untouched so it remains a clean, reusable engine. The orchestrator
   **unpacks `Heat` → plain arrays → calls the pure engine → repacks the result
   into `Heat`.** Engines never "read and mutate" the record; that would
   contaminate the reusable core.

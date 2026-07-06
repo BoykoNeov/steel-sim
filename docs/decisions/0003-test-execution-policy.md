@@ -1,8 +1,8 @@
 # 0003 — Test execution policy (the tiered gate)
 
-Status: Accepted — 2026-06-09 (amended same day — see Amendment; the per-project Successor
-was built 2026-06-09 once Microchip landed — see *Successor*)
-Scope: Program-level invariant; inherited by every per-project plan.
+Status: Accepted — 2026-06-09 (amended same day — see Amendment; the per-project Successor is a
+retired program-level concern — see *Successor*)
+Scope: Program-level invariant, as authored; in this standalone repo it applies to the one project.
 
 > **Extraction note (standalone repo).** This ADR was written for the BigSim monorepo. In this
 > single-project repo the per-project `python -m tools.gate <project>` runner and the `GATES`
@@ -103,9 +103,9 @@ tests anyway, so not collecting them is *harmless* here, not a real loss. It onl
 matters when you actually edit the engine, which is the cross-cutting **full-gate**
 case. So whole-repo fast lane wins on (a)+(b), not on "scoping would miss a regression."
 
-**When this gets built:** the committed point is **after Microchip lands** — a
-manifest-backed per-project gate (see *Successor* below). The ~30 s fast-lane time is an
-*earlier* signal: revisit sooner if it trips before Microchip is done.
+**When this would have got built:** only once a second project existed — a manifest-backed
+per-project gate (see *Successor* below, now retired for this standalone repo). The ~30 s
+fast-lane time was the *earlier* signal that would have prompted revisiting it sooner.
 
 ## Consequences
 
@@ -120,7 +120,7 @@ manifest-backed per-project gate (see *Successor* below). The ~30 s fast-lane ti
 - `+` No new tooling: `run_tests.ps1` already passes args through, so
   `./run_tests.ps1 -m "not slow"` *is* the routine gate — nothing to maintain.
 - `−` The full gate no longer runs every commit, so the live-solver tests, the
-  known flake (below), and (once project #2 lands) cross-project regressions run
+  known flake (below), and (had a second project ever landed) cross-project regressions run
   ~never unless something forces it. **This is the real cost** — its proper
   mitigation is CI running the full gate on push (see the Amendment), not a 200 s
   local default.
@@ -166,7 +166,7 @@ reason or pin the solve. Until then it is a known, full-gate-visible flake.
   packages and an ~8 s core do not justify the machinery. The committed successor (see
   *Successor* below) is a **declared manifest** (project → used modules → test suites),
   not an auto-detecting heuristic like `pytest-testmon` — an explicit single source of
-  truth, built once Microchip gives it a second entry to validate against.
+  truth, to be built only once a second project gave it a second entry to validate against.
 
 ## Amendment (2026-06-09)
 
@@ -183,7 +183,7 @@ New policy (Decision #2 above): the routine commit gate is the whole-repo fast l
 release / CI); docs-only commits run no gate.
 
 **The trade-off this accepts, stated plainly (not hidden):** the live-CALPHAD tests,
-the known flake (above), and — once project #2 lands — cross-project regressions now
+the known flake (above), and — had a second project ever landed — cross-project regressions now
 run ~never unless something forces the full gate. The honesty concern that motivated
 the original default-full is real; its correct home is **CI running the full gate on
 push**, off the developer's critical path, *not* a 200 s local default. Full-gate CI
@@ -211,79 +211,19 @@ silently *skipped* the optional-stack tests rather than running them):
   the softener if it gets noisy is `pytest-rerunfailures` on the slow set, not skipping
   the TDB.
 
-## Successor — a per-project gate, after Microchip (project #2) lands
+## Successor — a per-project gate (retired: a program-level concern, N/A to this standalone repo)
 
-This whole-repo tiered gate is **interim**. By user direction (2026-06-09), once
-Microchip lands the gate becomes **per-project**: *a commit to a project runs only the
-tests concerning that project* — its own tests **plus the tests of the modules it
-uses** — not the whole-repo fast lane. Detailed design is deliberately deferred to that
-build ("develop it there and then"), but the shape is fixed now:
+In the original monorepo this whole-repo tiered gate was slated to become a **per-project**
+gate once a second project existed: a hand-declared manifest of *project → used modules → test
+suites*, so a commit to a project ran only its own tests **plus the tests of the modules it
+uses**, not the whole-repo fast lane. That successor and its machinery (a `tools/gate.py` manifest
++ runner and a `projects/` layout) lived at the **program level** and were **not extracted** into
+this repo — and with a single project here there is nothing for a per-project gate to
+discriminate (its scope would be identical to the whole-repo fast lane, Decision #4).
 
-- **A single source of truth** declaring, per project, *what it uses and which tests
-  run for it* (project → used engines/modules → test suites). The per-project gate reads
-  that manifest; it is **not** a heuristic git-diff guesser. Including the used modules'
-  tests is the whole point of the manifest — "tests concerning the project" means the
-  engine tests it depends on run *with* it, not just its own folder.
-
-Why wait for Microchip rather than build it now: with one project the per-project scope
-*is* the whole-repo fast lane (Decision #4 — identical sets), so the manifest would hold
-a single trivial entry that no second consumer could validate. Microchip is the first
-point the mapping has two distinct entries to get right.
-
-**Still open to settle at that milestone** (settled at build — see *Built* below):
-
-- **The `slow` set** — Microchip adds its own potentially-heavy tests (Deal–Grove,
-  litho, any live numerics) to classify by the same live-solver/kernel/subprocess rule.
-- **The rot mitigation actually in place** — full-gate CI on push **was** set up
-  (`.github/workflows/full-gate.yml`, 2026-06-09 — see the Amendment), so the
-  live-CALPHAD tests + the known flake now run on every push, not ~never. At the
-  Microchip milestone, settle instead: does Microchip add its slow tests to the same
-  workflow, and is the known multicomponent flake still unresolved (then either pin the
-  solve / loosen the band, or add `pytest-rerunfailures`)?
-
-### Built 2026-06-09 — `tools/gate.py` (manifest + runner)
-
-The successor is built. `tools/gate.py` holds the manifest — `GATES`, a hand-declared
-`project -> used modules` dict — and a thin runner; `python -m tools.gate <project>
-[pytest args]` expands one entry into the pytest path set (`tools/tests` self-check +
-`projects/<project>/tests` + each used module's `tests/`) and passes everything else
-through. Cross-platform on purpose: the *same* command runs locally (Windows) and in CI.
-Measured: `python -m tools.gate chip -m "not slow"` → 116 (chip 96 + engine 18 + gate 2,
-no slow); `… steel …` → 242 + 8 slow deselected; whole-repo fast lane → 338 + 8. Neither
-per-project gate runs the other's tests — the test-isolation win the manifest existed for.
-
-Decisions settled at build (the ones the ADR left open / flagged):
-
-- **Hand-declared, not auto-derived-from-imports** (the open design call; advisor-reviewed).
-  ADR §4 / *Alternatives* already committed to an explicit single source of truth over an
-  auto-detecting heuristic; the build holds that line. Decisive at today's scale: with
-  **one engine** the two approaches produce the *identical* manifest (every project imports
-  the one engine), so auto-derivation buys nothing, while a scanner that silently misses a
-  dependency is the very silent-under-test failure mode §4 warns against.
-- **Honest read of "two distinct entries to validate":** the premise the ADR waited for is
-  only *half* met. Microchip uses the **same single engine** as Steel, so `uses =
-  ["engines/diffusion"]` for both — a second *row*, not a second distinct *value*. The
-  test-isolation win does not depend on `uses` differing (it comes from the per-project
-  test folders), so the build proceeds; but the manifest's **discriminating feature stays
-  unvalidated** until a project uses a different module set. The machinery is kept minimal
-  for exactly that reason.
-- **The `slow` set is unchanged:** Microchip's modules (Deal–Grove oxidation, litho aerial
-  image, MOS `V_t`, dopant diffusion) are all closed-form / fast numerics — **zero** new
-  `slow` tests (`grep` confirms, and chip's gate deselects nothing under `-m "not slow"`).
-  The slow set stays the 8 Steel live-CALPHAD + notebook tests.
-- **Rot mitigation:** full-gate CI on push (the Amendment's `full-gate.yml`) already runs
-  bare `pytest`, which picks up the 2 new `tools/tests` automatically via `testpaths`; no
-  workflow change needed. The known multicomponent flake (Open Issue) remains unresolved
-  and full-gate-visible — not touched by this build.
-- **The self-check, and what is deliberately *deferred*:** the gate ships one guard — a
-  manifest-**completeness** test (`tools/tests/test_gate.py`: `GATES` covers exactly the
-  `projects/*` packages, and every gated path exists). That is the acceptance test for the
-  artifact *and* the trip-wire for the near-term event (project #3 added without a manifest
-  entry). The **import-drift guard** (assert each project's actual `engines.*` imports are
-  all declared in `GATES`) is **deferred to engine #2** — at one engine it cannot fail and
-  has nothing to check (§8: name the extension, don't build it). Forward note: when built it
-  must run *inside* the per-project gate, not only the whole-repo lane, or it won't fire on
-  a per-project commit.
+**For this standalone repo the operative policy is the whole-repo tiered gate documented above**
+(fast lane `-m "not slow"` + the full suite, with the xdist Amendment below). This note records
+that the per-project successor was a retired program concern, not a pending item for this repo.
 
 ## Amendment (2026-06-11) — `pytest-xdist` enabled (ahead of the trigger)
 

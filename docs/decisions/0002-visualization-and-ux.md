@@ -49,8 +49,8 @@ every rendering target.
   artifact; testable against golden/numeric; zero deployment.
 - *Interactive:* notebooks (matplotlib + ipywidgets) for teaching narrative,
   and/or a thin Streamlit/Gradio app for slider-driven what-ifs.
-- *Selective deep-end:* Plotly / web / WebGL only where a specific sim's payoff
-  demands it (3-D galaxy, planet maps). Opt-in, behind the same data boundary.
+- *Selective deep-end:* Plotly / web / WebGL only where a specific payoff
+  demands it (e.g. a 3-D field or an interactive map). Opt-in, behind the same data boundary.
 
 **5. Visualize the mechanism, not just the output.** The target is "teach real
 mechanisms, not black boxes," so views are designed to reveal *why* — e.g.,
@@ -93,24 +93,17 @@ pick what fits. This keeps the doctrine lean-by-default (ARCHITECTURE.md §6).
   matplotlib for the universal static floor; used selectively at the deep end
   instead.
 
-## Status note — 2026-06-09: `viz/` not yet built; the rule-of-three substance check
+## Status note — 2026-06-09: `viz/` not built (a shared-viz extraction was a program-level concern)
 
-Three projects now each carry a project-local `plots.py` (steel, chip, planet), so
-Decision 3's rule-of-three trigger is satisfiable **by count**. A read of all three
-bodies (the "visual engine" session, 2026-06-09) found it is **not** satisfied **by
-substance**: they share **conventions and styling** — near-identical doctrine
-docstrings, color-constant blocks, the `axvline/axhline + marker + annotate-arrow`
-idiom, grid/legend defaults — but **almost no copy-pasted code**. Of the named
-primitives, the 2-D field/heatmap and the stacked bars are effectively *steel-only*
-today, and **time-animation exists nowhere** in the repo. Promoting on the strength of
-the count would build the thin styling shim Decision 3 itself warns against ("DRY by
-rule-of-three, **not premature abstraction**").
+A shared `viz/` package was, in the original monorepo, gated on a rule-of-three trigger across
+several projects' `plots.py`. That reasoning found the trigger satisfied **by count** but **not by
+substance** — the project-local `plots.py` bodies shared **conventions and styling** (doctrine
+docstrings, color-constant blocks, the `axvline/axhline + marker + annotate-arrow` idiom,
+grid/legend defaults) but **almost no copy-pasted code**, and the genuinely additive primitives
+(a real 2-D field/heatmap, a time-animation) were better built *with* their first consumer than
+extracted from thin air. So `viz/` was deliberately left unbuilt.
 
-**So `viz/` stays unbuilt, deliberately.** A *thin* extraction (the doctrine docstring +
-axis/marker/styling helpers) is the leaned-to next step — **not yet done**; the
-genuinely additive primitives (a real 2-D field/heatmap and a **time-animation**) are
-better built *with* their first consumer than extracted from thin air. The Planet
-**interactive-map layer registry** (ADR 0004 #1) — which exercises exactly the 2-D-field
-and annotated-overlay primitives — is the awaited **third consumer** that will *earn* the
-promotion to `viz/`. This note is recorded so a future session does not read the three
-`plots.py` as a standing mandate to stand up `viz/` on the count alone.
+In **this standalone repo** the question is moot: there is a single `steel/plots.py` and no other
+project's plotting to extract against, so no shared `viz/` package applies. This note records that
+the extraction was a retired program-level concern, not a pending item — a future session should not
+read `plots.py` as a standing mandate to stand up `viz/`.

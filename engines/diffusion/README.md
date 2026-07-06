@@ -1,16 +1,15 @@
 # `engines/diffusion` — the diffusion/heat spine
 
-The first and most-reused engine in the program: a
-conservative 1-D parabolic (diffusion / heat) solver. **Sealed** at Steel
-Phase 1a behind its validation suite, then inherited by Microchip (dopant
-profiles) and Planet (EBM heat transport). **Re-sealed at v1.1** (2026-06-11)
+The core reusable engine: a
+conservative 1-D parabolic (diffusion / heat) solver. **Sealed** at
+Phase 1a behind its validation suite. **Re-sealed at v1.1** (2026-06-11)
 to add an opt-in **nonlinear `D(u)`** (a solution-dependent diffusivity, solved
-by an in-step Picard iteration) — the linear surface stays byte-identical, so the
-v1.0 inheritors are unaffected. See `CONTRACT.md` + [ADR 0004](../../docs/decisions/0004-unfreeze-nonlinear-diffusivity.md).
+by an in-step Picard iteration) — the linear surface stays byte-identical, so
+v1.0 consumers are unaffected. See `CONTRACT.md` + [ADR 0004](../../docs/decisions/0004-unfreeze-nonlinear-diffusivity.md).
 
 ## Load pointer (per-session working set)
 
-- **To *use* this engine** (from Steel/Chip/Planet): load **`CONTRACT.md`** only
+- **To *use* this engine:** load **`CONTRACT.md`** only
   — the sealed (v1.1) one-page API. You do not need this folder's internals.
 - **To *modify* this engine:** `CONTRACT.md` + `diffusion1d.py` + `tests/`. The
   tests are the seal — they must stay green, and they *are* the externalized

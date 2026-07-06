@@ -4,8 +4,8 @@
 > 2026-06-08; v1.1 **unfroze and re-sealed** the surface to add native nonlinear
 > `D(u)` — see ADR 0004). Held behind its passing validation suite
 > (`engines/diffusion/tests/`, run via `./run_tests.ps1`). This one page is the unit
-> of context downstream projects load — Microchip and Planet depend on *this*, never
-> on `steel/`. The v1.0 **linear surface is byte-identical** under v1.1 (the original
+> of context a consumer loads — anything that reuses this engine depends on *this*
+> sealed surface, never on `steel/`'s internals. The v1.0 **linear surface is byte-identical** under v1.1 (the original
 > five seal files are unchanged and still pass); only the *additive*, opt-in `D_of_u`
 > path is new, with its own seal (`test_nonlinear_d.py`). Changing the sealed surface
 > below means a new ADR + re-running the seal.
@@ -30,7 +30,7 @@ the *consumer*, not here — see "Validation boundary"):
 | **heat** | `T` | `α = k/(ρc_p)` | enthalpy `∫ρc_p T dx` | Robin `h` |
 
 The two differ *only* by relabelling `(u, D, BC params)` — that symmetry is why
-one engine serves both, and why Planet's EBM heat transport is the same code.
+one engine serves both mass and heat modes from the same code.
 
 ## Discretization (fixed)
 

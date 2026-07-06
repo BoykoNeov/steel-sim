@@ -1,11 +1,14 @@
 # Steel Production Simulator — Project Plan
 
-> Per-project plan #1 of the educational-simulator program. Built to the
+> Per-project plan of the educational-simulator program it was authored in. Built to the
 > **Section 10 template** of `ARCHITECTURE.md`; inherits Sections
-> 2–9 as fixed invariants (compliance check in §8 below). This is the
-> **first** project in build order (Steel → Microchip → Planet) and the one
-> that **builds and freezes the diffusion/heat solver** — the spine the other
-> two inherit.
+> 2–9 as fixed invariants (compliance check in §8 below). It **builds and freezes the
+> diffusion/heat solver** — the reusable spine under `engines/`.
+>
+> **Standalone-repo note.** This is a dated plan authored as project #1 of a multi-simulator
+> monorepo; any references below to sibling projects or to a program build order are **historical
+> context** (what the build was authored against), **not live dependencies** — this repository is
+> standalone and self-contained (see the README *Provenance*).
 
 ---
 
@@ -31,7 +34,7 @@ and it is *simultaneously* the integration test for every Phase-1 module.
 
 | Engine | Status here | Contract pointer |
 |---|---|---|
-| **Diffusion/heat (Fick / erfc)** — the program spine | **`[FROZEN ✓ — Phase 1a, 2026-06-08]`** | `engines/diffusion/CONTRACT.md` (now the real frozen contract; §4 below is the original draft). This is *the* deliverable other projects inherit: Chip's dopant profiles = the carbon-diffusion code; Planet's EBM heat transport = the heat-conduction instantiation. |
+| **Diffusion/heat (Fick / erfc)** — the reusable spine | **`[FROZEN ✓ — Phase 1a, 2026-06-08]`** | `engines/diffusion/CONTRACT.md` (now the real frozen contract; §4 below is the original draft). This is *the* reusable deliverable: the same carbon-diffusion code serves a mass-diffusion instantiation, and the heat-conduction mode a heat-transport one (the material-agnostic mass/heat symmetry). |
 | **ODE / path-integrator (minimal)** | `[build minimal here — steel-local]` | `steel/pathint.py`. The lightweight piece Steel needs: marching the Scheil additivity integral and Avrami fraction along a cooling path, plus an optional lumped-capacitance 0-D cooler. Kept in `steel/`, **not** `engines/` — only steel uses it, so per invariant 5 / rule-of-three it is *not* promoted to the shared toolkit until a stabilized interface has ≥3 uses. The heavy symplectic/RK4 family (jet, star, galaxy) is not built here. |
 
 No other shared engine is touched. CALPHAD (Phase 4) is consumed as a
@@ -40,8 +43,8 @@ see §5 scope ceiling and §6 terms of use.
 
 > **Freeze-before-reuse (invariant 5 / ARCHITECTURE.md §6).** The diffusion solver is
 > sealed behind its passing validation suite at the **end of Phase 1**, before
-> Microchip or Planet are allowed to depend on it. Its CONTRACT.md is the
-> one-page unit of context those projects load instead of this codebase.
+> any consumer is allowed to depend on it. Its CONTRACT.md is the
+> one-page unit of context a consumer loads instead of this codebase.
 
 **Language & performance.** Default is Python + NumPy/SciPy. A profiled hotspot
 is accelerated in place (Numba/Cython, or JAX/CuPy on GPU); if an engine ever
@@ -209,7 +212,7 @@ BigSim/
 
 This is the cross-cutting interface the whole program hinges on; it is specified
 here precisely because a vague contract is the one mistake that propagates to
-Chip and Planet (ARCHITECTURE.md §5–6).
+every consumer of the engine (ARCHITECTURE.md §5–6).
 
 > **Built & frozen (Phase 1a, 2026-06-08).** The authoritative contract now lives
 > in `engines/diffusion/CONTRACT.md`; the draft below is preserved as the
@@ -252,7 +255,7 @@ Draft of `engines/diffusion/CONTRACT.md`:
 - **Units:** SI throughout; mass vs heat mode differ only by relabeling
   `u, D`, and BC parameters — that symmetry is *why* one engine serves both.
 
-> Once this file's tests pass, the solver is **sealed**. Chip and Planet load
+> Once this file's tests pass, the solver is **sealed**. Any consumer loads
 > *this page*, never `steel/`.
 
 ---
@@ -315,7 +318,7 @@ the spine; they must stay green for any change anywhere downstream.
 
 | Program invariant | How this plan honors it |
 |---|---|
-| 1 — build toolkit once, solver-heavy first | Phase 1a builds & freezes the diffusion/heat spine; Chip/Planet recompose it. |
+| 1 — build toolkit once, solver-heavy first | Phase 1a builds & freezes the diffusion/heat spine; consumers recompose it. |
 | 2 — phase so each stage banks a working artifact | Four phases, each with an explicit banked artifact; Phase 1 alone is demonstrable. |
 | 3 — validation triad from day one | Instantiated *concretely per phase* in §3 (analytic + conservation + benchmark). |
 | 4 — target consequence where mechanism is a wall | §5: path-integrated kinetics instead of phase-field. |
@@ -413,13 +416,10 @@ slices, in order:
    non-1080 dropdown selection can't crash the render); the UI itself is not unit-tested (ADR 0002).
    13 new tests; full suite **248 green** (234 without the optional pycalphad/viz/notebook/app stack).
 
-3. **Slice 3 — D_I cross-check *or* begin Microchip (decide on arrival).** After slices 1–2 the
+3. **Slice 3 — D_I cross-check.** After slices 1–2 the
    experimentation surface is complete, so **all of Steel's planned work (Phases 1–4 + the §9
-   flagship surface) is done**. *Recommendation: begin **Microchip**.* It is the program's core
-   thesis (reuse the frozen `engines/diffusion` spine — Phase 1a = dopant erfc profiles, a fast
-   validated win), and starting it from a 100 %-complete Steel is the clean program move
-   (ARCHITECTURE.md §4). The **D_I** cross-check (ideal-quench diameters → critical one, vs
-   published `D_I`) stays the *available, not-required* alternative — it adds only modest marginal
+   flagship surface) is done**. The in-repo option is the **D_I** cross-check (ideal-quench
+   diameters → critical one, vs published `D_I`) — it adds only modest marginal
    validation to an already heavily-benchmarked Steel and blocks nothing, so it is the
    "button Steel up 100 %, including the optional benchmark, before leaving" option, not the
    priority. Appetite-driven; revisit when slices 1–2 land.
@@ -745,10 +745,8 @@ only there (and end-to-end by Streamlit's own `AppTest` → 0 exceptions). 13 ne
 
 **Next:** Steel's planned phases (1–4) **and the entire §9 experimentation surface are complete**
 (`sweep.py` ✓, `steel.ipynb` ✓ slice 1, `app.py` ✓ slice 2 — **3/3**). All of Steel's planned work is
-done. **Slice 3 is the decide-on-arrival point:** the program's build order (ARCHITECTURE.md §4) now
-advances to **Microchip** (recommended — reuse the frozen `engines/diffusion` spine: Phase 1a = dopant
-erfc profiles, a fast validated win from a 100 %-complete Steel), with the *available, not-required*
-**D_I** cross-check the alternative (modest marginal validation, blocks nothing).
+done. **Slice 3** is the *available, not-required* **D_I** cross-check (modest marginal validation,
+blocks nothing) — the in-repo option to button Steel up 100 %.
 
 ---
 
@@ -940,7 +938,7 @@ PAGS ↑ → yield ↓, DBTT ↑ — *both* worse). The strength-only framing of
   mass-conservation analogue**; this is its honest cousin):* growth is **monotone**
   (`d(t)` non-decreasing, `dd/dt ≥ 0`), the **rate → 0 as the driving force vanishes**,
   and total grain-boundary area only **shrinks** — the dissipative cousin of the
-  Jominy/planet energy-balance leg, asserted directly. *Named:* a one-way direction, not
+  Jominy energy-balance leg, asserted directly. *Named:* a one-way direction, not
   a conserved quantity.
 - *Benchmark — where the teeth are (the non-circularity split, as in 2b/3b/4):* **the only
   leg with real teeth is 5a's grain-growth benchmark** — independent published
@@ -1658,7 +1656,7 @@ Conservation stays machine-exact on the `D(C)` path (~1e-18, the cached-field gu
 925 °C sits ~50 °C below Tibbetts' measured 975–1075 °C floor (the standard carburizing-sim
 extrapolation).
 
-**Backward-compatible for the trio:** Microchip / Planet inherit a *richer* contract with the linear
+**Backward-compatible:** any consumer inherits a *richer* contract with the linear
 behaviour byte-identical; ADR 0001's plain-array `state` boundary is unchanged (`D_of_u` is
 construction-time config, evaluated inside assembly, never crossing the state boundary).
 
