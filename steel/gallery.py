@@ -164,6 +164,14 @@ CATALOG: tuple[Entry, ...] = (
         "'over-predicts at high lime' caveat turned into a quantified, benchmarked bias map.",
     ),
     Entry(
+        "Validation", "demo_slag_lp2_validation", "steel-slag-lp2-validation.png",
+        "Phosphorus partition — a second slag system",
+        "Does that L_P bias map hold on a *different* slag system, at the same converter temperature? "
+        "A second independent set (Suito & Inoue 1984, Na₂O/BaO fluxes) says yes with an edge: on BaO "
+        "slags Healy carries ~×1.5 — reproducing Drain from another lab — but on soda slags it "
+        "under-predicts ~×4–5 at matched lime, because it reads only %CaO and is blind to Na₂O's basicity.",
+    ),
+    Entry(
         "Stress", "demo_residual", "steel-residual-stress.png",
         "Residual stress & distortion",
         "The residual stress and distortion a quench locks into a section — the "

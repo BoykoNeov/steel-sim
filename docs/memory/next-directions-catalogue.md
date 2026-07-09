@@ -43,5 +43,11 @@ direction. Consult it when "what's next" recurs.
 - **A3** yield/case-depth inversion → **BUILT 2026-06-15** → [[yield-case-depth-inversion-built]].
 - **B1** fracture-side coupling → **BUILT ✓ 2026-06-20** → [[fracture-coupling-built]] (inclusion-as-stress-
   concentrator Murakami √area + §18 residual field → two-tier quench-crack gate; phase-split-yield crux, no tooth).
-- **B2** full-chain capstone (ore→part one run); **B3** front-end validation deepening.
-- **C** program horizon: Microchip (#2) then Planet (#3) — different repos.
+- **B2** full-chain capstone (ore→part one run) → BUILT [[full-chain-capstone-built]]. **B3** front-end
+  validation deepening — BOTH legs now built: **C_S/desulf** [[b3-front-end-validation-built]] (2026-06-20,
+  "validated") + **Healy L_P/dephos** [[healy-lp-validation-built]] (2026-07-06, a *quantified bias map*,
+  weaker). **2nd slag system for L_P now BUILT ✓ 2026-07-10 → [[slag-lp2-validation-built]]** (Suito–Inoue
+  1984 Na2O/BaO fluxes; Healy CARRIES on BaO + signed soda edge; ADR 0008) → **B3 fully closed.**
+- **~~C program horizon (Microchip/Planet)~~ — REMOVED 2026-07-06.** The user decoupled steel-sim from the
+  sibling sims ("nothing to do with them anymore"); §C was deleted from the plan and microchip/planet
+  scrubbed from the live docs → [[repo-self-contained]] (the scrub scope + what was kept as history).

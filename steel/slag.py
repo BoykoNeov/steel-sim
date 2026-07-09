@@ -90,6 +90,16 @@ What is CITED vs the named ceiling — the two-tier provenance (as in reduction 
   ``v≈2`` rising to ≈ ×2 at ``v≈5``) — but L_P stays **benchmarked / order-of-magnitude**, *not*
   upgraded to "validated" like C_S (the high-lime bias is real). The metal-partition conversions
   (C_S→L_S) are still uncovered by any holdout — they stay order-of-magnitude.
+
+  **That L_P posture now generalizes to a SECOND slag system (B3 phosphorus leg #2, ADR 0008 — see**
+  :mod:`steel.slag_lp2_validation` **).** Graded against Suito & Inoue (Trans. ISIJ 24 (1984) 47,
+  Na₂O/BaO-fluxed CaO–MgO–FeO_x–SiO₂ slags, liquid low-C iron, **same converter temperature** so T is
+  not a confound), Healy's ~×1.5 over-prediction **reproduces** on the BaO slags (a different lab,
+  decade and system → the Drain result is not an artifact of one BOS family). But the map gains a
+  **signed non-CaO-basicity edge**: on Na₂O (7–13 %) slags Healy **under**-predicts (~×4–5 at matched
+  CaO), because its basicity term is ``%CaO`` **alone** and it is blind to soda's strong basicity — the
+  mirror of the high-lime *over*-prediction. This is a *scientific* extension of the bias map, not a
+  behaviour change: the engine's slags carry no soda/baryta flux.
 * **The named ceiling.** Equilibrium partition endpoints, never the *rate* (slag–metal mass-transfer /
   emulsion kinetics — the front-end tar pit, §4); a single lumped slag of fixed mass ratio (no slag
   evolution through the heat); dilute 1-wt% Henrian metal (``a_O ≈ [%O]``, ``f_X ≈ 1``); the optical

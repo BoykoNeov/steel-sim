@@ -37,3 +37,20 @@ Applied 2026-06-11: neutralized the dangling `ARCHITECTURE.md §N`/`PORTFOLIO.md
 citations in the live surfaces (root + engine + steel READMEs, CONTRACT,
 `engines/__init__`, `plots.py`, `sweep.py` docstrings) + rewrote README
 Provenance; plan/ADRs left as dated build-history.
+
+**Extended 2026-07-06 — the sibling-project scrub (user: "remove references to
+microchip and planet, this will have nothing to do with them anymore").** The
+user chose scope **"scrub forward, trim history"** (over "purge everything" and
+"live docs only"): removed ALL live/forward microchip/planet references from the
+live/directive docs (engine CONTRACT/README "they depend on this"; ADR 0003's
+"Successor after Microchip lands" section — its machinery `tools/gate.py` +
+`projects/` was **never extracted** into this repo, so rewritten as a retired
+program concern; ADR 0002/0004 + steel-production/steel-making reuse+roadmap
+claims → generic "consumer" language; next-directions **§C removed**; README
+Provenance reduced to a neutral line that no longer names the siblings). **KEPT
+as history:** dated build-context mentions (given a standalone-repo banner in
+steel-production.md) and the in-repo `docs/memory/*.md` build logs (left
+untouched per the chosen scope — so a future grep still finds microchip/planet
+there; that is by design, not an oversight). Commit `6c0733b`. So the rule is now
+stronger than the 2026-06-11 directive: don't just avoid *citing* the monorepo —
+don't present microchip/planet as a live/forward relationship at all.

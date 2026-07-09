@@ -1,9 +1,10 @@
 ---
 name: b3-front-end-validation-built
-description: "B3 front-end validation deepening (holdout-validate the F2 slag sulfide-capacity C_S) — BUILT 2026-06-20 against an independent measured dataset; the cited model CARRIES out-of-sample"
-metadata:
+description: B3 front-end validation deepening (holdout-validate the F2 slag sulfide-capacity C_S) — BUILT 2026-06-20 against an independent measured dataset; the cited model CARRIES out-of-sample
+metadata: 
   node_type: memory
   type: project
+  originSessionId: 2273d4f5-332f-4c26-a4f9-303b34d5bbe3
 ---
 
 **B3 (front-end validation deepening — the §20 `cct_validation.py` pattern applied to F2 slag
@@ -59,7 +60,10 @@ ALL points before framing** — my 2-point preview ("carries high-Λ / breaks lo
 full set is "consistent mild overpred across the 4 basic comps + Q1 as a single sign-flipped 4×
 outlier." (3) **The acidic edge "recurs across labs" was noise-mining** (advisor): the literature's
 worst-miss==lowest-Λ test passes by luck on one outlier → reframed as a single-point Q1 flag.
-**No refit** (model already carries; tuning 10 pts = manufactured coherence). **Still open:** the
-Healy **L_P** leg (needs an independent measured-partition dataset) and a 2nd slag system beyond
-Al₂O₃–CaO–MgO–SiO₂. Amends [[next-directions-catalogue]]; sibling [[cross-composition-validation]]
-(the §20 back-end twin); physics under test is [[slag-f2-slice2-built]].
+**No refit** (model already carries; tuning 10 pts = manufactured coherence). **The Healy L_P leg is
+now BUILT ✓ 2026-07-06 → [[healy-lp-validation-built]]** (a *quantified bias map*, NOT "validated" —
+weaker than this C_S pass). **Second slag system BUILT ✓ 2026-07-10 → [[slag-lp2-validation-built]]** (L_P
+leg #2, Suito–Inoue 1984 Na2O/BaO fluxes; ADR 0008 — **B3 now fully closed**, both chemistries × 2
+systems). Amends
+[[next-directions-catalogue]]; sibling [[cross-composition-validation]] (the §20 back-end twin);
+physics under test is [[slag-f2-slice2-built]].

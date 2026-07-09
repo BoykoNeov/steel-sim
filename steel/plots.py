@@ -4130,3 +4130,82 @@ def slag_lp_validation_figure(d):
                  "(Drain 2018) — benchmarked, over-predicts at high lime", fontsize=11.0, fontweight="bold")
     fig.subplots_adjust(left=0.07, right=0.985, top=0.9, bottom=0.12, wspace=0.22)
     return fig
+
+
+def slag_lp2_validation_figure(d):
+    """B3 phosphorus leg #2: the cited Healy L_P model vs a SECOND slag system (Suito & Inoue 1984).
+
+    ``d`` is a :class:`~steel.demo_slag_lp2_validation.SlagLp2ValidationDemo` (validated residual list
+    only — this layer draws, ADR 0002). Two panels tell the *generalize-plus-a-signed-edge* story,
+    coloured by the slag's foreign basic flux (BaO teal / Na₂O red):
+
+    * **left — predicted vs measured log10 L_P.** The BaO slags (a minor 4 % flux) hug the 1:1 line
+      inside the ±factor-2 band — Healy carries ~×1.6, exactly as it did on Drain's BOS. The Na₂O slags
+      sit **below** 1:1 — Healy under-predicts, blind to soda's basicity.
+    * **right — residual vs %CaO (the diagnosis).** log10(model/measured) against ``%CaO``: the two
+      series run ~0.5–0.7 apart across the whole lime range, and the shaded matched-CaO window shows the
+      CaO-isolated gap — at fixed lime the soda dephosphorizes ~×4–5 more than Healy's ``0.08·%CaO``
+      term expects (Healy predicts the same for both fluxes at a given CaO).
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_sc, ax_re) = plt.subplots(1, 2, figsize=(13.6, 5.7))
+    v = d.verdict
+    f_color = {"BaO": "#16a085", "Na2O": "#c0392b"}
+    f_label = {"BaO": "BaO ≈ 4 %  (Table 1 — minor flux)", "Na2O": "Na₂O 7–13 %  (Table 2 — major base)"}
+
+    # --- left: predicted vs measured log L_P ---------------------------------- #
+    lo, hi = -0.2, 2.7
+    ax_sc.fill_between([lo, hi], [lo - 0.301, hi - 0.301], [lo + 0.301, hi + 0.301],
+                       color="0.85", alpha=0.6, zorder=0, label="±factor-2")
+    ax_sc.plot([lo, hi], [lo, hi], color="0.4", ls="--", lw=1.2, zorder=1, label="perfect (1:1)")
+    seen = set()
+    for r in d.residuals:
+        lab = f_label.get(r.flux) if r.flux not in seen else None
+        seen.add(r.flux)
+        ax_sc.scatter([r.measured], [r.predicted], s=58, color=f_color.get(r.flux, "0.3"),
+                      edgecolor="0.2", lw=0.6, zorder=4, label=lab)
+    ax_sc.set_xlim(lo, hi); ax_sc.set_ylim(lo, hi)
+    ax_sc.set_xlabel("measured  log10 L_P  (Suito & Inoue 1984, 1550 °C)")
+    ax_sc.set_ylabel("predicted  log10 L_P  (Healy 1970)")
+    ax_sc.set_title("BaO hugs 1:1 (Healy carries); Na₂O sits below → under-predicts", fontsize=10.2)
+    ax_sc.legend(loc="upper left", fontsize=7.6, framealpha=0.92)
+    ax_sc.grid(True, alpha=0.2)
+
+    # --- right: residual vs %CaO (the diagnosis) ------------------------------ #
+    c = v.contrast
+    ax_re.axhline(0.0, color="0.4", ls="--", lw=1.2, zorder=1)
+    ax_re.fill_between([-2, 35], [-0.301, -0.301], [0.301, 0.301], color="0.9", alpha=0.6,
+                       zorder=0, label="±factor-2")
+    ax_re.axvspan(c.cao_lo, c.cao_hi, color="#f6ddcc", alpha=0.5, zorder=0,
+                  label=f"matched-CaO window ({c.cao_lo:.0f}–{c.cao_hi:.0f} %)")
+    for flux in ("BaO", "Na2O"):
+        rs = [r for r in d.residuals if r.flux == flux]
+        ax_re.scatter([r.CaO for r in rs], [r.resid for r in rs], s=54, color=f_color[flux],
+                      edgecolor="0.2", lw=0.5, zorder=3, label=f_label[flux])
+    # the matched-CaO means (the CaO-isolated gap)
+    ax_re.plot([c.cao_lo, c.cao_hi], [c.bao_mean, c.bao_mean], color="#0e6251", lw=2.4, zorder=5)
+    ax_re.plot([c.cao_lo, c.cao_hi], [c.na2o_mean, c.na2o_mean], color="#7b241c", lw=2.4, zorder=5)
+    ax_re.annotate("", xy=(18.5, c.bao_mean), xytext=(18.5, c.na2o_mean),
+                   arrowprops=dict(arrowstyle="<->", color="#6c3483", lw=1.8), zorder=6)
+    ax_re.text(19.2, 0.5 * (c.bao_mean + c.na2o_mean), f"gap {c.gap:+.2f}\n(×{10 ** c.gap:.1f})",
+               fontsize=8.0, color="#6c3483", va="center")
+    ax_re.set_xlim(-2, 35); ax_re.set_ylim(-1.3, 1.12)
+    ax_re.set_xlabel("slag  %CaO  (lime Healy can see)")
+    ax_re.set_ylabel("log10(model / measured)")
+    ax_re.set_title("the diagnosis: at fixed CaO, soda dephosphorizes more than Healy can see", fontsize=10.2)
+    ax_re.annotate(
+        "VERDICT — generalizes, plus a signed edge:\n"
+        f"  BaO leg over-predicts ×{10 ** v.bao.mean_log:.2f} (~ Drain's ×1.5 — carries on a 2nd system)\n"
+        f"  Na₂O leg under-predicts ×{10 ** v.na2o.mean_log:.2f} — Healy blind to soda's basicity\n"
+        f"  soda gap ~{c.gap:+.1f} (~×5), order-consistent w/ CaO-equiv. {v.equiv_expectation:+.2f}\n"
+        "  (small window not Fe_t-matched — read ~×5, not a precise factor)",
+        (0.985, 0.97), xycoords="axes fraction", ha="right", va="top", fontsize=7.6,
+        bbox=dict(boxstyle="round,pad=0.4", fc="#f5eef8", ec="#6c3483", alpha=0.92))
+    ax_re.legend(loc="lower left", fontsize=7.2, framealpha=0.9)
+
+    fig.suptitle("B3 — front-end validation: the cited Healy phosphorus model on a SECOND slag system "
+                 "(Suito & Inoue 1984) — carries (BaO), with a non-CaO-basicity edge (Na₂O)",
+                 fontsize=10.6, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.985, top=0.9, bottom=0.12, wspace=0.22)
+    return fig

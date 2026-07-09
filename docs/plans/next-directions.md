@@ -145,5 +145,23 @@ basicity-dependent bias map**, *not* upgraded to "validated" — near-exact in i
 linear `+0.08·%CaO` term doesn't saturate where the real L_P does. The temperature direction is
 reproduced (magnitude confounded); the ~20 % FetO maximum is a named structural ceiling. Two
 transcription guards (per-row `(%P₂O₅)/[%P]/L_P` consistency; the R-series reproducibility
-cross-checked against the paper's prose "190 ± 7"). No refit, no engine touch. **Still open:** a
-second slag system beyond these BOS/ladle systems.
+cross-checked against the paper's prose "190 ± 7"). No refit, no engine touch.
+
+**Second slag system (L_P leg #2) — BUILT ✓ 2026-07-10 (ADR 0008, `steel/slag_lp2_validation.py`).**
+Closes ADR 0007's stated weakness (one BOS family, one temperature). The trap was found and avoided by
+**computing before framing**: the open-access "different systems" with tabulated L_P are hot-metal
+dephos sets (Zhou 2017, Im 1996) at 1573 K against **carbon-saturated** iron — where Healy over-predicts
+×200–500, ~entirely the `22350/T` term extrapolated 300 K below the fit, a *temperature* test not a
+slag-system one → **rejected**. The clean holdout holds T + metal fixed: Suito & Inoue, *Trans. ISIJ*
+**24** (1984) 47 (open-access CC BY-NC-ND; printed tables transcribed from the rendered PDF, the
+Nzotta/Im pattern) — 23 heats of **liquid low-C iron** vs Na₂O/BaO-fluxed CaO–MgO–FeO_x–SiO₂ slags at
+**1550 °C** (in Drain's window; `[%O]` 0.09–0.19 % ⇒ not C-saturated). Verdict = **carries + a signed
+edge**: on the **BaO** slags (minor 4 % flux) Healy over-predicts **≈ ×1.56** with the high-lime rows
+highest — *independently reproducing Drain from another lab/decade/system* (the generalization result);
+on the **Na₂O** (7–13 %) slags it **under**-predicts, the CaO-isolated matched-CaO gap ≈ **+0.69 log
+(≈ ×5)** because Healy's basicity term is `%CaO` **alone** and blind to soda — the *signed opposite* of
+leg #1's high-lime over-prediction, corroborated (same-paper) by Suito–Inoue's own 1.2× CaO-equivalency.
+Two guards (Eq.(3) `k_P` multi-column cross-check; oxide-sum). A **scientific** bias-map extension — the
+engine carries no soda/baryta flux, so no behaviour changes. No refit, no engine touch. **B3 now fully
+closed** (both slag chemistries × two systems each). Remaining open: only the single-temperature
+confound (both L_P legs test composition at one T) and the C_S→L_S conversion, still order-of-magnitude.
