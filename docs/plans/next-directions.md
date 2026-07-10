@@ -162,6 +162,28 @@ on the **Na₂O** (7–13 %) slags it **under**-predicts, the CaO-isolated match
 (≈ ×5)** because Healy's basicity term is `%CaO` **alone** and blind to soda — the *signed opposite* of
 leg #1's high-lime over-prediction, corroborated (same-paper) by Suito–Inoue's own 1.2× CaO-equivalency.
 Two guards (Eq.(3) `k_P` multi-column cross-check; oxide-sum). A **scientific** bias-map extension — the
-engine carries no soda/baryta flux, so no behaviour changes. No refit, no engine touch. **B3 now fully
-closed** (both slag chemistries × two systems each). Remaining open: only the single-temperature
-confound (both L_P legs test composition at one T) and the C_S→L_S conversion, still order-of-magnitude.
+engine carries no soda/baryta flux, so no behaviour changes. No refit, no engine touch.
+
+**Sulfur metal-partition (C_S→L_S conversion) — BUILT ✓ 2026-07-10 (ADR 0009, `steel/slag_ls_validation.py`).**
+Closes the last-named residual gap: C_S was *validated* and L_P *benchmarked*, but the sulfur
+**metal**-partition `L_S` that `desulfurize` actually computes — and the `−log a_O` term the conversion
+introduces (the module's headline desulfurization physics) — was never graded. **The a_O-provenance gate
+is the whole game**: `L_S` is clean only if a_O is set *independently* (gas pO₂), not back-derived from a
+deox equilibrium ([Al]/[O]) — which rules out most ladle L_S data and points almost uniquely at
+controlled-atmosphere gas–slag–metal work. Holdout = Mohassab 2013 (Utah PhD, Ch. 4; peer-reviewed
+*I&EC Res.* 51 (2012) 3639 / *Steel Res. Int.* 86 (2015) 753): MgO-sat CaO–FeO–Al₂O₃–SiO₂ vs liquid
+low-C iron under H₂/H₂O·CO/CO₂ gases, 1550–1650 °C. **All Rights Reserved → data transcribed + cited,
+PDF not committed** (a deliberate call: the committed-PDF convention was OA convenience, not method — the
+discipline is primary-source-in-hand + guards). Verdict = **PROBE, order-of-magnitude, NOT upgraded**:
+on the clean waterless CO/CO₂ subset (dilute S ⇒ f_S≈1) the `Λ→C_S→L_S` chain under-predicts a factor of
+several (direction robust across the a_O method), but the magnitude is unresolvable — the C_S baseline is
+itself unvalidated on these 10–53 % FeO slags (fitted Λ_FeO), the `−log a_O` slope is inseparable from
+FeO basicity (gas sets FeO), and a_O carries a standard-state offset. Two signed edges survive: a
+measured **atmosphere ladder** (water raises L_S ~×5 via f_S²⁻ — engine atmosphere-blind, so H₂/H₂O heats
+are disqualified for grading) and a **~×2-low FeO oxygen anchor**. Two guards (Log(Ls) three-column
+self-consistency — which *caught & excluded* a source-inconsistent row S8; oxide-sum). No refit, no
+engine touch. **THE META-POINT (the intellectual core): the `−log a_O` slope is non-isolable for the same
+reason the L_P T-slope is — the term under test co-varies with composition in *all* clean equilibrium
+data. Both B3 residual gaps hit the same structural wall.** **B3 is now fully closed** — C_S validated,
+L_P benchmarked (×2 systems), L_S probed; the two residual gaps are resolved as *one shared structural
+finding*, not open work.

@@ -88,8 +88,22 @@ What is CITED vs the named ceiling — the two-tier provenance (as in reduction 
   ``+0.08·%CaO`` term being *linear and unbounded* where the real L_P *saturates* beyond ``v ≈ 2.5``.
   So the flagged "over-predicts at high lime" caveat below is now a **quantified map** (≈ ×1.0 at
   ``v≈2`` rising to ≈ ×2 at ``v≈5``) — but L_P stays **benchmarked / order-of-magnitude**, *not*
-  upgraded to "validated" like C_S (the high-lime bias is real). The metal-partition conversions
-  (C_S→L_S) are still uncovered by any holdout — they stay order-of-magnitude.
+  upgraded to "validated" like C_S (the high-lime bias is real).
+
+  **The sulfur metal-partition conversion C_S→L_S is now holdout-PROBED too (B3 sulfur leg, ADR 0009 —
+  see** :mod:`steel.slag_ls_validation` **).** Graded against controlled-atmosphere gas–slag–metal heats
+  (Mohassab 2013, MgO-sat CaO–FeO–Al₂O₃–SiO₂ slag vs liquid low-C iron, a_O fixed by the gas pO₂ so the
+  ``−log a_O`` term is tested against an *independent* oxygen lever), the conversion comes out
+  **order-of-magnitude, NOT upgraded** like C_S: on the clean waterless CO/CO₂ subset the whole
+  ``Λ→C_S→L_S`` chain under-predicts L_S by a factor of several (direction robust across the a_O method),
+  but the magnitude is not resolvable — the C_S baseline is itself unvalidated on these 10–53 % FeO slags
+  (fitted Λ_FeO), the ``−log a_O`` slope is inseparable from FeO basicity (gas sets FeO), and a_O carries
+  a standard-state offset. It confirms this "order-of-magnitude" posture across a new (BF-slag) regime and
+  adds two edges: a measured **atmosphere ladder** (water raises L_S ~×5 via f_S²⁻ — the engine is
+  atmosphere-blind, so H₂/H₂O heats are disqualified for grading) and a **~×2-low FeO oxygen anchor**
+  (:func:`metal_oxygen_for_feo`, Raoultian a_FeO≈X_FeO). The ``−log a_O`` non-isolability is the
+  desulfurization analog of the L_P single-temperature confound — **both B3 residual gaps hit the same
+  structural wall** (the term under test co-varies with composition in all clean equilibrium data).
 
   **That L_P posture now generalizes to a SECOND slag system (B3 phosphorus leg #2, ADR 0008 — see**
   :mod:`steel.slag_lp2_validation` **).** Graded against Suito & Inoue (Trans. ISIJ 24 (1984) 47,

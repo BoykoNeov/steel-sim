@@ -213,6 +213,15 @@ em { color: #c8cee0; font-style: italic; }
         <div class="links"><a href="figures/steel-slag-lp2-validation.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_slag_lp2_validation.py" target="_blank" rel="noopener">source ↗</a></div>
       </div>
     </article>
+    <article class="card">
+      <a class="shot" href="figures/steel-slag-ls-validation.png" target="_blank" rel="noopener"><img src="figures/steel-slag-ls-validation.png" alt="Sulfur partition — probing the C_S→L_S conversion" loading="lazy"></a>
+      <div class="body">
+        <h3>Sulfur partition — probing the C_S→L_S conversion</h3>
+        <p class="blurb">C_S was validated, L_P benchmarked — but does the sulfur *metal*-partition L_S the ladle step actually computes carry? Against gas-controlled heats (Mohassab 2013, oxygen fixed by the gas — the only clean way to test the −log a_O term) it&#x27;s order-of-magnitude, not an upgrade: the clean subset under-predicts, and three confounds (FeO-laden C_S baseline, the a_O slope inseparable from FeO basicity, an a_O standard-state offset) mean the magnitude can&#x27;t be pinned. Two edges survive — water raises L_S ~×5 (engine blind), and the FeO oxygen anchor reads ~×2 low.</p>
+        <code class="cmd">python -m steel.demo_slag_ls_validation</code>
+        <div class="links"><a href="figures/steel-slag-ls-validation.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_slag_ls_validation.py" target="_blank" rel="noopener">source ↗</a></div>
+      </div>
+    </article>
   </div>
   <h2 class="section">Stress</h2>
   <div class="grid">

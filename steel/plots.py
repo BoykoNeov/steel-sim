@@ -4209,3 +4209,85 @@ def slag_lp2_validation_figure(d):
                  fontsize=10.6, fontweight="bold")
     fig.subplots_adjust(left=0.07, right=0.985, top=0.9, bottom=0.12, wspace=0.22)
     return fig
+
+
+def slag_ls_validation_figure(d):
+    """B3 sulfur metal-partition leg: PROBING the cited C_S→L_S conversion (Mohassab 2013).
+
+    ``d`` is a :class:`~steel.demo_slag_ls_validation.SlagLsValidationDemo` (validated residual lists +
+    verdict only — this layer draws, ADR 0002). Two panels tell the *order-of-magnitude probe, not an
+    upgrade* story:
+
+    * **left — predicted vs measured log10 L_S.** The clean **waterless CO/CO₂** heats (teal, dilute
+      metal S so ``f_S ≈ 1``) sit **below** the 1:1 line — the engine under-predicts L_S by a factor of
+      several; the **H₂/H₂O** supplement (grey, ``[S]`` 5–12 wt % so ``f_S`` broken) straddles it and is
+      shown, not headlined. Both a ±factor-2 and a ±factor-10 band frame "order-of-magnitude".
+    * **right — the measured atmosphere ladder (the water edge, engine-independent).** Mean measured
+      L_S climbs CO/CO₂ → CO/CO₂/H₂/H₂O → H₂/H₂O at matched pO₂/basicity/T — water lowers ``f_S²⁻``, and
+      the engine (no atmosphere term) is blind to it. The verdict box carries the confounds + the anchor.
+    """
+    import matplotlib.pyplot as plt
+
+    fig, (ax_sc, ax_la) = plt.subplots(1, 2, figsize=(13.6, 5.7))
+    v = d.verdict
+
+    # --- left: predicted vs measured log L_S ---------------------------------- #
+    lo, hi = -1.6, 0.9
+    ax_sc.fill_between([lo, hi], [lo - 1.0, hi - 1.0], [lo + 1.0, hi + 1.0],
+                       color="0.92", alpha=0.7, zorder=0, label="±factor-10")
+    ax_sc.fill_between([lo, hi], [lo - 0.301, hi - 0.301], [lo + 0.301, hi + 0.301],
+                       color="0.82", alpha=0.6, zorder=0, label="±factor-2")
+    ax_sc.plot([lo, hi], [lo, hi], color="0.4", ls="--", lw=1.2, zorder=1, label="perfect (1:1)")
+    ax_sc.scatter([r.measured for r in d.h2o_residuals], [r.predicted for r in d.h2o_residuals],
+                  s=42, color="#95a5a6", edgecolor="0.35", lw=0.5, zorder=3,
+                  label=f"H₂/H₂O supplement (f_S broken, ×{10 ** v.h2o_gas.mean_log:.2f})")
+    ax_sc.scatter([r.measured for r in d.co_residuals], [r.predicted for r in d.co_residuals],
+                  s=66, color="#16a085", edgecolor="0.2", lw=0.7, zorder=4,
+                  label=f"CO/CO₂ waterless — clean grade (×{10 ** v.co_gas.mean_log:.2f})")
+    ax_sc.set_xlim(lo, hi); ax_sc.set_ylim(lo, hi)
+    ax_sc.set_xlabel("measured  log10 L_S  (Mohassab 2013, gas-controlled a_O)")
+    ax_sc.set_ylabel("predicted  log10 L_S  (slag.sulfur_partition)")
+    ax_sc.set_title("the clean (CO/CO₂) heats sit below 1:1 → engine under-predicts", fontsize=10.2)
+    ax_sc.legend(loc="upper left", fontsize=7.4, framealpha=0.92)
+    ax_sc.grid(True, alpha=0.2)
+
+    # --- right: the measured atmosphere ladder (the water edge) --------------- #
+    lad = {r.atmosphere: r for r in v.ladder}
+    order = ["CO/CO2", "mix", "H2/H2O"]
+    names = {"CO/CO2": "CO/CO₂\n(waterless)", "mix": "CO/CO₂/\nH₂/H₂O", "H2/H2O": "H₂/H₂O"}
+    colors = {"CO/CO2": "#16a085", "mix": "#e67e22", "H2/H2O": "#2980b9"}
+    xs = range(len(order))
+    heights = [10 ** lad[a].mean_log_ls for a in order]
+    ax_la.bar(list(xs), heights, width=0.6, color=[colors[a] for a in order],
+              edgecolor="0.2", lw=0.8, zorder=3)
+    for x, a in zip(xs, order):
+        ax_la.text(x, 10 ** lad[a].mean_log_ls + 0.12, f"{10 ** lad[a].mean_log_ls:.1f}",
+                   ha="center", fontsize=9.5, fontweight="bold")
+    ax_la.set_xticks(list(xs)); ax_la.set_xticklabels([names[a] for a in order], fontsize=8.6)
+    ax_la.set_ylim(0, 5.9)
+    ax_la.set_ylabel("mean MEASURED L_S  (matched pO₂ / basicity / T)")
+    ax_la.set_title("the water edge: measured L_S climbs with pH₂O — engine is blind", fontsize=10.2)
+    water = lad["H2/H2O"].mean_log_ls - lad["CO/CO2"].mean_log_ls
+    ax_la.annotate("", xy=(2, 10 ** lad["H2/H2O"].mean_log_ls), xytext=(0, 10 ** lad["CO/CO2"].mean_log_ls),
+                   arrowprops=dict(arrowstyle="->", color="#6c3483", lw=1.8, ls=":"), zorder=4)
+    ax_la.text(1.0, 3.9, f"water raises\nL_S ~×{10 ** water:.0f}", fontsize=8.4, color="#6c3483",
+               ha="center", style="italic")
+    ax_la.annotate(
+        "VERDICT — order-of-magnitude PROBE, not an upgrade:\n"
+        f"  clean CO/CO₂ grade under-predicts ×{10 ** v.co_gas.mean_log:.2f}"
+        f" (gas) / ×{10 ** v.co_feo.mean_log:.2f} (FeO-anchor) — direction robust\n"
+        "  magnitude NOT resolvable — 3 confounds:\n"
+        "   • C_S baseline unvalidated (10–53 % FeO, fitted Λ)\n"
+        "   • −log a_O slope inseparable from FeO basicity\n"
+        "   • a_O standard-state offset (gas vs FeO-anchor ×2)\n"
+        f"  anchor: metal_oxygen_for_feo reads ×{10 ** v.anchor.mean_log_ratio:.2f} low\n"
+        "  → L_S stays order-of-magnitude (ADR 0009); no engine touch",
+        (0.985, 0.97), xycoords="axes fraction", ha="right", va="top", fontsize=7.4,
+        bbox=dict(boxstyle="round,pad=0.4", fc="#f5eef8", ec="#6c3483", alpha=0.93))
+    ax_la.grid(True, axis="y", alpha=0.2)
+
+    fig.suptitle("B3 — front-end validation: PROBING the cited sulfur C_S→L_S conversion "
+                 "(Mohassab 2013) — order-of-magnitude across a new regime, not an upgrade",
+                 fontsize=10.6, fontweight="bold")
+    fig.subplots_adjust(left=0.07, right=0.985, top=0.9, bottom=0.12, wspace=0.22)
+    return fig

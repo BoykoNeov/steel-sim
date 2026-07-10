@@ -172,6 +172,16 @@ CATALOG: tuple[Entry, ...] = (
         "under-predicts ~×4–5 at matched lime, because it reads only %CaO and is blind to Na₂O's basicity.",
     ),
     Entry(
+        "Validation", "demo_slag_ls_validation", "steel-slag-ls-validation.png",
+        "Sulfur partition — probing the C_S→L_S conversion",
+        "C_S was validated, L_P benchmarked — but does the sulfur *metal*-partition L_S the ladle step "
+        "actually computes carry? Against gas-controlled heats (Mohassab 2013, oxygen fixed by the gas — "
+        "the only clean way to test the −log a_O term) it's order-of-magnitude, not an upgrade: the clean "
+        "subset under-predicts, and three confounds (FeO-laden C_S baseline, the a_O slope inseparable "
+        "from FeO basicity, an a_O standard-state offset) mean the magnitude can't be pinned. Two edges "
+        "survive — water raises L_S ~×5 (engine blind), and the FeO oxygen anchor reads ~×2 low.",
+    ),
+    Entry(
         "Stress", "demo_residual", "steel-residual-stress.png",
         "Residual stress & distortion",
         "The residual stress and distortion a quench locks into a section — the "
