@@ -38,7 +38,7 @@ quench), one test each; casting an honest no-loss pass-through (no pass/fail lev
 4140). Slices 2+ (the method/era tech tree, economy) remain. The repo-split is
 deferred; the in-repo `game/` home was authorized.
 
-### A2. P → DBTT slope — **Outcome A BUILT ✓ 2026-06-22**
+### A2. P → DBTT slope — **Outcome A BUILT ✓ 2026-06-22 · B-escalation BUILT ✓ 2026-07-10 (ADR 0010)**
 `steel-making.md` §14.5 flagged it: the P→strength axis carries teeth (Thiele–Hošek,
 +237 MPa/at%), but `grain.cottrell_petch_dbtt_C`'s P→ductile-brittle-transition
 slope (`ITT_K_P`) was **representative, not pinned**. **The sourcing gate was run
@@ -54,7 +54,28 @@ illustrative DBTT magnitudes downstream. Bloomery PDF assessed (RT-only +
 slag-confounded, unusable);
 the **McLean GB-coverage model (B) remains deferred** as new physics with its own
 triad. One constant + its test band + §14.5; no engine semantics change, no ADR.
-**Size: small (as filed).** **Status: BUILT (Outcome A); B-escalation deferred.**
+**Size: small (as filed).** **Status: BUILT (Outcome A).**
+
+**B-escalation (the McLean GB-coverage model) — BUILT ✓ 2026-07-10 (ADR 0010, `steel/p_segregation_dbtt.py`).**
+The escalation was built as the plan promised ("model the coverage pathway so the bulk scatter becomes an
+output") — and it **closes on the honest terms the physics supports: it explains the flag but earns no
+tooth.** The sourcing gate cleared as *data exists* — measured coverage→DBTT relations across steels (IF
+3.12 °C/at%; SA508-4N 6.69–13.31, cited from Chen & Song 2011 and Zhao & Song 2021/2022, verified via the
+DOAJ API) — but what the data *shows* is per-steel/cross-**domain** non-transferability. The teeth question
+turns on the advisor's domain catch: `grain.ITT_K_P` rides the Pickering **transgranular-cleavage** law,
+but **every** coverage→DBTT relation is the **intergranular** GB-segregation axis (IF included — ferritic
+matrix, but intergranular for lack of solute carbon, and additionally the fitted steel). So there is **no
+in-domain holdout at all** → **no tooth** (the reconciliation with the repo's earlier McLean gate,
+[[temper-embrittlement-built]]: that gate failed on the *kinetic nose*; this one on the *domain*). The
+computed payoff (compute-before-framing): composing the two non-universal gaps — McLean bulk→coverage
+(flagged, underdetermined, T_seg-dependent) × per-steel coverage→DBTT slope — makes the bulk slope span
+~5–116 °C/0.1 wt%, order-of-magnitude consistent with the documented 40–78 bracket and *containing* it, so
+**the mechanism explains why the flag must be a bracket** (two multiplicative non-universal factors),
+without pinning it. `grain.ITT_K_P` stays flagged and **unchanged** (500 °C/wt%); coverage relations are
+read, never applied — **no engine touch**. The √d-slope-scaling temptation was caught as confirmation bias
+and rejected. New module + demo + figure + gallery/README rows + 19 tests; ADR 0010. **Same class as the
+B3 legs and the temper-embrittlement gate — a mechanistic demonstration + bias map, no tooth.**
+**Status: BUILT.**
 
 ### A3. Yield- / case-depth inversion — Phase 7 v2 → **IN PROGRESS (2026-06-15)**
 Inverse design (`design.py`) shipped **hardness-only**; the §14 as-built record

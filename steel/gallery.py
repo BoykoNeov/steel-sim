@@ -288,6 +288,21 @@ CATALOG: tuple[Entry, ...] = (
         notebook="§D2",
     ),
     Entry(
+        "Impurity consequences (front-end)", "demo_p_segregation_dbtt", "steel-p-segregation-dbtt.png",
+        "Why phosphorus' bulk DBTT slope stays flagged — the coverage mechanism",
+        "Phosphorus' bulk contribution to the ductile-brittle transition (grain.ITT_K_P) has always "
+        "been a *flagged bracket* (~40–78 °C per 0.1 wt% P), never a teeth-bearing coefficient — and "
+        "this shows *why*, mechanistically. The clean measured form is grain-boundary coverage → DBTT, "
+        "separated from the bulk-wt% term by two non-universal gaps: bulk P → coverage (a McLean "
+        "isotherm that depends on thermal history — underdetermined) and coverage → DBTT (measured but "
+        "per-steel: 3.12 °C/at% in ferritic IF steel up to 13.31 in tempered-martensite SA508-4N, a "
+        "4.3× cross-domain span). Composed, the bulk slope becomes a product of two non-universal "
+        "factors whose ~20× range *contains* the 40–78 bracket with the engine's flagged 50 mid-range: "
+        "the mechanism explains the bracket's width but pins nothing. No independent in-domain holdout "
+        "exists, so — like the temper-embrittlement gate — there is no claimable tooth and no engine "
+        "touch (ADR 0010).",
+    ),
+    Entry(
         "Impurity consequences (front-end)", "demo_tempered_martensite_embrittlement",
         "steel-tempered-martensite-embrittlement.png",
         "Tempered-martensite embrittlement — the other trough, irreversible",

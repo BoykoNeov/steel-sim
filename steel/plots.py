@@ -4291,3 +4291,117 @@ def slag_ls_validation_figure(d):
                  fontsize=10.6, fontweight="bold")
     fig.subplots_adjust(left=0.07, right=0.985, top=0.9, bottom=0.12, wspace=0.22)
     return fig
+
+
+def p_segregation_dbtt_figure(d):
+    """A2-B: why grain.ITT_K_P is a flagged bracket — the two-gap GB-coverage mechanism (no tooth).
+
+    ``d`` is a :class:`~steel.demo_p_segregation_dbtt.PSegregationDemo` (the summary + cited relations;
+    curve values are recomputed here from :mod:`steel.p_segregation_dbtt`'s pure functions — the plot
+    layer draws, ADR 0002). Three panels walk the mechanism:
+
+    * **left — Gap 2, coverage → DBTT is per-steel.** The cited linear laws fanned out: IF (ferritic,
+      *in-domain*) at 3.12 °C/at% vs the SA508-4N family (tempered-martensite, *cross-domain*) at
+      6.69–13.31 — a 4.3× slope span, plus the two-grain-size crossover. The non-transferability made
+      visible.
+    * **middle — Gap 1, bulk P → coverage is the flagged leg.** McLean coverage vs bulk P at three
+      segregation temperatures: one bulk P maps to a *range* of coverage (the underdetermination), and
+      the absolute is under-predicted (sensitivity only, not a benchmark).
+    * **right — the synthesis.** The composed bulk slope (°C/0.1 wt%) vs T_seg, one line per steel, over
+      the documented 40–78 bracket (shaded) and the engine's flagged 50 (dashed). The composed span
+      *straddles* the bracket → the mechanism explains the flag's magnitude AND width, pins nothing.
+    """
+    import matplotlib.pyplot as plt
+
+    from . import p_segregation_dbtt as ps
+
+    s = d.summary
+    fig, (ax_cov, ax_mcl, ax_syn) = plt.subplots(1, 3, figsize=(16.6, 5.6))
+
+    # colours: IF (in-domain) cool blue; the SA508 family warm (by slope).
+    col = {
+        "IF (Ti-stabilized interstitial-free)": "#2471a3",
+        "SA508-4N (fixed hardness ~260 HV10)": "#c0392b",
+        "SA508-4N (PAGS 34 µm)": "#e67e22",
+        "SA508-4N (PAGS 112 µm)": "#d4ac0d",
+    }
+
+    # --- left: Gap 2 — per-steel coverage → DBTT lines ------------------------ #
+    def _suffix(r):
+        return f" {r.pags_um:.0f}µm" if r.pags_um else (" fixed-H" if r.hardness_HV else "")
+
+    cps = [0.0, 25.0]
+    for r in d.relations:
+        ferritic = r.matrix == "ferritic"                    # IF (ferritic matrix) solid, SA508 dashed
+        style, lw = ("-", 2.6) if ferritic else ("--", 2.0)
+        ax_cov.plot(cps, [r.dbtt_C(c) for c in cps], style, color=col.get(r.name, "0.3"), lw=lw,
+                    label=f"{r.slope_C_per_at:.2f}°C/at%  {r.name.split('(')[0].strip()}{_suffix(r)}")
+    ax_cov.set_xlim(0, 25)
+    ax_cov.set_xlabel("grain-boundary P coverage  Cp  (at%, AES)")
+    ax_cov.set_ylabel("DBTT  (°C)")
+    ax_cov.set_title(f"Gap 2 — coverage→DBTT is CITED but PER-STEEL (slope span ×{s.slope_span:.1f})",
+                     fontsize=10.0)
+    ax_cov.legend(loc="upper left", fontsize=7.6, framealpha=0.92)
+    ax_cov.grid(True, alpha=0.2)
+    ax_cov.annotate("solid = IF (ferritic matrix) — but INTERGRANULAR P embrittlement (no solute C)\n"
+                    "            + the FITTED steel\n"
+                    "dashed = SA508-4N (tempered martensite) — intergranular\n"
+                    "ALL intergranular ≠ engine's transgranular law ⇒ no in-domain holdout ⇒ NO TOOTH",
+                    (0.97, 0.03), xycoords="axes fraction", ha="right", va="bottom", fontsize=7.2,
+                    bbox=dict(boxstyle="round,pad=0.4", fc="#fdf2e9", ec="#e67e22", alpha=0.93))
+
+    # --- middle: Gap 1 — McLean coverage vs bulk P (the flagged leg) ---------- #
+    import numpy as np
+    P_grid = np.linspace(0.0, 0.10, 40)
+    t_col = {350.0: "#154360", 450.0: "#2471a3", 550.0: "#7fb3d5"}
+    for T in (350.0, 450.0, 550.0):
+        ax_mcl.plot(P_grid, [ps.mclean_gb_coverage(float(p), T) * 100 for p in P_grid],
+                    color=t_col[T], lw=2.3, label=f"T_seg = {T:.0f} °C")
+    # the "one bulk P → a range" callout at 0.03 wt%
+    ys = [ps.mclean_gb_coverage(0.03, T) * 100 for T in (350.0, 550.0)]
+    ax_mcl.annotate("", xy=(0.03, ys[0]), xytext=(0.03, ys[1]),
+                    arrowprops=dict(arrowstyle="<->", color="#c0392b", lw=1.6))
+    ax_mcl.text(0.032, sum(ys) / 2, "one bulk P →\na RANGE of coverage\n(thermal history)",
+                fontsize=7.4, color="#c0392b", va="center")
+    ax_mcl.set_xlim(0, 0.10)
+    ax_mcl.set_xlabel("bulk phosphorus  (wt%)")
+    ax_mcl.set_ylabel("GB coverage  (at%, McLean)")
+    ax_mcl.set_title("Gap 1 — bulk P→coverage is the FLAGGED, underdetermined leg", fontsize=10.0)
+    ax_mcl.legend(loc="upper left", fontsize=7.8, framealpha=0.92)
+    ax_mcl.grid(True, alpha=0.2)
+    ax_mcl.annotate("absolute coverage UNDER-predicted by the single-solute isotherm\n"
+                    "→ used for sensitivity only, never as a coverage benchmark",
+                    (0.97, 0.03), xycoords="axes fraction", ha="right", va="bottom", fontsize=7.3,
+                    bbox=dict(boxstyle="round,pad=0.35", fc="#eaf2f8", ec="#2471a3", alpha=0.9))
+
+    # --- right: the synthesis — composed bulk slope vs T_seg over the bracket - #
+    lo, hi = ps.BULK_SLOPE_BRACKET_C_PER_0P1
+    Tg = list(d.t_seg_grid)
+    ax_syn.axhspan(lo, hi, color="#abebc6", alpha=0.45, zorder=0,
+                   label=f"documented bracket {lo:.0f}–{hi:.0f}")
+    ax_syn.axhline(ps.ITT_K_P_AS_C_PER_0P1, color="#148f77", ls="--", lw=1.6, zorder=1,
+                   label=f"engine flag grain.ITT_K_P = {ps.ITT_K_P_AS_C_PER_0P1:.0f}")
+    for r in d.relations:
+        ax_syn.plot(Tg, [ps.composed_bulk_slope_C_per_0p1(r, T) for T in Tg],
+                    color=col.get(r.name, "0.3"), lw=2.3, marker="o", ms=4,
+                    label=r.name.split("(")[0].strip() + _suffix(r))
+    ax_syn.set_xlabel("segregation temperature  T_seg  (°C)")
+    ax_syn.set_ylabel("composed bulk slope  dDBTT/d(0.1 wt% P)  (°C)")
+    ax_syn.set_title("The synthesis — two non-universal factors ⇒ only a bracket is honest",
+                     fontsize=10.0)
+    ax_syn.legend(loc="upper right", fontsize=7.2, framealpha=0.92)
+    ax_syn.grid(True, alpha=0.2)
+    ax_syn.annotate(
+        "VERDICT — mechanism EXPLAINS the flag, pins nothing:\n"
+        f"  composed span {s.composed_min:.0f}–{s.composed_max:.0f} °C/0.1wt% "
+        f"(×{s.composed_max / s.composed_min:.0f}) straddles 40–78\n"
+        "  = per-steel slope (×4.3) × thermal-history enrichment (×5)\n"
+        "  two non-universal factors ⇒ ITT_K_P can only be a BRACKET\n"
+        "  no in-domain holdout ⇒ NO TOOTH; no engine touch (ADR 0010)",
+        (0.5, 0.02), xycoords="axes fraction", ha="center", va="bottom", fontsize=7.4,
+        bbox=dict(boxstyle="round,pad=0.4", fc="#e8f8f5", ec="#148f77", alpha=0.94))
+
+    fig.suptitle("A2-B — why phosphorus' bulk DBTT slope (grain.ITT_K_P) stays FLAGGED: the "
+                 "grain-boundary-coverage mechanism (no tooth)", fontsize=11.0, fontweight="bold")
+    fig.subplots_adjust(left=0.055, right=0.99, top=0.9, bottom=0.12, wspace=0.24)
+    return fig
