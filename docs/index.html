@@ -6,19 +6,37 @@
   <title>steel-sim — visual gallery &amp; guided tour</title>
   <style>
 :root {
-  --bg: #0f1115; --panel: #171a21; --panel2: #1d2129; --ink: #e7e9ee; --muted: #9aa3b2;
-  --line: #2a2f3a; --accent: #ff8a3d; --accent2: #5ab0ff; --code: #0b0d11;
+  --bg: #0e1014; --panel: #161a21; --panel2: #1c212b; --ink: #e8eaef; --muted: #9aa3b2;
+  --line: #29303c; --accent: #ff8a3d; --accent2: #6cb5ff; --code: #0a0c10;
+  --cmd-ink: #cfe3ff; --em-ink: #c8cee0; --shot-bg: #ffffff; --veil: rgba(14, 16, 20, 0.86);
+  --hover-line: #445067; --shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --panel2: #eef0f4; --ink: #1d222b; --muted: #5c6572;
+    --line: #dcdfe6; --accent: #d3641a; --accent2: #1f6fd6; --code: #eef0f4;
+    --cmd-ink: #17457a; --em-ink: #333c4d; --shot-bg: #ffffff; --veil: rgba(245, 246, 248, 0.88);
+    --hover-line: #b9bfcb; --shadow: 0 12px 26px rgba(25, 31, 42, 0.10);
+  }
 }
 * { box-sizing: border-box; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
+body::before { content: ""; display: block; height: 3px;
+               background: linear-gradient(90deg, #ff5d1f, #ff8a3d, #ffc46b, #6cb5ff); }
 a { color: var(--accent2); text-decoration: none; }
 a:hover { text-decoration: underline; }
-.wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 64px; }
-header h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.01em; }
-header .tag { color: var(--muted); margin: 0 0 22px; font-size: 16px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 30px 20px 64px; }
+header h1 { margin: 0 0 6px; font-size: 32px; letter-spacing: -0.015em; }
+header h1 .hot { background: linear-gradient(90deg, #ff5d1f, #ff9a4d, #ffc46b);
+                 -webkit-background-clip: text; background-clip: text; color: transparent; }
+header .tag { color: var(--muted); margin: 0 0 10px; font-size: 16px; max-width: 72ch; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; padding: 0; list-style: none; }
+.stats li { font-size: 12.5px; color: var(--muted); border: 1px solid var(--line);
+            border-radius: 999px; padding: 2px 11px; background: var(--panel); }
+.stats li b { color: var(--accent); font-weight: 600; }
 .ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;
         margin: 0 0 14px; }
 .way { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
@@ -26,34 +44,64 @@ header .tag { color: var(--muted); margin: 0 0 22px; font-size: 16px; }
 .way p { margin: 0; color: var(--muted); font-size: 13.5px; }
 code, .cmd { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
 .cmd { display: block; background: var(--code); border: 1px solid var(--line); border-radius: 8px;
-       padding: 7px 10px; font-size: 13px; color: #cfe3ff; overflow-x: auto; }
-.note { color: var(--muted); font-size: 13.5px; margin: 6px 0 26px; }
-h2.section { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent);
-             border-bottom: 1px solid var(--line); padding-bottom: 6px; margin: 34px 0 16px; }
+       padding: 7px 10px; font-size: 13px; color: var(--cmd-ink); overflow-x: auto; }
+.note { color: var(--muted); font-size: 13.5px; margin: 6px 0 10px; }
+nav.toc { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px;
+          overflow-x: auto; margin: 0 -20px; padding: 10px 20px;
+          background: var(--veil); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+          border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+nav.toc a { flex: none; font-size: 12.5px; color: var(--muted); border: 1px solid var(--line);
+            border-radius: 999px; padding: 3px 11px; white-space: nowrap;
+            transition: color .12s, border-color .12s; }
+nav.toc a:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
+nav.toc input { flex: none; width: 200px; font: inherit; font-size: 13px; color: var(--ink);
+                background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+                padding: 4px 13px; outline: none; }
+nav.toc input:focus { border-color: var(--accent); }
+nav.toc input::placeholder { color: var(--muted); }
+#noresults { color: var(--muted); font-size: 14px; margin: 28px 0; }
+h2.section { display: flex; align-items: baseline; gap: 10px; font-size: 13px;
+             text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent);
+             border-bottom: 1px solid var(--line); padding-bottom: 6px; margin: 34px 0 16px;
+             scroll-margin-top: 62px; }
+h2.section .count { font-weight: 400; color: var(--muted); letter-spacing: 0; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 18px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-        display: flex; flex-direction: column; transition: border-color .15s, transform .15s; }
-.card:hover { border-color: #3a4150; transform: translateY(-2px); }
-.card .shot { display: block; background: var(--panel2); border-bottom: 1px solid var(--line); }
-.card .shot img { display: block; width: 100%; height: 188px; object-fit: contain; background: #fff; }
+        display: flex; flex-direction: column;
+        transition: border-color .15s, transform .15s, box-shadow .15s; }
+.card:hover { border-color: var(--hover-line); transform: translateY(-3px); box-shadow: var(--shadow); }
+.card .shot { display: block; background: var(--panel2); border-bottom: 1px solid var(--line);
+              overflow: hidden; }
+.card .shot img { display: block; width: 100%; height: 188px; object-fit: contain;
+                  background: var(--shot-bg); transition: transform .25s ease; }
+.card:hover .shot img { transform: scale(1.025); }
 .card .body { padding: 13px 15px 15px; display: flex; flex-direction: column; gap: 9px; flex: 1; }
 .card h3 { margin: 0; font-size: 17px; }
 .card .blurb { margin: 0; color: var(--muted); font-size: 13.5px; flex: 1; }
+.card .blurb strong { color: var(--em-ink); font-weight: 600; }
+.card .blurb code { font-size: 12px; }
 .card .links { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 13px; padding-top: 2px;
                border-top: 1px solid var(--line); margin-top: 2px; }
 .card .links .sep { color: var(--line); }
 .chip { display: inline-block; font-size: 11px; color: var(--muted); border: 1px solid var(--line);
         border-radius: 999px; padding: 1px 8px; }
+.hide { display: none !important; }
 footer { color: var(--muted); font-size: 13px; margin-top: 44px; border-top: 1px solid var(--line);
          padding-top: 18px; }
-em { color: #c8cee0; font-style: italic; }
+em { color: var(--em-ink); font-style: italic; }
   </style>
 </head>
 <body>
   <div class="wrap">
   <header>
-    <h1>steel-sim — visual gallery &amp; guided tour</h1>
+    <h1><span class="hot">steel-sim</span> — visual gallery &amp; guided tour</h1>
     <p class="tag">Composition + cooling in, microstructure and properties out. Click any card to open its figure full-size, or copy its run command. Every surface of the simulator — visualizations, demos, experiments, and the notebook — in one place.</p>
+  <ul class="stats">
+    <li><b>43</b> runnable demos</li>
+    <li><b>19</b> topics, ore → part</li>
+    <li><b>2</b> teaching notebooks</li>
+    <li><b>3</b> interactive apps + <b>1</b> playable game</li>
+  </ul>
   </header>
   <div class="ways">
     <div class="way"><h3>▶ Demos &amp; visualizations</h3><p>Each card runs one <code>python -m steel.&lt;name&gt;</code> demo, prints its validation table, and banks the figure shown. Needs only <code>.[viz]</code>.</p></div>
@@ -61,9 +109,33 @@ em { color: #c8cee0; font-style: italic; }
     <div class="way"><h3>📓 Notebooks</h3><p>Two narrative teaching paths with sliders. New here? Open the back-end <a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook</a> (cooling curve → microstructure), read "Start here — the 30-second mental model", then go top to bottom — or its front-end <a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">making notebook</a> (ore → billet → and what goes wrong).</p></div>
   </div>
   <p class="note">Suggested first pass: <code>demo_four_curves</code> → <code>demo_jominy</code> → <code>demo_sweep</code> → <code>demo_tempered_jominy</code>, then branch by interest. Install &amp; launch commands are in the <a href="https://github.com/BoykoNeov/steel-sim/blob/main/README.md" target="_blank" rel="noopener">README</a>; the physics and validation behind each demo are in <a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/README.md" target="_blank" rel="noopener">steel/README.md</a>.</p>
-  <h2 class="section">Core</h2>
+  <nav class="toc">
+    <input id="q" type="search" placeholder="Filter demos…" autocomplete="off"
+           aria-label="Filter demos by title, blurb, or module name">
+    <a href="#core">Core</a>
+    <a href="#hardenability">Hardenability</a>
+    <a href="#tempering">Tempering</a>
+    <a href="#grain-size">Grain size</a>
+    <a href="#process-routes">Process routes</a>
+    <a href="#validation">Validation</a>
+    <a href="#stress">Stress</a>
+    <a href="#case-hardening">Case hardening</a>
+    <a href="#inverse-design">Inverse design</a>
+    <a href="#equilibrium">Equilibrium</a>
+    <a href="#ironmaking-front-end">Ironmaking (front-end)</a>
+    <a href="#front-end-spine">Front-end spine</a>
+    <a href="#refining-front-end">Refining (front-end)</a>
+    <a href="#impurity-consequences-front-end">Impurity consequences (front-end)</a>
+    <a href="#ladle-trim-front-end">Ladle trim (front-end)</a>
+    <a href="#casting-front-end">Casting (front-end)</a>
+    <a href="#full-chain-capstone-front-end">Full-chain capstone (front-end)</a>
+    <a href="#game-playable-spinoff">Game (playable spinoff)</a>
+    <a href="#game-the-era-tech-tree">Game — the era tech tree</a>
+  </nav>
+  <p id="noresults" class="hide">No demo matches that filter — try a shorter term (titles, blurbs, module names, and topics are all searched).</p>
+  <h2 class="section" id="core">Core<span class="count">2 demos</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="four fates of one steel one 1080 steel, four quench rates → pearlite → bainite → martensite — the c-curve mechanism beside the microstructure it produces. demo_four_curves core">
       <a class="shot" href="figures/steel-four-curves.png" target="_blank" rel="noopener"><img src="figures/steel-four-curves.png" alt="Four fates of one steel" loading="lazy"></a>
       <div class="body">
         <h3>Four fates of one steel</h3>
@@ -72,7 +144,7 @@ em { color: #c8cee0; font-style: italic; }
         <div class="links"><a href="figures/steel-four-curves.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_four_curves.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §1-2 ↗</a><span class="sep">|</span><span class="chip">app: four fates</span></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="composition × cooling sweep  —  the experiment surface every composition against every cooling rate, side by side — the hardenability axis the four-curves view can&#x27;t show. this is the experimentation surface; the app makes it interactive. demo_sweep core">
       <a class="shot" href="figures/steel-sweep.png" target="_blank" rel="noopener"><img src="figures/steel-sweep.png" alt="Composition × cooling sweep  —  the experiment surface" loading="lazy"></a>
       <div class="body">
         <h3>Composition × cooling sweep  —  the experiment surface</h3>
@@ -82,9 +154,9 @@ em { color: #c8cee0; font-style: italic; }
       </div>
     </article>
   </div>
-  <h2 class="section">Hardenability</h2>
+  <h2 class="section" id="hardenability">Hardenability<span class="count">2 demos</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="jominy end-quench one end-quench bar: shallow-hardening 1045 against deep-hardening 4140, hardness versus depth from the quenched end. demo_jominy hardenability">
       <a class="shot" href="figures/steel-jominy-hardness.png" target="_blank" rel="noopener"><img src="figures/steel-jominy-hardness.png" alt="Jominy end-quench" loading="lazy"></a>
       <div class="body">
         <h3>Jominy end-quench</h3>
@@ -93,40 +165,40 @@ em { color: #c8cee0; font-style: italic; }
         <div class="links"><a href="figures/steel-jominy-hardness.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_jominy.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §3 ↗</a><span class="sep">|</span><span class="chip">app: Jominy</span></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="ideal critical diameter critical diameter read *from* the model against measured h-band data — does it rank the steels&#x27; hardenability in the right order? demo_ideal_diameter hardenability">
       <a class="shot" href="figures/steel-ideal-diameter.png" target="_blank" rel="noopener"><img src="figures/steel-ideal-diameter.png" alt="Ideal critical diameter" loading="lazy"></a>
       <div class="body">
         <h3>Ideal critical diameter</h3>
-        <p class="blurb">Critical diameter read *from* the model against measured H-band data — does it rank the steels&#x27; hardenability in the right order?</p>
+        <p class="blurb">Critical diameter read <em>from</em> the model against measured H-band data — does it rank the steels&#x27; hardenability in the right order?</p>
         <code class="cmd">python -m steel.demo_ideal_diameter</code>
         <div class="links"><a href="figures/steel-ideal-diameter.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_ideal_diameter.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §3 ↗</a></div>
       </div>
     </article>
   </div>
-  <h2 class="section">Tempering</h2>
+  <h2 class="section" id="tempering">Tempering<span class="count">1 demo</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="tempered jominy traverse a *tempered* jominy traverse — per-constituent temper of a mixed structure, not a single hardness knocked down by one number. demo_tempered_jominy tempering">
       <a class="shot" href="figures/steel-tempered-jominy.png" target="_blank" rel="noopener"><img src="figures/steel-tempered-jominy.png" alt="Tempered Jominy traverse" loading="lazy"></a>
       <div class="body">
         <h3>Tempered Jominy traverse</h3>
-        <p class="blurb">A *tempered* Jominy traverse — per-constituent temper of a mixed structure, not a single hardness knocked down by one number.</p>
+        <p class="blurb">A <em>tempered</em> Jominy traverse — per-constituent temper of a mixed structure, not a single hardness knocked down by one number.</p>
         <code class="cmd">python -m steel.demo_tempered_jominy</code>
         <div class="links"><a href="figures/steel-tempered-jominy.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_tempered_jominy.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §4 ↗</a><span class="sep">|</span><span class="chip">app: quench-and-temper</span></div>
       </div>
     </article>
   </div>
-  <h2 class="section">Grain size</h2>
+  <h2 class="section" id="grain-size">Grain size<span class="count">2 demos</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="grain refinement grain refinement — the lone lever that raises strength *and* toughness at once (same hall–petch form, opposite grain-size signs). demo_grain grain size">
       <a class="shot" href="figures/steel-grain.png" target="_blank" rel="noopener"><img src="figures/steel-grain.png" alt="Grain refinement" loading="lazy"></a>
       <div class="body">
         <h3>Grain refinement</h3>
-        <p class="blurb">Grain refinement — the lone lever that raises strength *and* toughness at once (same Hall–Petch form, opposite grain-size signs).</p>
+        <p class="blurb">Grain refinement — the lone lever that raises strength <em>and</em> toughness at once (same Hall–Petch form, opposite grain-size signs).</p>
         <code class="cmd">python -m steel.demo_grain</code>
         <div class="links"><a href="figures/steel-grain.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_grain.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §5 ↗</a><span class="sep">|</span><span class="chip">app: §5</span></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="grain morphology swatch those two grains drawn to scale — a size-accurate microstructure swatch beside the schematic. demo_grain_morphology grain size">
       <a class="shot" href="figures/steel-grain-morphology.png" target="_blank" rel="noopener"><img src="figures/steel-grain-morphology.png" alt="Grain morphology swatch" loading="lazy"></a>
       <div class="body">
         <h3>Grain morphology swatch</h3>
@@ -136,9 +208,9 @@ em { color: #c8cee0; font-style: italic; }
       </div>
     </article>
   </div>
-  <h2 class="section">Process routes</h2>
+  <h2 class="section" id="process-routes">Process routes<span class="count">4 demos</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="austempering quench past the nose, hold isothermally inside the diagram, grow bainite — the atlas-anchored isothermal hold. demo_austemper process routes">
       <a class="shot" href="figures/steel-austemper.png" target="_blank" rel="noopener"><img src="figures/steel-austemper.png" alt="Austempering" loading="lazy"></a>
       <div class="body">
         <h3>Austempering</h3>
@@ -147,7 +219,7 @@ em { color: #c8cee0; font-style: italic; }
         <div class="links"><a href="figures/steel-austemper.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_austemper.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §6 ↗</a><span class="sep">|</span><span class="chip">app: §6</span></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="martempering the same hardness as a direct quench, far less distortion — the surface−centre temperature gap closed before the martensite forms. demo_martemper process routes">
       <a class="shot" href="figures/steel-martemper-distortion.png" target="_blank" rel="noopener"><img src="figures/steel-martemper-distortion.png" alt="Martempering" loading="lazy"></a>
       <div class="body">
         <h3>Martempering</h3>
@@ -156,76 +228,76 @@ em { color: #c8cee0; font-style: italic; }
         <div class="links"><a href="figures/steel-martemper-distortion.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_martemper.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §6d ↗</a><span class="sep">|</span><span class="chip">app: martempering</span></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="bainite bay, opened in continuous cooling the bainite bay *opened* in continuous cooling — three competing reactions (ferrite / pearlite / bainite) raced on one shared austenite pool. demo_unified_kv process routes">
       <a class="shot" href="figures/steel-unified-kv-bay.png" target="_blank" rel="noopener"><img src="figures/steel-unified-kv-bay.png" alt="Bainite bay, opened in continuous cooling" loading="lazy"></a>
       <div class="body">
         <h3>Bainite bay, opened in continuous cooling</h3>
-        <p class="blurb">The bainite bay *opened* in continuous cooling — three competing reactions (ferrite / pearlite / bainite) raced on one shared austenite pool.</p>
+        <p class="blurb">The bainite bay <em>opened</em> in continuous cooling — three competing reactions (ferrite / pearlite / bainite) raced on one shared austenite pool.</p>
         <code class="cmd">python -m steel.demo_unified_kv</code>
         <div class="links"><a href="figures/steel-unified-kv-bay.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_unified_kv.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §6b ↗</a><span class="sep">|</span><span class="chip">app: §6b</span></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="bainite reaction (the negative result) the cited bainite reaction on its own, and why its bay *can&#x27;t* form in a plain continuous cool — the negative-result companion to the unified model. demo_bainite process routes">
       <a class="shot" href="figures/steel-bainite.png" target="_blank" rel="noopener"><img src="figures/steel-bainite.png" alt="Bainite reaction (the negative result)" loading="lazy"></a>
       <div class="body">
         <h3>Bainite reaction (the negative result)</h3>
-        <p class="blurb">The cited bainite reaction on its own, and why its bay *can&#x27;t* form in a plain continuous cool — the negative-result companion to the unified model.</p>
+        <p class="blurb">The cited bainite reaction on its own, and why its bay <em>can&#x27;t</em> form in a plain continuous cool — the negative-result companion to the unified model.</p>
         <code class="cmd">python -m steel.demo_bainite</code>
         <div class="links"><a href="figures/steel-bainite.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_bainite.py" target="_blank" rel="noopener">source ↗</a></div>
       </div>
     </article>
   </div>
-  <h2 class="section">Validation</h2>
+  <h2 class="section" id="validation">Validation<span class="count">5 demos</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="cross-composition bainite wall, measured does any cited composition factor predict bainite kinetics *across* steels? eight atlas steels say no — the per-steel-only wall, measured and quantified (not just asserted), and the alloy-vs-carbon diagnosis behind it. demo_cct_validation validation">
       <a class="shot" href="figures/steel-cct-validation.png" target="_blank" rel="noopener"><img src="figures/steel-cct-validation.png" alt="Cross-composition bainite wall, measured" loading="lazy"></a>
       <div class="body">
         <h3>Cross-composition bainite wall, measured</h3>
-        <p class="blurb">Does any cited composition factor predict bainite kinetics *across* steels? Eight atlas steels say no — the per-steel-only wall, measured and quantified (not just asserted), and the alloy-vs-carbon diagnosis behind it.</p>
+        <p class="blurb">Does any cited composition factor predict bainite kinetics <em>across</em> steels? Eight atlas steels say no — the per-steel-only wall, measured and quantified (not just asserted), and the alloy-vs-carbon diagnosis behind it.</p>
         <code class="cmd">python -m steel.demo_cct_validation</code>
         <div class="links"><a href="figures/steel-cct-validation.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_cct_validation.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §6c ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="sulfide capacity, holdout-validated does the cited optical-basicity c_s model predict sulfur affinity *out-of-sample*? an independent measured dataset (nzotta 1998, post-dating the 1986 fit, mno/feo-free) says yes for basic slags — ~×1.4 with tight scatter and perfect ranking — and names the acidic and mno edges where it doesn&#x27;t. demo_slag_validation validation">
       <a class="shot" href="figures/steel-slag-validation.png" target="_blank" rel="noopener"><img src="figures/steel-slag-validation.png" alt="Sulfide capacity, holdout-validated" loading="lazy"></a>
       <div class="body">
         <h3>Sulfide capacity, holdout-validated</h3>
-        <p class="blurb">Does the cited optical-basicity C_S model predict sulfur affinity *out-of-sample*? An independent measured dataset (Nzotta 1998, post-dating the 1986 fit, MnO/FeO-free) says yes for basic slags — ~×1.4 with tight scatter and perfect ranking — and names the acidic and MnO edges where it doesn&#x27;t.</p>
+        <p class="blurb">Does the cited optical-basicity C_S model predict sulfur affinity <em>out-of-sample</em>? An independent measured dataset (Nzotta 1998, post-dating the 1986 fit, MnO/FeO-free) says yes for basic slags — ~×1.4 with tight scatter and perfect ranking — and names the acidic and MnO edges where it doesn&#x27;t.</p>
         <code class="cmd">python -m steel.demo_slag_validation</code>
         <div class="links"><a href="figures/steel-slag-validation.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_slag_validation.py" target="_blank" rel="noopener">source ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="phosphorus partition — a measured bias map does the cited healy phosphorus-partition (l_p) model predict dephosphorization *out-of-sample*? an independent measured dataset (drain 2018, 48 years after the 1970 fit) says it carries at moderate basicity but over-predicts ~×2 at high lime — the vague &#x27;over-predicts at high lime&#x27; caveat turned into a quantified, benchmarked bias map. demo_slag_lp_validation validation">
       <a class="shot" href="figures/steel-slag-lp-validation.png" target="_blank" rel="noopener"><img src="figures/steel-slag-lp-validation.png" alt="Phosphorus partition — a measured bias map" loading="lazy"></a>
       <div class="body">
         <h3>Phosphorus partition — a measured bias map</h3>
-        <p class="blurb">Does the cited Healy phosphorus-partition (L_P) model predict dephosphorization *out-of-sample*? An independent measured dataset (Drain 2018, 48 years after the 1970 fit) says it carries at moderate basicity but over-predicts ~×2 at high lime — the vague &#x27;over-predicts at high lime&#x27; caveat turned into a quantified, benchmarked bias map.</p>
+        <p class="blurb">Does the cited Healy phosphorus-partition (L_P) model predict dephosphorization <em>out-of-sample</em>? An independent measured dataset (Drain 2018, 48 years after the 1970 fit) says it carries at moderate basicity but over-predicts ~×2 at high lime — the vague &#x27;over-predicts at high lime&#x27; caveat turned into a quantified, benchmarked bias map.</p>
         <code class="cmd">python -m steel.demo_slag_lp_validation</code>
         <div class="links"><a href="figures/steel-slag-lp-validation.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_slag_lp_validation.py" target="_blank" rel="noopener">source ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="phosphorus partition — a second slag system does that l_p bias map hold on a *different* slag system, at the same converter temperature? a second independent set (suito &amp; inoue 1984, na₂o/bao fluxes) says yes with an edge: on bao slags healy carries ~×1.5 — reproducing drain from another lab — but on soda slags it under-predicts ~×4–5 at matched lime, because it reads only %cao and is blind to na₂o&#x27;s basicity. demo_slag_lp2_validation validation">
       <a class="shot" href="figures/steel-slag-lp2-validation.png" target="_blank" rel="noopener"><img src="figures/steel-slag-lp2-validation.png" alt="Phosphorus partition — a second slag system" loading="lazy"></a>
       <div class="body">
         <h3>Phosphorus partition — a second slag system</h3>
-        <p class="blurb">Does that L_P bias map hold on a *different* slag system, at the same converter temperature? A second independent set (Suito &amp; Inoue 1984, Na₂O/BaO fluxes) says yes with an edge: on BaO slags Healy carries ~×1.5 — reproducing Drain from another lab — but on soda slags it under-predicts ~×4–5 at matched lime, because it reads only %CaO and is blind to Na₂O&#x27;s basicity.</p>
+        <p class="blurb">Does that L_P bias map hold on a <em>different</em> slag system, at the same converter temperature? A second independent set (Suito &amp; Inoue 1984, Na₂O/BaO fluxes) says yes with an edge: on BaO slags Healy carries ~×1.5 — reproducing Drain from another lab — but on soda slags it under-predicts ~×4–5 at matched lime, because it reads only %CaO and is blind to Na₂O&#x27;s basicity.</p>
         <code class="cmd">python -m steel.demo_slag_lp2_validation</code>
         <div class="links"><a href="figures/steel-slag-lp2-validation.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_slag_lp2_validation.py" target="_blank" rel="noopener">source ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="sulfur partition — probing the c_s→l_s conversion c_s was validated, l_p benchmarked — but does the sulfur *metal*-partition l_s the ladle step actually computes carry? against gas-controlled heats (mohassab 2013, oxygen fixed by the gas — the only clean way to test the −log a_o term) it&#x27;s order-of-magnitude, not an upgrade: the clean subset under-predicts, and three confounds (feo-laden c_s baseline, the a_o slope inseparable from feo basicity, an a_o standard-state offset) mean the magnitude can&#x27;t be pinned. two edges survive — water raises l_s ~×5 (engine blind), and the feo oxygen anchor reads ~×2 low. demo_slag_ls_validation validation">
       <a class="shot" href="figures/steel-slag-ls-validation.png" target="_blank" rel="noopener"><img src="figures/steel-slag-ls-validation.png" alt="Sulfur partition — probing the C_S→L_S conversion" loading="lazy"></a>
       <div class="body">
         <h3>Sulfur partition — probing the C_S→L_S conversion</h3>
-        <p class="blurb">C_S was validated, L_P benchmarked — but does the sulfur *metal*-partition L_S the ladle step actually computes carry? Against gas-controlled heats (Mohassab 2013, oxygen fixed by the gas — the only clean way to test the −log a_O term) it&#x27;s order-of-magnitude, not an upgrade: the clean subset under-predicts, and three confounds (FeO-laden C_S baseline, the a_O slope inseparable from FeO basicity, an a_O standard-state offset) mean the magnitude can&#x27;t be pinned. Two edges survive — water raises L_S ~×5 (engine blind), and the FeO oxygen anchor reads ~×2 low.</p>
+        <p class="blurb">C_S was validated, L_P benchmarked — but does the sulfur <em>metal</em>-partition L_S the ladle step actually computes carry? Against gas-controlled heats (Mohassab 2013, oxygen fixed by the gas — the only clean way to test the −log a_O term) it&#x27;s order-of-magnitude, not an upgrade: the clean subset under-predicts, and three confounds (FeO-laden C_S baseline, the a_O slope inseparable from FeO basicity, an a_O standard-state offset) mean the magnitude can&#x27;t be pinned. Two edges survive — water raises L_S ~×5 (engine blind), and the FeO oxygen anchor reads ~×2 low.</p>
         <code class="cmd">python -m steel.demo_slag_ls_validation</code>
         <div class="links"><a href="figures/steel-slag-ls-validation.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_slag_ls_validation.py" target="_blank" rel="noopener">source ↗</a></div>
       </div>
     </article>
   </div>
-  <h2 class="section">Stress</h2>
+  <h2 class="section" id="stress">Stress<span class="count">2 demos</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="residual stress &amp; distortion the residual stress and distortion a quench locks into a section — the solid-mechanics axis (incremental elastic–perfectly-plastic, transform dilatation and all). demo_residual stress">
       <a class="shot" href="figures/steel-residual-stress.png" target="_blank" rel="noopener"><img src="figures/steel-residual-stress.png" alt="Residual stress &amp; distortion" loading="lazy"></a>
       <div class="body">
         <h3>Residual stress &amp; distortion</h3>
@@ -234,19 +306,19 @@ em { color: #c8cee0; font-style: italic; }
         <div class="links"><a href="figures/steel-residual-stress.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_residual.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook §6e ↗</a><span class="sep">|</span><span class="chip">app: residual stress</span></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="quench cracking — the inclusion as initiator couples the residual-stress field to a representative surface-flaw size through a fracture-mechanics gate: in the *same* tensile surface, a clean heat survives while a dirty one quench-cracks — cleanliness decides, not just the stress. demo_fracture stress">
       <a class="shot" href="figures/steel-fracture.png" target="_blank" rel="noopener"><img src="figures/steel-fracture.png" alt="Quench cracking — the inclusion as initiator" loading="lazy"></a>
       <div class="body">
         <h3>Quench cracking — the inclusion as initiator</h3>
-        <p class="blurb">Couples the residual-stress field to a representative surface-flaw size through a fracture-mechanics gate: in the *same* tensile surface, a clean heat survives while a dirty one quench-cracks — cleanliness decides, not just the stress.</p>
+        <p class="blurb">Couples the residual-stress field to a representative surface-flaw size through a fracture-mechanics gate: in the <em>same</em> tensile surface, a clean heat survives while a dirty one quench-cracks — cleanliness decides, not just the stress.</p>
         <code class="cmd">python -m steel.demo_fracture</code>
         <div class="links"><a href="figures/steel-fracture.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_fracture.py" target="_blank" rel="noopener">source ↗</a></div>
       </div>
     </article>
   </div>
-  <h2 class="section">Case hardening</h2>
+  <h2 class="section" id="case-hardening">Case hardening<span class="count">1 demo</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="carburizing a carburized gear tooth: carbon diffused in at the surface, case hardness profiled out — the same sealed engine as jominy, a mass-diffusion face. now inverts closed-form too: target a case depth, get the cycle (time or temperature). demo_carburize case hardening">
       <a class="shot" href="figures/steel-carburize-gradient.png" target="_blank" rel="noopener"><img src="figures/steel-carburize-gradient.png" alt="Carburizing" loading="lazy"></a>
       <div class="body">
         <h3>Carburizing</h3>
@@ -256,9 +328,9 @@ em { color: #c8cee0; font-style: italic; }
       </div>
     </article>
   </div>
-  <h2 class="section">Inverse design</h2>
+  <h2 class="section" id="inverse-design">Inverse design<span class="count">1 demo</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="inverse design run the simulator backwards: name a target hardness, get a feasible recipe — grade, quench medium, and temper. v2 also inverts for a target yield (the normalized, slow-cool regime) and a target case depth. demo_design inverse design">
       <a class="shot" href="figures/steel-design.png" target="_blank" rel="noopener"><img src="figures/steel-design.png" alt="Inverse design" loading="lazy"></a>
       <div class="body">
         <h3>Inverse design</h3>
@@ -268,21 +340,21 @@ em { color: #c8cee0; font-style: italic; }
       </div>
     </article>
   </div>
-  <h2 class="section">Equilibrium</h2>
+  <h2 class="section" id="equilibrium">Equilibrium<span class="count">1 demo</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="calphad equilibrium real calphad thermodynamics against the parametrised fe-c diagram the rest of the sim uses (needs the optional `.[calphad]` extra). demo_calphad equilibrium">
       <a class="shot" href="figures/steel-calphad.png" target="_blank" rel="noopener"><img src="figures/steel-calphad.png" alt="CALPHAD equilibrium" loading="lazy"></a>
       <div class="body">
         <h3>CALPHAD equilibrium</h3>
-        <p class="blurb">Real CALPHAD thermodynamics against the parametrised Fe-C diagram the rest of the sim uses (needs the optional `.[calphad]` extra).</p>
+        <p class="blurb">Real CALPHAD thermodynamics against the parametrised Fe-C diagram the rest of the sim uses (needs the optional <code>.[calphad]</code> extra).</p>
         <code class="cmd">python -m steel.demo_calphad</code>
         <div class="links"><a href="figures/steel-calphad.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_calphad.py" target="_blank" rel="noopener">source ↗</a></div>
       </div>
     </article>
   </div>
-  <h2 class="section">Ironmaking (front-end)</h2>
+  <h2 class="section" id="ironmaking-front-end">Ironmaking (front-end)<span class="count">1 demo</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="ellingham diagram — ore → iron the front end begins: which reductant pulls the oxygen off which oxide, above which temperature. the carbon→co line dives under the iron-oxide lines at ~750 °c — where ironmaking begins — and the oxygen-potential ladder shows why al and ca deoxidize a steel bath that fe, mn, si cannot. demo_reduction ironmaking (front-end)">
       <a class="shot" href="figures/steel-ellingham.png" target="_blank" rel="noopener"><img src="figures/steel-ellingham.png" alt="Ellingham diagram — ore → iron" loading="lazy"></a>
       <div class="body">
         <h3>Ellingham diagram — ore → iron</h3>
@@ -292,9 +364,9 @@ em { color: #c8cee0; font-style: italic; }
       </div>
     </article>
   </div>
-  <h2 class="section">Front-end spine</h2>
+  <h2 class="section" id="front-end-spine">Front-end spine<span class="count">1 demo</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="failure propagation — a mistake travels down the chain the spine that lets steps compose: a heat record threads through the back end, and an upstream alloy mistake (under-dosed cr/mo) propagates into a downstream defect — the same oil quench that through-hardens a proper 4140 leaves a soft, ferrite-dominant core, flagged on the heat. not a scripted failure — the back-end martensite fraction crossing a spec line. demo_heat_state front-end spine">
       <a class="shot" href="figures/steel-heat-state.png" target="_blank" rel="noopener"><img src="figures/steel-heat-state.png" alt="Failure propagation — a mistake travels down the chain" loading="lazy"></a>
       <div class="body">
         <h3>Failure propagation — a mistake travels down the chain</h3>
@@ -304,9 +376,9 @@ em { color: #c8cee0; font-style: italic; }
       </div>
     </article>
   </div>
-  <h2 class="section">Refining (front-end)</h2>
+  <h2 class="section" id="refining-front-end">Refining (front-end)<span class="count">2 demos</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="primary refining — the blow sets carbon, the gas fields fill the middle of the chain: blow carbon-saturated hot metal to the grade&#x27;s carbon, kill it with aluminium, vacuum-degas. the blow&#x27;s carbon is the one output the validated back end consumes — over-blow and the same quench leaves a soft core (a real refining mistake, a real downstream consequence). alongside, the dissolved o / h / n and inclusion fields the heat carried empty are filled: the deoxidation curve with its minimum, the c–o coupling, and sieverts √p degassing. demo_refining refining (front-end)">
       <a class="shot" href="figures/steel-refining.png" target="_blank" rel="noopener"><img src="figures/steel-refining.png" alt="Primary refining — the blow sets carbon, the gas fields fill" loading="lazy"></a>
       <div class="body">
         <h3>Primary refining — the blow sets carbon, the gas fields fill</h3>
@@ -315,7 +387,7 @@ em { color: #c8cee0; font-style: italic; }
         <div class="links"><a href="figures/steel-refining.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_refining.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §F2a ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="slag partition — phosphorus out in the converter, sulfur in the ladle the second half of refining: the two tramp impurities the blast furnace leaves in, partitioned into slag. the headline is the opposite oxygen dependence — dephosphorization wants the oxidizing converter (l_p rises with slag feo), desulfurization wants the reducing ladle (l_s falls with dissolved oxygen) — two independently sourced correlations whose opposite signs dictate the process order. it reproduces the purity-control history: acid bessemer can&#x27;t dephosphorize (rails crack), thomas&#x27; basic lining can, and sulfur only comes out once the heat is killed. p/s are carried but inert in the back end — the chemistry is benchmarked, the embrittlement consequence deferred. demo_slag refining (front-end)">
       <a class="shot" href="figures/steel-slag.png" target="_blank" rel="noopener"><img src="figures/steel-slag.png" alt="Slag partition — phosphorus out in the converter, sulfur in the ladle" loading="lazy"></a>
       <div class="body">
         <h3>Slag partition — phosphorus out in the converter, sulfur in the ladle</h3>
@@ -325,9 +397,9 @@ em { color: #c8cee0; font-style: italic; }
       </div>
     </article>
   </div>
-  <h2 class="section">Impurity consequences (front-end)</h2>
+  <h2 class="section" id="impurity-consequences-front-end">Impurity consequences (front-end)<span class="count">9 demos</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="closing the impurity consequences — phosphorus (cold-short) and sulfur (red-short) what the tramp impurities finally do. the same high-phosphorus, sulfurous pig iron, made into cracking steel by the acid bessemer process and into sound steel by the basic process + mushet&#x27;s manganese + ladle desulfurization. phosphorus threads the existing pickering dbtt law (it strengthens and embrittles — the signed foil) so the off-spec heat is brittle in the hand; free sulfur forms a fe–fes grain-boundary film above the 988 °c eutectic so it tears when forged (mushet&#x27;s manganese ties it as benign mns). together they bracket the workable temperature window — the consequence f2&#x27;s slag partition set as state, now closed: phosphorus by propagation through the toughness law, sulfur through a new hot-working verdict. demo_impurity_window impurity consequences (front-end)">
       <a class="shot" href="figures/steel-impurity-window.png" target="_blank" rel="noopener"><img src="figures/steel-impurity-window.png" alt="Closing the impurity consequences — phosphorus (cold-short) and sulfur (red-short)" loading="lazy"></a>
       <div class="body">
         <h3>Closing the impurity consequences — phosphorus (cold-short) and sulfur (red-short)</h3>
@@ -336,7 +408,7 @@ em { color: #c8cee0; font-style: italic; }
         <div class="links"><a href="figures/steel-impurity-window.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_impurity_window.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §D1 ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="temper embrittlement — the reversible ni-cr-mo phosphorus trap phosphorus&#x27; other consequence — the quench-and-tempered (martensitic) path, completing its coverage (cold-short was the ferritic one). a dirty ni-cr forging with residual phosphorus and no molybdenum, slow-cooled through ~375–575 °c, segregates phosphorus to the prior-austenite grain boundaries and fractures intergranularly. four independent cures: a fast cool through the window, molybdenum (the classic remedy for susceptible ni-cr forgings), a clean heat, or a reheat above 600 °c (the reversibility that names it). the watanabe j-factor ranks susceptibility — in the registry only the dirty ni-cr victim clears the threshold; 4140/8620 are safe by low j, not their sub-threshold mo. no strict tooth — the segregation-c-curve-nose gate was run on paper and could not be pinned (a tractable model is ~100× too fast and underdetermined; the faithful nose needs fe₃p-cluster kinetics, out of scope), so the model was not built to manufacture one. demo_temper_embrittlement impurity consequences (front-end)">
       <a class="shot" href="figures/steel-temper-embrittlement.png" target="_blank" rel="noopener"><img src="figures/steel-temper-embrittlement.png" alt="Temper embrittlement — the reversible Ni-Cr-Mo phosphorus trap" loading="lazy"></a>
       <div class="body">
         <h3>Temper embrittlement — the reversible Ni-Cr-Mo phosphorus trap</h3>
@@ -345,73 +417,73 @@ em { color: #c8cee0; font-style: italic; }
         <div class="links"><a href="figures/steel-temper-embrittlement.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_temper_embrittlement.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §D2 ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="why phosphorus&#x27; bulk dbtt slope stays flagged — the coverage mechanism phosphorus&#x27; bulk contribution to the ductile-brittle transition (grain.itt_k_p) has always been a *flagged bracket* (~40–78 °c per 0.1 wt% p), never a teeth-bearing coefficient — and this shows *why*, mechanistically. the clean measured form is grain-boundary coverage → dbtt, separated from the bulk-wt% term by two non-universal gaps: bulk p → coverage (a mclean isotherm that depends on thermal history — underdetermined) and coverage → dbtt (measured but per-steel: 3.12 °c/at% in ferritic if steel up to 13.31 in tempered-martensite sa508-4n, a 4.3× cross-domain span). composed, the bulk slope becomes a product of two non-universal factors whose ~20× range *contains* the 40–78 bracket with the engine&#x27;s flagged 50 mid-range: the mechanism explains the bracket&#x27;s width but pins nothing. no independent in-domain holdout exists, so — like the temper-embrittlement gate — there is no claimable tooth and no engine touch (adr 0010). demo_p_segregation_dbtt impurity consequences (front-end)">
       <a class="shot" href="figures/steel-p-segregation-dbtt.png" target="_blank" rel="noopener"><img src="figures/steel-p-segregation-dbtt.png" alt="Why phosphorus&#x27; bulk DBTT slope stays flagged — the coverage mechanism" loading="lazy"></a>
       <div class="body">
         <h3>Why phosphorus&#x27; bulk DBTT slope stays flagged — the coverage mechanism</h3>
-        <p class="blurb">Phosphorus&#x27; bulk contribution to the ductile-brittle transition (grain.ITT_K_P) has always been a *flagged bracket* (~40–78 °C per 0.1 wt% P), never a teeth-bearing coefficient — and this shows *why*, mechanistically. The clean measured form is grain-boundary coverage → DBTT, separated from the bulk-wt% term by two non-universal gaps: bulk P → coverage (a McLean isotherm that depends on thermal history — underdetermined) and coverage → DBTT (measured but per-steel: 3.12 °C/at% in ferritic IF steel up to 13.31 in tempered-martensite SA508-4N, a 4.3× cross-domain span). Composed, the bulk slope becomes a product of two non-universal factors whose ~20× range *contains* the 40–78 bracket with the engine&#x27;s flagged 50 mid-range: the mechanism explains the bracket&#x27;s width but pins nothing. No independent in-domain holdout exists, so — like the temper-embrittlement gate — there is no claimable tooth and no engine touch (ADR 0010).</p>
+        <p class="blurb">Phosphorus&#x27; bulk contribution to the ductile-brittle transition (grain.ITT_K_P) has always been a <em>flagged bracket</em> (~40–78 °C per 0.1 wt% P), never a teeth-bearing coefficient — and this shows <em>why</em>, mechanistically. The clean measured form is grain-boundary coverage → DBTT, separated from the bulk-wt% term by two non-universal gaps: bulk P → coverage (a McLean isotherm that depends on thermal history — underdetermined) and coverage → DBTT (measured but per-steel: 3.12 °C/at% in ferritic IF steel up to 13.31 in tempered-martensite SA508-4N, a 4.3× cross-domain span). Composed, the bulk slope becomes a product of two non-universal factors whose ~20× range <em>contains</em> the 40–78 bracket with the engine&#x27;s flagged 50 mid-range: the mechanism explains the bracket&#x27;s width but pins nothing. No independent in-domain holdout exists, so — like the temper-embrittlement gate — there is no claimable tooth and no engine touch (ADR 0010).</p>
         <code class="cmd">python -m steel.demo_p_segregation_dbtt</code>
         <div class="links"><a href="figures/steel-p-segregation-dbtt.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_p_segregation_dbtt.py" target="_blank" rel="noopener">source ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="tempered-martensite embrittlement — the other trough, irreversible reversible temper embrittlement has a sibling on the same tempering axis — and the two are opposites. temper as-quenched martensite in 260–370 °c and cementite precipitates as films along the interlath / grain boundaries (fed by retained-austenite decomposition); toughness drops into a trough. it is carbon-driven, not impurity-driven — so a *clean* medium-carbon steel still embrittles, where the reversible one needs phosphorus — and it is one-way: temper above ~400 °c and it recovers, but re-entering the trough cannot restore the film (the carbide morphology is set by the peak temper). two gates, on the same frozen quench the spine uses: 4140 embrittles, 8620 (0.20 %c) is immune even fully hardened, and a section that did not harden has no tempered martensite to embrittle. no strict tooth — the trough-from-carbide-kinetics gate was run on paper and failed (the repo carries no stage-iii carbide thermodynamics), so no carbide model was built to manufacture one; the trough window and the ~400 °c recovery are cited, the carbon gate and verdict rule by-construction. demo_tempered_martensite_embrittlement impurity consequences (front-end)">
       <a class="shot" href="figures/steel-tempered-martensite-embrittlement.png" target="_blank" rel="noopener"><img src="figures/steel-tempered-martensite-embrittlement.png" alt="Tempered-martensite embrittlement — the other trough, irreversible" loading="lazy"></a>
       <div class="body">
         <h3>Tempered-martensite embrittlement — the other trough, irreversible</h3>
-        <p class="blurb">Reversible temper embrittlement has a sibling on the SAME tempering axis — and the two are opposites. Temper as-quenched martensite in 260–370 °C and cementite precipitates as films along the interlath / grain boundaries (fed by retained-austenite decomposition); toughness drops into a trough. It is carbon-driven, not impurity-driven — so a *clean* medium-carbon steel still embrittles, where the reversible one needs phosphorus — and it is ONE-WAY: temper above ~400 °C and it recovers, but re-entering the trough cannot restore the film (the carbide morphology is set by the peak temper). Two gates, on the same frozen quench the spine uses: 4140 embrittles, 8620 (0.20 %C) is immune even fully hardened, and a section that did not harden has no tempered martensite to embrittle. No strict tooth — the trough-from-carbide-kinetics gate was run on paper and failed (the repo carries no stage-III carbide thermodynamics), so no carbide model was built to manufacture one; the trough window and the ~400 °C recovery are cited, the carbon gate and verdict rule by-construction.</p>
+        <p class="blurb">Reversible temper embrittlement has a sibling on the SAME tempering axis — and the two are opposites. Temper as-quenched martensite in 260–370 °C and cementite precipitates as films along the interlath / grain boundaries (fed by retained-austenite decomposition); toughness drops into a trough. It is carbon-driven, not impurity-driven — so a <em>clean</em> medium-carbon steel still embrittles, where the reversible one needs phosphorus — and it is ONE-WAY: temper above ~400 °C and it recovers, but re-entering the trough cannot restore the film (the carbide morphology is set by the peak temper). Two gates, on the same frozen quench the spine uses: 4140 embrittles, 8620 (0.20 %C) is immune even fully hardened, and a section that did not harden has no tempered martensite to embrittle. No strict tooth — the trough-from-carbide-kinetics gate was run on paper and failed (the repo carries no stage-III carbide thermodynamics), so no carbide model was built to manufacture one; the trough window and the ~400 °C recovery are cited, the carbon gate and verdict rule by-construction.</p>
         <code class="cmd">python -m steel.demo_tempered_martensite_embrittlement</code>
         <div class="links"><a href="figures/steel-tempered-martensite-embrittlement.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_tempered_martensite_embrittlement.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §D3 ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="hydrogen flaking — same ladle hydrogen, the section decides what dissolved hydrogen finally does — and why it is a *geometric* consequence, not a number. refining fills the ladle hydrogen and flags the chemistry-state risk; whether a *part* flakes (internal hairline cracks) is set by whether the hydrogen can diffuse out before the section cools into the brittle range. same 4140 heat at ~3.6 ppm, two sections, same dehydrogenation bake: the thin section degasses and is sound, the thick one traps it and flakes — and a long enough bake saves the thick one (the time scales as section²). two-tier, like cold-short/red-short: refining sets the risk, this the consequence. closed-form slab desorption (crank) — no engine, no adr. one genuine tooth: the bake time from an independently-pinned lattice d_h reproduces cited practice without tuning — a 500 mm forging → ~10 days (heavy forgings → days, the load-bearing anchor; the 1 h/inch thin-section rule is oom sanity only) — oom-grade; the l² scaling and verdict are by-construction. demo_hydrogen_flaking impurity consequences (front-end)">
       <a class="shot" href="figures/steel-hydrogen-flaking.png" target="_blank" rel="noopener"><img src="figures/steel-hydrogen-flaking.png" alt="Hydrogen flaking — same ladle hydrogen, the section decides" loading="lazy"></a>
       <div class="body">
         <h3>Hydrogen flaking — same ladle hydrogen, the section decides</h3>
-        <p class="blurb">What dissolved hydrogen finally does — and why it is a *geometric* consequence, not a number. Refining fills the ladle hydrogen and flags the chemistry-state risk; whether a *part* flakes (internal hairline cracks) is set by whether the hydrogen can diffuse out before the section cools into the brittle range. Same 4140 heat at ~3.6 ppm, two sections, same dehydrogenation bake: the thin section degasses and is sound, the thick one traps it and flakes — and a long enough bake saves the thick one (the time scales as section²). Two-tier, like cold-short/red-short: refining sets the risk, this the consequence. Closed-form slab desorption (Crank) — no engine, no ADR. One genuine tooth: the bake time from an independently-pinned lattice D_H reproduces cited practice without tuning — a 500 mm forging → ~10 days (heavy forgings → days, the load-bearing anchor; the 1 h/inch thin-section rule is OoM sanity only) — OoM-grade; the L² scaling and verdict are by-construction.</p>
+        <p class="blurb">What dissolved hydrogen finally does — and why it is a <em>geometric</em> consequence, not a number. Refining fills the ladle hydrogen and flags the chemistry-state risk; whether a <em>part</em> flakes (internal hairline cracks) is set by whether the hydrogen can diffuse out before the section cools into the brittle range. Same 4140 heat at ~3.6 ppm, two sections, same dehydrogenation bake: the thin section degasses and is sound, the thick one traps it and flakes — and a long enough bake saves the thick one (the time scales as section²). Two-tier, like cold-short/red-short: refining sets the risk, this the consequence. Closed-form slab desorption (Crank) — no engine, no ADR. One genuine tooth: the bake time from an independently-pinned lattice D_H reproduces cited practice without tuning — a 500 mm forging → ~10 days (heavy forgings → days, the load-bearing anchor; the 1 h/inch thin-section rule is OoM sanity only) — OoM-grade; the L² scaling and verdict are by-construction.</p>
         <code class="cmd">python -m steel.demo_hydrogen_flaking</code>
         <div class="links"><a href="figures/steel-hydrogen-flaking.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_hydrogen_flaking.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §D4 ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="gas (co) porosity — same oxygen spec, the carbon decides what dissolved oxygen finally does — and why it is a *carbon-aware* consequence, not a single number. refining flags a carbon-blind risk (o &gt; 30 ppm); whether a *casting* blows co holes is set by the carbon the oxygen reacts with: gas evolves where [%c]·[%o] crosses the same co equilibrium the converter runs on. same light kill, two carbons, both within the 30 ppm spec: the high-carbon 1080 sits right on the co line (limit ~25 ppm) and blows holes — carrying *less* oxygen than the sound low-carbon 8620 (limit ~100 ppm). a full kill saves it (the deox lever). two-tier, like cold-short/red-short/flaking: refining sets the risk, this the consequence — and the two disagree because of carbon. no engine, no adr, and honestly **no claimable tooth** (the criterion is the cited c–o equilibrium against held composition); the soft oom note is &#x27;high-c must be killed, low-c can be rimmed&#x27; from o_crit ∝ 1/c, no tuning. the solidification co-margin is a conservative secondary (scheil over-predicts carbon), not the verdict. demo_gas_porosity impurity consequences (front-end)">
       <a class="shot" href="figures/steel-gas-porosity.png" target="_blank" rel="noopener"><img src="figures/steel-gas-porosity.png" alt="Gas (CO) porosity — same oxygen spec, the carbon decides" loading="lazy"></a>
       <div class="body">
         <h3>Gas (CO) porosity — same oxygen spec, the carbon decides</h3>
-        <p class="blurb">What dissolved oxygen finally does — and why it is a *carbon-aware* consequence, not a single number. Refining flags a carbon-blind risk (O &gt; 30 ppm); whether a *casting* blows CO holes is set by the carbon the oxygen reacts with: gas evolves where [%C]·[%O] crosses the same CO equilibrium the converter runs on. Same light kill, two carbons, both within the 30 ppm spec: the high-carbon 1080 sits right on the CO line (limit ~25 ppm) and blows holes — carrying *less* oxygen than the sound low-carbon 8620 (limit ~100 ppm). A full kill saves it (the deox lever). Two-tier, like cold-short/red-short/flaking: refining sets the risk, this the consequence — and the two disagree because of carbon. No engine, no ADR, and honestly **no claimable tooth** (the criterion is the cited C–O equilibrium against held composition); the soft OoM note is &#x27;high-C must be killed, low-C can be rimmed&#x27; from O_crit ∝ 1/C, no tuning. The solidification CO-margin is a conservative secondary (Scheil over-predicts carbon), not the verdict.</p>
+        <p class="blurb">What dissolved oxygen finally does — and why it is a <em>carbon-aware</em> consequence, not a single number. Refining flags a carbon-blind risk (O &gt; 30 ppm); whether a <em>casting</em> blows CO holes is set by the carbon the oxygen reacts with: gas evolves where [%C]·[%O] crosses the same CO equilibrium the converter runs on. Same light kill, two carbons, both within the 30 ppm spec: the high-carbon 1080 sits right on the CO line (limit ~25 ppm) and blows holes — carrying <em>less</em> oxygen than the sound low-carbon 8620 (limit ~100 ppm). A full kill saves it (the deox lever). Two-tier, like cold-short/red-short/flaking: refining sets the risk, this the consequence — and the two disagree because of carbon. No engine, no ADR, and honestly <strong>no claimable tooth</strong> (the criterion is the cited C–O equilibrium against held composition); the soft OoM note is &#x27;high-C must be killed, low-C can be rimmed&#x27; from O_crit ∝ 1/C, no tuning. The solidification CO-margin is a conservative secondary (Scheil over-predicts carbon), not the verdict.</p>
         <code class="cmd">python -m steel.demo_gas_porosity</code>
         <div class="links"><a href="figures/steel-gas-porosity.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_gas_porosity.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §D5 ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="hot-tearing — same sulfur, the mn:s decides (segregation) what residual sulfur does at the *casting* stage — the segregation-amplified sibling of forging-stage red-shortness. slag flags a flat, mn-blind risk (s &gt; 0.040 %); whether a *casting* grows a fe–fes interdendritic film and hot-tears is set by the mn:s in the **last liquid to freeze**, which is scheil-enriched — sulfur piles up ~10× faster than manganese, so the film mn:s is ~10× poorer than the bath. two heats, same sulfur (both within spec, both clearing bulk mns stoichiometry): the lower-mn one (mn:s 10) tears because its film falls to ~1.2, the higher-mn one (mn:s 22) stays sound — the mushet lever again, only the threshold is in the *tens*. distinct from red-short by **phase + time** (interdendritic liquid during freezing vs bulk solid at the forge — castability ≠ forgeability), not duplicated. no engine, no adr, and **no claimable tooth** (the verdict is cited scheil partition feeding cited mns stoichiometry); the soft oom note is that segregation amplifies the stoichiometric 1.71 into the tens — reproducing the empirical &#x27;castings need mn:s ≳ 20&#x27; rule (toledo 1993) with no tuning, order-robust but cutoff-tuned. the rdg/feeding driver and the carbon-peritectic contribution are named deferrals. demo_hot_tear impurity consequences (front-end)">
       <a class="shot" href="figures/steel-hot-tear.png" target="_blank" rel="noopener"><img src="figures/steel-hot-tear.png" alt="Hot-tearing — same sulfur, the Mn:S decides (segregation)" loading="lazy"></a>
       <div class="body">
         <h3>Hot-tearing — same sulfur, the Mn:S decides (segregation)</h3>
-        <p class="blurb">What residual sulfur does at the *casting* stage — the segregation-amplified sibling of forging-stage red-shortness. Slag flags a flat, Mn-blind risk (S &gt; 0.040 %); whether a *casting* grows a Fe–FeS interdendritic film and hot-tears is set by the Mn:S in the **last liquid to freeze**, which is Scheil-enriched — sulfur piles up ~10× faster than manganese, so the film Mn:S is ~10× poorer than the bath. Two heats, same sulfur (both within spec, both clearing bulk MnS stoichiometry): the lower-Mn one (Mn:S 10) tears because its film falls to ~1.2, the higher-Mn one (Mn:S 22) stays sound — the Mushet lever again, only the threshold is in the *tens*. Distinct from red-short by **phase + time** (interdendritic liquid during freezing vs bulk solid at the forge — castability ≠ forgeability), not duplicated. No engine, no ADR, and **no claimable tooth** (the verdict is cited Scheil partition feeding cited MnS stoichiometry); the soft OoM note is that segregation amplifies the stoichiometric 1.71 into the tens — reproducing the empirical &#x27;castings need Mn:S ≳ 20&#x27; rule (Toledo 1993) with no tuning, order-robust but cutoff-tuned. The RDG/feeding driver and the carbon-peritectic contribution are named deferrals.</p>
+        <p class="blurb">What residual sulfur does at the <em>casting</em> stage — the segregation-amplified sibling of forging-stage red-shortness. Slag flags a flat, Mn-blind risk (S &gt; 0.040 %); whether a <em>casting</em> grows a Fe–FeS interdendritic film and hot-tears is set by the Mn:S in the <strong>last liquid to freeze</strong>, which is Scheil-enriched — sulfur piles up ~10× faster than manganese, so the film Mn:S is ~10× poorer than the bath. Two heats, same sulfur (both within spec, both clearing bulk MnS stoichiometry): the lower-Mn one (Mn:S 10) tears because its film falls to ~1.2, the higher-Mn one (Mn:S 22) stays sound — the Mushet lever again, only the threshold is in the <em>tens</em>. Distinct from red-short by <strong>phase + time</strong> (interdendritic liquid during freezing vs bulk solid at the forge — castability ≠ forgeability), not duplicated. No engine, no ADR, and <strong>no claimable tooth</strong> (the verdict is cited Scheil partition feeding cited MnS stoichiometry); the soft OoM note is that segregation amplifies the stoichiometric 1.71 into the tens — reproducing the empirical &#x27;castings need Mn:S ≳ 20&#x27; rule (Toledo 1993) with no tuning, order-robust but cutoff-tuned. The RDG/feeding driver and the carbon-peritectic contribution are named deferrals.</p>
         <code class="cmd">python -m steel.demo_hot_tear</code>
         <div class="links"><a href="figures/steel-hot-tear.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_hot_tear.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §D6 ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="mns morphology — the signed sulfur foil (same mns, asset and liability) the same manganese sulfide is signed: a deliberate **free-machining** asset (the reason the resulfurized 11xx grades exist — mns breaks the chip) *and* an unintended **through-thickness toughness** liability (hot working elongates the plastic mns into stringers that gut the short-transverse direction). slag raises one flat, shape-blind `high-sulfur` risk (s &gt; 0.040 %) that fires on every free-machining grade by design; this **splits** it into its good and bad halves. the hero: one resulfurized 1144-type heat read two ways — as-rolled it is free-machining **and** anisotropic; a calcium treatment globularizes the mns and it is free-machining **and** isotropic, the same sulfur, the same mns *volume* — only the shape changed (the lever is the shape, not the sulfur, which is why the anisotropy flag is gated on **morphology**, never an s-threshold). a plain low-s heat is tough but cannot free-machine — the other end of the trade. the worked-product sibling of forging-stage red-shortness (it reads the *tied* mns, where red-short reads the *free* sulfur). no engine, no adr, and **no claimable tooth**: the mns amount is cited stoichiometry, its volume a cited density ratio, the two verdicts by-construction; &#x27;one mns, two opposite signs&#x27; is the pedagogical point, by construction. the machinability index is the mns contribution only (hardness/carbon and pb/ca/te confound the real rating); the transverse debit is its own directional axis (not the hardness toughness proxy or dbtt). stringer aspect ratio (∝ rolling reduction) is a named ceiling. demo_sulfide_morphology impurity consequences (front-end)">
       <a class="shot" href="figures/steel-sulfide-morphology.png" target="_blank" rel="noopener"><img src="figures/steel-sulfide-morphology.png" alt="MnS morphology — the signed sulfur foil (same MnS, asset and liability)" loading="lazy"></a>
       <div class="body">
         <h3>MnS morphology — the signed sulfur foil (same MnS, asset and liability)</h3>
-        <p class="blurb">The same manganese sulfide is signed: a deliberate **free-machining** asset (the reason the resulfurized 11xx grades exist — MnS breaks the chip) *and* an unintended **through-thickness toughness** liability (hot working elongates the plastic MnS into stringers that gut the short-transverse direction). Slag raises one flat, shape-blind `high-sulfur` risk (S &gt; 0.040 %) that fires on every free-machining grade by design; this **splits** it into its good and bad halves. The hero: one resulfurized 1144-type heat read two ways — as-rolled it is free-machining **and** anisotropic; a calcium treatment globularizes the MnS and it is free-machining **and** isotropic, the same sulfur, the same MnS *volume* — only the shape changed (the lever is the shape, not the sulfur, which is why the anisotropy flag is gated on **morphology**, never an S-threshold). A plain low-S heat is tough but cannot free-machine — the other end of the trade. The worked-product sibling of forging-stage red-shortness (it reads the *tied* MnS, where red-short reads the *free* sulfur). No engine, no ADR, and **no claimable tooth**: the MnS amount is cited stoichiometry, its volume a cited density ratio, the two verdicts by-construction; &#x27;one MnS, two opposite signs&#x27; is the pedagogical point, by construction. The machinability index is the MnS contribution only (hardness/carbon and Pb/Ca/Te confound the real rating); the transverse debit is its own directional axis (not the hardness toughness proxy or DBTT). Stringer aspect ratio (∝ rolling reduction) is a named ceiling.</p>
+        <p class="blurb">The same manganese sulfide is signed: a deliberate <strong>free-machining</strong> asset (the reason the resulfurized 11xx grades exist — MnS breaks the chip) <em>and</em> an unintended <strong>through-thickness toughness</strong> liability (hot working elongates the plastic MnS into stringers that gut the short-transverse direction). Slag raises one flat, shape-blind <code>high-sulfur</code> risk (S &gt; 0.040 %) that fires on every free-machining grade by design; this <strong>splits</strong> it into its good and bad halves. The hero: one resulfurized 1144-type heat read two ways — as-rolled it is free-machining <strong>and</strong> anisotropic; a calcium treatment globularizes the MnS and it is free-machining <strong>and</strong> isotropic, the same sulfur, the same MnS <em>volume</em> — only the shape changed (the lever is the shape, not the sulfur, which is why the anisotropy flag is gated on <strong>morphology</strong>, never an S-threshold). A plain low-S heat is tough but cannot free-machine — the other end of the trade. The worked-product sibling of forging-stage red-shortness (it reads the <em>tied</em> MnS, where red-short reads the <em>free</em> sulfur). No engine, no ADR, and <strong>no claimable tooth</strong>: the MnS amount is cited stoichiometry, its volume a cited density ratio, the two verdicts by-construction; &#x27;one MnS, two opposite signs&#x27; is the pedagogical point, by construction. The machinability index is the MnS contribution only (hardness/carbon and Pb/Ca/Te confound the real rating); the transverse debit is its own directional axis (not the hardness toughness proxy or DBTT). Stringer aspect ratio (∝ rolling reduction) is a named ceiling.</p>
         <code class="cmd">python -m steel.demo_sulfide_morphology</code>
         <div class="links"><a href="figures/steel-sulfide-morphology.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_sulfide_morphology.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §D8 ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="wootz / damascus carbide banding — the signed good-impurity foil the mirror image of every other impurity story: the watered damascus pattern needs a trace carbide-forming **&quot;impurity&quot;** — chiefly **vanadium** — that a modern clean-steel spec would reject as off-spec pickup, yet the wootz smith *requires*. so &quot;bad steel&quot; and &quot;good steel&quot; are the same statement, signed either way — the one genuine front-end physics gap (`steel-making.md` §14.5 / §15.4), now filled. the carbide banding develops only through **three gates, all required** (verhoeven &amp; pendray 1998): **hypereutectoid carbon** (~1.5 %, so a proeutectoid fe₃c network exists to band — `fe_c` lever rule); a **trace former above threshold** (**v ≥ 40 ppm**, or the weaker mn ≥ 200 ppm); and **cyclic forging 50–100 °c below a_cm** (the cementite solvus — forge hotter and it dissolves). the hero: the *same* 1.5 %c steel forged the *same* way — the v-bearing cake waters into damascus; the clean modern twin, forged identically, comes out plain and raises **`wootz-pattern-failed`** (&quot;the smith did everything right; the ore lacked the vanadium&quot;). a plain bar never forged as wootz raises no flag — the flag is gated on **intent**. the reuse beat: the interdendritic former enrichment that aligns the bands is the *same* scheil solid-segregation ratio (`casting.segregation_ratio`) that makes centerline segregation a hardenability *defect* — one engine, two signs (γ coefficients, since hypereutectoid wootz solidifies as primary austenite). no engine, no adr, and **no claimable tooth**: the three gates are cited threshold lines, the cementite is `fe_c`&#x27;s lever rule, the enrichment is `casting`&#x27;s scheil. the band spacing (30–70 µm) is a **cited observation** (it traces the interdendritic spacing), **not** computed — that would be a manufactured coherence (cake modulus, chvorinov b, and the sdas law are all soft knobs aimed at a 2×-wide target). the enrichment ratio is representative (the pinned mo former as the exemplar). the verdict is yes/no, not a rendered etch — a named ceiling. demo_wootz impurity consequences (front-end)">
       <a class="shot" href="figures/steel-wootz.png" target="_blank" rel="noopener"><img src="figures/steel-wootz.png" alt="Wootz / Damascus carbide banding — the signed good-impurity foil" loading="lazy"></a>
       <div class="body">
         <h3>Wootz / Damascus carbide banding — the signed good-impurity foil</h3>
-        <p class="blurb">The mirror image of every other impurity story: the watered Damascus pattern needs a trace carbide-forming **&quot;impurity&quot;** — chiefly **vanadium** — that a modern clean-steel spec would reject as off-spec pickup, yet the wootz smith *requires*. So &quot;bad steel&quot; and &quot;good steel&quot; are the same statement, signed either way — the one genuine front-end physics gap (`steel-making.md` §14.5 / §15.4), now filled. The carbide banding develops only through **three gates, all required** (Verhoeven &amp; Pendray 1998): **hypereutectoid carbon** (~1.5 %, so a proeutectoid Fe₃C network exists to band — `fe_c` lever rule); a **trace former above threshold** (**V ≥ 40 ppm**, or the weaker Mn ≥ 200 ppm); and **cyclic forging 50–100 °C below A_cm** (the cementite solvus — forge hotter and it dissolves). The hero: the *same* 1.5 %C steel forged the *same* way — the V-bearing cake waters into Damascus; the clean modern twin, forged identically, comes out plain and raises **`wootz-pattern-failed`** (&quot;the smith did everything right; the ore lacked the vanadium&quot;). A plain bar never forged as wootz raises no flag — the flag is gated on **intent**. The reuse beat: the interdendritic former enrichment that aligns the bands is the *same* Scheil solid-segregation ratio (`casting.segregation_ratio`) that makes centerline segregation a hardenability *defect* — one engine, two signs (γ coefficients, since hypereutectoid wootz solidifies as primary austenite). No engine, no ADR, and **no claimable tooth**: the three gates are cited threshold lines, the cementite is `fe_c`&#x27;s lever rule, the enrichment is `casting`&#x27;s Scheil. The band spacing (30–70 µm) is a **cited observation** (it traces the interdendritic spacing), **not** computed — that would be a manufactured coherence (cake modulus, Chvorinov B, and the SDAS law are all soft knobs aimed at a 2×-wide target). The enrichment ratio is representative (the pinned Mo former as the exemplar). The verdict is yes/no, not a rendered etch — a named ceiling.</p>
+        <p class="blurb">The mirror image of every other impurity story: the watered Damascus pattern needs a trace carbide-forming <strong>&quot;impurity&quot;</strong> — chiefly <strong>vanadium</strong> — that a modern clean-steel spec would reject as off-spec pickup, yet the wootz smith <em>requires</em>. So &quot;bad steel&quot; and &quot;good steel&quot; are the same statement, signed either way — the one genuine front-end physics gap (<code>steel-making.md</code> §14.5 / §15.4), now filled. The carbide banding develops only through <strong>three gates, all required</strong> (Verhoeven &amp; Pendray 1998): <strong>hypereutectoid carbon</strong> (~1.5 %, so a proeutectoid Fe₃C network exists to band — <code>fe_c</code> lever rule); a <strong>trace former above threshold</strong> (<strong>V ≥ 40 ppm</strong>, or the weaker Mn ≥ 200 ppm); and <strong>cyclic forging 50–100 °C below A_cm</strong> (the cementite solvus — forge hotter and it dissolves). The hero: the <em>same</em> 1.5 %C steel forged the <em>same</em> way — the V-bearing cake waters into Damascus; the clean modern twin, forged identically, comes out plain and raises <strong><code>wootz-pattern-failed</code></strong> (&quot;the smith did everything right; the ore lacked the vanadium&quot;). A plain bar never forged as wootz raises no flag — the flag is gated on <strong>intent</strong>. The reuse beat: the interdendritic former enrichment that aligns the bands is the <em>same</em> Scheil solid-segregation ratio (<code>casting.segregation_ratio</code>) that makes centerline segregation a hardenability <em>defect</em> — one engine, two signs (γ coefficients, since hypereutectoid wootz solidifies as primary austenite). No engine, no ADR, and <strong>no claimable tooth</strong>: the three gates are cited threshold lines, the cementite is <code>fe_c</code>&#x27;s lever rule, the enrichment is <code>casting</code>&#x27;s Scheil. The band spacing (30–70 µm) is a <strong>cited observation</strong> (it traces the interdendritic spacing), <strong>not</strong> computed — that would be a manufactured coherence (cake modulus, Chvorinov B, and the SDAS law are all soft knobs aimed at a 2×-wide target). The enrichment ratio is representative (the pinned Mo former as the exemplar). The verdict is yes/no, not a rendered etch — a named ceiling.</p>
         <code class="cmd">python -m steel.demo_wootz</code>
         <div class="links"><a href="figures/steel-wootz.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_wootz.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §D9 ↗</a></div>
       </div>
     </article>
   </div>
-  <h2 class="section">Ladle trim (front-end)</h2>
+  <h2 class="section" id="ladle-trim-front-end">Ladle trim (front-end)<span class="count">3 demos</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="alloy to grade — where the composition is finalized (and missed) the seam to the back end: trim an alloy-lean tap up to a grade by ferroalloy additions, sized for an assumed recovery. a bath that under-delivers (cr/mo recovery halved) lands below the cited 4140 window — f3 flags off-grade — and the same oil quench that through-hardens the on-grade heat leaves a soft core. one ladle mistake, two flags: the front-end early warning and the validated back-end consequence — the hero-demo&#x27;s off-spec input, produced rather than hand-set. demo_ladle ladle trim (front-end)">
       <a class="shot" href="figures/steel-ladle.png" target="_blank" rel="noopener"><img src="figures/steel-ladle.png" alt="Alloy to grade — where the composition is finalized (and missed)" loading="lazy"></a>
       <div class="body">
         <h3>Alloy to grade — where the composition is finalized (and missed)</h3>
@@ -420,58 +492,58 @@ em { color: #c8cee0; font-style: italic; }
         <div class="links"><a href="figures/steel-ladle.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_ladle.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §F3 ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="carbon carry-in — same trim, the ferroalloy carbon grade decides a *second* ladle mistake beside the recovery shortfall: the carbon the ferroalloys carry. one alloy-lean 4140 tap, one set of charges sized to reach grade (identical assay/recovery either way) — but mixed in with cheap high-carbon (charge-grade) ferrochrome/ferromanganese (6–8 % c) the bath picks up ~+0.18 %c and lands at ~0.56 %c, **off-grade on its own carbon band** and a harder steel (~700 hv vs the on-grade ~625). the refined low-carbon grades carry the same trim without the pickup — *this is why low-carbon ferroalloys exist*. the verdict is off-grade fired on the carbon band through the same window machinery (no new flag); the hardness rise is the validated back end consuming the carry-in carbon — propagation colour, not a second pass/fail line. no engine, no adr, and **no claimable tooth** (mass-balance on cited assays); the ~40 %-of-the-grade&#x27;s-carbon magnitude is an order-of-magnitude coherence note. carbon recovery taken ~full; deox-state-dependent recovery is now its own panel (next); p/s bands stay deferred. demo_carbon_carry_in ladle trim (front-end)">
       <a class="shot" href="figures/steel-carbon-carry-in.png" target="_blank" rel="noopener"><img src="figures/steel-carbon-carry-in.png" alt="Carbon carry-in — same trim, the ferroalloy carbon grade decides" loading="lazy"></a>
       <div class="body">
         <h3>Carbon carry-in — same trim, the ferroalloy carbon grade decides</h3>
-        <p class="blurb">A *second* ladle mistake beside the recovery shortfall: the carbon the ferroalloys carry. One alloy-lean 4140 tap, one set of charges sized to reach grade (identical assay/recovery either way) — but mixed in with cheap high-carbon (charge-grade) ferrochrome/ferromanganese (6–8 % C) the bath picks up ~+0.18 %C and lands at ~0.56 %C, **off-grade on its own carbon band** and a harder steel (~700 HV vs the on-grade ~625). The refined low-carbon grades carry the same trim without the pickup — *this is why low-carbon ferroalloys exist*. The verdict is off-grade fired on the carbon band through the same window machinery (no new flag); the hardness rise is the validated back end consuming the carry-in carbon — propagation colour, not a second pass/fail line. No engine, no ADR, and **no claimable tooth** (mass-balance on cited assays); the ~40 %-of-the-grade&#x27;s-carbon magnitude is an order-of-magnitude coherence note. Carbon recovery taken ~full; deox-state-dependent recovery is now its own panel (next); P/S bands stay deferred.</p>
+        <p class="blurb">A <em>second</em> ladle mistake beside the recovery shortfall: the carbon the ferroalloys carry. One alloy-lean 4140 tap, one set of charges sized to reach grade (identical assay/recovery either way) — but mixed in with cheap high-carbon (charge-grade) ferrochrome/ferromanganese (6–8 % C) the bath picks up ~+0.18 %C and lands at ~0.56 %C, <strong>off-grade on its own carbon band</strong> and a harder steel (~700 HV vs the on-grade ~625). The refined low-carbon grades carry the same trim without the pickup — <em>this is why low-carbon ferroalloys exist</em>. The verdict is off-grade fired on the carbon band through the same window machinery (no new flag); the hardness rise is the validated back end consuming the carry-in carbon — propagation colour, not a second pass/fail line. No engine, no ADR, and <strong>no claimable tooth</strong> (mass-balance on cited assays); the ~40 %-of-the-grade&#x27;s-carbon magnitude is an order-of-magnitude coherence note. Carbon recovery taken ~full; deox-state-dependent recovery is now its own panel (next); P/S bands stay deferred.</p>
         <code class="cmd">python -m steel.demo_carbon_carry_in</code>
         <div class="links"><a href="figures/steel-carbon-carry-in.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_carbon_carry_in.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §F3b ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="the f2→f3 seam — dissolved oxygen taxes the oxidizable trim the seam that closes the ladle module&#x27;s last named deferral: where demo_ladle *hand-set* the recovery shortfall and demo_carbon_carry_in turned on the ferroalloy carbon, this one turns on f2&#x27;s **deox state**. trim the same charges into a well-killed bath (al-killed, o ~4 ppm) and mn/si recover in full; trim them into an under-killed one (a weak, insufficient kill — o ~53 ppm, **porosity-risk**) and the dissolved oxygen ties up a stoichiometric mass of the oxidizable additions as oxide, so mn/si land short — while the noble cr/mo/ni land identically (**selectivity**: the tax falls only on the alloys that deoxidize). the magnitude is honest and **modest** — even a fully under-killed bath taxes mn only ~2 % at 4140&#x27;s carbon (~4 % at 8620&#x27;s lower carbon, which sits at higher dissolved o), so the landed mn dips but stays *in-window*: the dissolved-o coupling alone cannot trip off-grade — quantitatively why demo_ladle&#x27;s gross under-trim hero must be hand-set. the carbon→oxygen→tax coherence ties f2&#x27;s c–o coupling straight into f3 recovery (kill-before-you-trim matters most where carbon is lowest). no engine, no adr, and **no claimable tooth** (conservation arithmetic on cited oxide stoichiometry; the gross slag-feo reoxidation distribution is the named ceiling). the only flag is f2&#x27;s porosity-risk. demo_deox_recovery ladle trim (front-end)">
       <a class="shot" href="figures/steel-deox-recovery.png" target="_blank" rel="noopener"><img src="figures/steel-deox-recovery.png" alt="The F2→F3 seam — dissolved oxygen taxes the oxidizable trim" loading="lazy"></a>
       <div class="body">
         <h3>The F2→F3 seam — dissolved oxygen taxes the oxidizable trim</h3>
-        <p class="blurb">The seam that closes the ladle module&#x27;s last named deferral: where demo_ladle *hand-set* the recovery shortfall and demo_carbon_carry_in turned on the ferroalloy carbon, this one turns on F2&#x27;s **deox state**. Trim the same charges into a well-killed bath (Al-killed, O ~4 ppm) and Mn/Si recover in full; trim them into an under-killed one (a weak, insufficient kill — O ~53 ppm, **porosity-risk**) and the dissolved oxygen ties up a stoichiometric mass of the oxidizable additions as oxide, so Mn/Si land short — while the noble Cr/Mo/Ni land identically (**selectivity**: the tax falls only on the alloys that deoxidize). The magnitude is honest and **modest** — even a fully under-killed bath taxes Mn only ~2 % at 4140&#x27;s carbon (~4 % at 8620&#x27;s lower carbon, which sits at higher dissolved O), so the landed Mn dips but stays *in-window*: the dissolved-O coupling alone cannot trip off-grade — quantitatively why demo_ladle&#x27;s gross under-trim hero must be hand-set. The carbon→oxygen→tax coherence ties F2&#x27;s C–O coupling straight into F3 recovery (kill-before-you-trim matters most where carbon is lowest). No engine, no ADR, and **no claimable tooth** (conservation arithmetic on cited oxide stoichiometry; the gross slag-FeO reoxidation distribution is the named ceiling). The only flag is F2&#x27;s porosity-risk.</p>
+        <p class="blurb">The seam that closes the ladle module&#x27;s last named deferral: where demo_ladle <em>hand-set</em> the recovery shortfall and demo_carbon_carry_in turned on the ferroalloy carbon, this one turns on F2&#x27;s <strong>deox state</strong>. Trim the same charges into a well-killed bath (Al-killed, O ~4 ppm) and Mn/Si recover in full; trim them into an under-killed one (a weak, insufficient kill — O ~53 ppm, <strong>porosity-risk</strong>) and the dissolved oxygen ties up a stoichiometric mass of the oxidizable additions as oxide, so Mn/Si land short — while the noble Cr/Mo/Ni land identically (<strong>selectivity</strong>: the tax falls only on the alloys that deoxidize). The magnitude is honest and <strong>modest</strong> — even a fully under-killed bath taxes Mn only ~2 % at 4140&#x27;s carbon (~4 % at 8620&#x27;s lower carbon, which sits at higher dissolved O), so the landed Mn dips but stays <em>in-window</em>: the dissolved-O coupling alone cannot trip off-grade — quantitatively why demo_ladle&#x27;s gross under-trim hero must be hand-set. The carbon→oxygen→tax coherence ties F2&#x27;s C–O coupling straight into F3 recovery (kill-before-you-trim matters most where carbon is lowest). No engine, no ADR, and <strong>no claimable tooth</strong> (conservation arithmetic on cited oxide stoichiometry; the gross slag-FeO reoxidation distribution is the named ceiling). The only flag is F2&#x27;s porosity-risk.</p>
         <code class="cmd">python -m steel.demo_deox_recovery</code>
         <div class="links"><a href="figures/steel-deox-recovery.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_deox_recovery.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §F3c ↗</a></div>
       </div>
     </article>
   </div>
-  <h2 class="section">Casting (front-end)</h2>
+  <h2 class="section" id="casting-front-end">Casting (front-end)<span class="count">3 demos</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="casting &amp; solidification — segregation runs front-to-back the chain closes front-to-back: cast a billet and scheil microsegregation enriches the last-to-freeze centerline (s, p, c the worst), so the *same* casting heat-treats non-uniformly — the enriched centerline over-hardens into a hard band the bulk never reaches. a real front-end engine produces the heat the validated back end consumes. chvorinov solidification time alongside. demo_casting casting (front-end)">
       <a class="shot" href="figures/steel-casting.png" target="_blank" rel="noopener"><img src="figures/steel-casting.png" alt="Casting &amp; solidification — segregation runs front-to-back" loading="lazy"></a>
       <div class="body">
         <h3>Casting &amp; solidification — segregation runs front-to-back</h3>
-        <p class="blurb">The chain closes front-to-back: cast a billet and Scheil microsegregation enriches the last-to-freeze centerline (S, P, C the worst), so the *same* casting heat-treats non-uniformly — the enriched centerline over-hardens into a hard band the bulk never reaches. A real front-end engine produces the Heat the validated back end consumes. Chvorinov solidification time alongside.</p>
+        <p class="blurb">The chain closes front-to-back: cast a billet and Scheil microsegregation enriches the last-to-freeze centerline (S, P, C the worst), so the <em>same</em> casting heat-treats non-uniformly — the enriched centerline over-hardens into a hard band the bulk never reaches. A real front-end engine produces the Heat the validated back end consumes. Chvorinov solidification time alongside.</p>
         <code class="cmd">python -m steel.demo_casting</code>
         <div class="links"><a href="figures/steel-casting.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_casting.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §F4a ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="solidification map &amp; casting defects — validated against stefan casting&#x27;s deferred half (f4 slice 2): the latent-heat temperature field of a section freezing against a chill, solved on the *same sealed heat engine* (enthalpy method, no engine touch). the iconic solidification map, the latent-heat arrest at the thermal centre, and — the headline tooth — the numerical freezing front *converging to the analytic one-phase stefan closed form* 2λ√(αt) under grid refinement, conservation exact. the insulated centre freezes last (the shrinkage hot spot — the same centerline slice 1 enriches); the cited niyama criterion collapses there. stefan match is the validated tooth; the niyama/hot-spot reads are by-construction. demo_solidification casting (front-end)">
       <a class="shot" href="figures/steel-solidification.png" target="_blank" rel="noopener"><img src="figures/steel-solidification.png" alt="Solidification map &amp; casting defects — validated against Stefan" loading="lazy"></a>
       <div class="body">
         <h3>Solidification map &amp; casting defects — validated against Stefan</h3>
-        <p class="blurb">Casting&#x27;s deferred half (F4 Slice 2): the latent-heat temperature field of a section freezing against a chill, solved on the *same sealed heat engine* (enthalpy method, no engine touch). The iconic solidification map, the latent-heat arrest at the thermal centre, and — the headline tooth — the numerical freezing front *converging to the analytic one-phase Stefan closed form* 2λ√(αt) under grid refinement, conservation exact. The insulated centre freezes last (the shrinkage hot spot — the same centerline Slice 1 enriches); the cited Niyama criterion collapses there. Stefan match is the validated tooth; the Niyama/hot-spot reads are by-construction.</p>
+        <p class="blurb">Casting&#x27;s deferred half (F4 Slice 2): the latent-heat temperature field of a section freezing against a chill, solved on the <em>same sealed heat engine</em> (enthalpy method, no engine touch). The iconic solidification map, the latent-heat arrest at the thermal centre, and — the headline tooth — the numerical freezing front <em>converging to the analytic one-phase Stefan closed form</em> 2λ√(αt) under grid refinement, conservation exact. The insulated centre freezes last (the shrinkage hot spot — the same centerline Slice 1 enriches); the cited Niyama criterion collapses there. Stefan match is the validated tooth; the Niyama/hot-spot reads are by-construction.</p>
         <code class="cmd">python -m steel.demo_solidification</code>
         <div class="links"><a href="figures/steel-solidification.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_solidification.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §F4b ↗</a></div>
       </div>
     </article>
-    <article class="card">
+    <article class="card" data-search="peritectic surface cracking — carbon decides, non-monotonically the carbon-driven sibling of sulfur hot-tearing: the peritectic transformation l + δ → γ is a bcc→fcc volume contraction that, concentrated high in the continuous-casting mould, shrinks the thin shell off the wall into longitudinal facial cracks — so the hypo-peritectic ~0.10–0.16 %c grades are the worst surface-crackers, and counter-intuitively a *leaner* or a *richer* steel casts more soundly. three plain-carbon heats, carbon the only axis: 0.05 %c (fully δ, sound), 0.11 %c (wolf&#x27;s ferrite potential in the depression band, cracks), 0.45 %c (austenitic, sound) — *more carbon is safer*. the verdict is wolf&#x27;s cited fp = 2.5(0.5 − cp) band (0.8–1.05); the mechanism is the fe–c peritectic lever rule (cited invariants 0.09/0.17/0.53 at 1495 °c, by construction). reads nominal carbon (the shell phenomenon), the *reverse* of hot-tear&#x27;s last-liquid read. a second lever: same 0.20 %c, ferrite stabilizers (si+cr) pull cp into the band — alloying decides. no engine, no adr, and **no claimable tooth** (cited classifier + by-construction lever); the soft note is a coherence (carefully *not* independent — both rest on the fe–c peritectic): the lever rule and wolf&#x27;s empirical fp place the trouble at the same ~0.1 %c window. the consumed-δ peaks at the band edge (cγ 0.17), not the empirical worst — the exact worst-carbon needs δ→γ kinetics + shell mechanics (underdetermined). demo_peritectic casting (front-end)">
       <a class="shot" href="figures/steel-peritectic.png" target="_blank" rel="noopener"><img src="figures/steel-peritectic.png" alt="Peritectic surface cracking — carbon decides, non-monotonically" loading="lazy"></a>
       <div class="body">
         <h3>Peritectic surface cracking — carbon decides, non-monotonically</h3>
-        <p class="blurb">The carbon-driven sibling of sulfur hot-tearing: the peritectic transformation L + δ → γ is a BCC→FCC volume contraction that, concentrated high in the continuous-casting mould, shrinks the thin shell off the wall into longitudinal facial cracks — so the hypo-peritectic ~0.10–0.16 %C grades are the worst surface-crackers, and counter-intuitively a *leaner* OR a *richer* steel casts more soundly. Three plain-carbon heats, carbon the only axis: 0.05 %C (fully δ, sound), 0.11 %C (Wolf&#x27;s ferrite potential in the depression band, cracks), 0.45 %C (austenitic, sound) — *more carbon is safer*. The verdict is Wolf&#x27;s cited FP = 2.5(0.5 − Cp) band (0.8–1.05); the mechanism is the Fe–C peritectic lever rule (cited invariants 0.09/0.17/0.53 at 1495 °C, by construction). Reads NOMINAL carbon (the shell phenomenon), the *reverse* of hot-tear&#x27;s last-liquid read. A second lever: same 0.20 %C, ferrite stabilizers (Si+Cr) pull Cp into the band — alloying decides. No engine, no ADR, and **no claimable tooth** (cited classifier + by-construction lever); the soft note is a coherence (carefully *not* independent — both rest on the Fe–C peritectic): the lever rule and Wolf&#x27;s empirical FP place the trouble at the same ~0.1 %C window. The consumed-δ peaks at the band edge (Cγ 0.17), not the empirical worst — the exact worst-carbon needs δ→γ kinetics + shell mechanics (underdetermined).</p>
+        <p class="blurb">The carbon-driven sibling of sulfur hot-tearing: the peritectic transformation L + δ → γ is a BCC→FCC volume contraction that, concentrated high in the continuous-casting mould, shrinks the thin shell off the wall into longitudinal facial cracks — so the hypo-peritectic ~0.10–0.16 %C grades are the worst surface-crackers, and counter-intuitively a <em>leaner</em> OR a <em>richer</em> steel casts more soundly. Three plain-carbon heats, carbon the only axis: 0.05 %C (fully δ, sound), 0.11 %C (Wolf&#x27;s ferrite potential in the depression band, cracks), 0.45 %C (austenitic, sound) — <em>more carbon is safer</em>. The verdict is Wolf&#x27;s cited FP = 2.5(0.5 − Cp) band (0.8–1.05); the mechanism is the Fe–C peritectic lever rule (cited invariants 0.09/0.17/0.53 at 1495 °C, by construction). Reads NOMINAL carbon (the shell phenomenon), the <em>reverse</em> of hot-tear&#x27;s last-liquid read. A second lever: same 0.20 %C, ferrite stabilizers (Si+Cr) pull Cp into the band — alloying decides. No engine, no ADR, and <strong>no claimable tooth</strong> (cited classifier + by-construction lever); the soft note is a coherence (carefully <em>not</em> independent — both rest on the Fe–C peritectic): the lever rule and Wolf&#x27;s empirical FP place the trouble at the same ~0.1 %C window. The consumed-δ peaks at the band edge (Cγ 0.17), not the empirical worst — the exact worst-carbon needs δ→γ kinetics + shell mechanics (underdetermined).</p>
         <code class="cmd">python -m steel.demo_peritectic</code>
         <div class="links"><a href="figures/steel-peritectic.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/demo_peritectic.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">notebook §D7 ↗</a></div>
       </div>
     </article>
   </div>
-  <h2 class="section">Full-chain capstone (front-end)</h2>
+  <h2 class="section" id="full-chain-capstone-front-end">Full-chain capstone (front-end)<span class="count">1 demo</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="ore → billet → part — one heat, the whole chain the synthesis the front and back halves were each built toward: one heat threaded the whole way — hot-metal charge → decarburize → dephosphorize → deoxidize → degas → desulfurize → trim to grade → cast → quench — on a single, un-rewritten provenance trail (until now the stages were only ever shown independently). two heats take the identical chain and differ by a single knob, the f2 blow endpoint: the reference (blown to the grade carbon) lands a sound part — on grade, through-hardened, the seeded tramp p/s driven below spec end to end; the over-blown foil (0.25 %c) is wrong from the blow, caught off-grade at the trim, and soft-cores at the quench — the longest propagation in the repo, one mistake surfaced two stages apart. integration, not new physics: every number comes from a sealed engine, and the lone seam that takes a steel (casting) is re-based onto the heat so the trail stays continuous. demo_capstone full-chain capstone (front-end)">
       <a class="shot" href="figures/steel-capstone.png" target="_blank" rel="noopener"><img src="figures/steel-capstone.png" alt="Ore → billet → part — one Heat, the whole chain" loading="lazy"></a>
       <div class="body">
         <h3>Ore → billet → part — one Heat, the whole chain</h3>
@@ -481,25 +553,25 @@ em { color: #c8cee0; font-style: italic; }
       </div>
     </article>
   </div>
-  <h2 class="section">Game (playable spinoff)</h2>
+  <h2 class="section" id="game-playable-spinoff">Game (playable spinoff)<span class="count">1 demo</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="make one heat — the production chain, as a gauntlet the capstone chain made playable (the game/ spinoff, slice 1): every stage is a decision — blow endpoint, dephosphorization, the kill metal (al ≫ si &gt; mn), the vacuum, desulfurization, the ferroalloys, the quench. take every recommendation and the part comes out sound — and reproduces the sealed capstone golden run exactly; one wrong call plants a latent flaw the finished part is judged on: a weak kill blows gas porosity, a shallow vacuum flakes, skipped dephos goes cold-short, carbon pickup runs off-grade. the verdicts are the sealed consequence engines&#x27; own, read off the one heat in a post-mortem — not scripted branches (the acceptance bar is losability: each knob has a wrong setting that flips the verdict, pinned by a test). casting is an honest pass-through (no pass/fail lever on this grade — said so, not faked). opt-in educational mode adds a why-card per decision, every number read live from the engine. the one package that clears no physics triad by design — game/ orchestrates, it reimplements nothing — so its discipline is structural (firewall + golden-run determinism + losability). headless here; the interactive version is `streamlit run game/app_game.py`. demo_game game (playable spinoff)">
       <a class="shot" href="figures/steel-game-blow.png" target="_blank" rel="noopener"><img src="figures/steel-game-blow.png" alt="Make one heat — the production chain, as a gauntlet" loading="lazy"></a>
       <div class="body">
         <h3>Make one heat — the production chain, as a gauntlet</h3>
-        <p class="blurb">The capstone chain made PLAYABLE (the game/ spinoff, Slice 1): EVERY stage is a decision — blow endpoint, dephosphorization, the kill metal (Al ≫ Si &gt; Mn), the vacuum, desulfurization, the ferroalloys, the quench. Take every recommendation and the part comes out sound — and reproduces the sealed capstone golden run EXACTLY; one wrong call plants a latent flaw the finished part is judged on: a weak kill blows gas porosity, a shallow vacuum flakes, skipped dephos goes cold-short, carbon pickup runs off-grade. The verdicts are the sealed consequence engines&#x27; own, read off the one Heat in a post-mortem — not scripted branches (the acceptance bar is losability: each knob has a wrong setting that flips the verdict, pinned by a test). Casting is an honest pass-through (no pass/fail lever on this grade — said so, not faked). Opt-in educational mode adds a why-card per decision, every number read live from the engine. The one package that clears no physics triad by design — game/ orchestrates, it reimplements nothing — so its discipline is structural (firewall + golden-run determinism + losability). Headless here; the interactive version is `streamlit run game/app_game.py`.</p>
+        <p class="blurb">The capstone chain made PLAYABLE (the game/ spinoff, Slice 1): EVERY stage is a decision — blow endpoint, dephosphorization, the kill metal (Al ≫ Si &gt; Mn), the vacuum, desulfurization, the ferroalloys, the quench. Take every recommendation and the part comes out sound — and reproduces the sealed capstone golden run EXACTLY; one wrong call plants a latent flaw the finished part is judged on: a weak kill blows gas porosity, a shallow vacuum flakes, skipped dephos goes cold-short, carbon pickup runs off-grade. The verdicts are the sealed consequence engines&#x27; own, read off the one Heat in a post-mortem — not scripted branches (the acceptance bar is losability: each knob has a wrong setting that flips the verdict, pinned by a test). Casting is an honest pass-through (no pass/fail lever on this grade — said so, not faked). Opt-in educational mode adds a why-card per decision, every number read live from the engine. The one package that clears no physics triad by design — game/ orchestrates, it reimplements nothing — so its discipline is structural (firewall + golden-run determinism + losability). Headless here; the interactive version is <code>streamlit run game/app_game.py</code>.</p>
         <code class="cmd">python -m game.demo_game</code>
         <div class="links"><a href="figures/steel-game-blow.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/game/demo_game.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><span class="chip">app: make one heat</span></div>
       </div>
     </article>
   </div>
-  <h2 class="section">Game — the era tech tree</h2>
+  <h2 class="section" id="game-the-era-tech-tree">Game — the era tech tree<span class="count">1 demo</span></h2>
   <div class="grid">
-    <article class="card">
+    <article class="card" data-search="the purity-control ramp — make 4140 across the methods of history the §15.2 method→engine map made playable (the game/ spinoff, slice 2): make the same grade (4140) through the methods of history — acid bessemer (1856), thomas/basic bessemer (1879), basic open hearth, the bof, modern eaf + ladle metallurgy — each a constrained walk through the same validated f1–f4 engines, with the era fixing the refining chemistry (which dephosphorization slag runs, whether the era has a reducing ladle). the purity-control ramp is the difficulty curve: a phosphoric ore is cold-short in acid bessemer (acid slag, l_p≈1 — why bessemer rails cracked), phosphorus-fixed-but-still-dirty in thomas (basic slag, l_p in the hundreds — no ladle desulf yet), and sound only in the modern ladle era (the reducing slag takes the sulfur). a clean, non-phosphoric ore is sound even in acid bessemer — exactly why the early bessemer trade fought over it. the two era-gated tramps are phosphorus and sulfur (the benchmarked slag-partition physics); hydrogen, the kill, speed, scale, and nitrogen are flavor, labelled. the open hearth and bof share thomas&#x27; chemistry in this model (their distinction is flavor) — said, and pinned by a test; the bloomery is the named era-0 floor, not a played 4140 route. no new physics — game/ orchestrates the sealed engines (firewall + the golden run preserved). headless here; the interactive version (pick a method + ore) is `streamlit run game/app_game.py`. demo_game_methods game — the era tech tree">
       <a class="shot" href="figures/steel-game-methods.png" target="_blank" rel="noopener"><img src="figures/steel-game-methods.png" alt="The purity-control ramp — make 4140 across the methods of history" loading="lazy"></a>
       <div class="body">
         <h3>The purity-control ramp — make 4140 across the methods of history</h3>
-        <p class="blurb">The §15.2 method→engine map made playable (the game/ spinoff, Slice 2): make the SAME grade (4140) through the methods of history — acid Bessemer (1856), Thomas/basic Bessemer (1879), basic open hearth, the BOF, modern EAF + ladle metallurgy — each a constrained walk through the same validated F1–F4 engines, with the era fixing the refining chemistry (which dephosphorization slag runs, whether the era has a reducing ladle). The PURITY-CONTROL RAMP is the difficulty curve: a phosphoric ore is cold-short in acid Bessemer (acid slag, L_P≈1 — why Bessemer rails cracked), phosphorus-fixed-but-still-dirty in Thomas (basic slag, L_P in the hundreds — no ladle desulf yet), and sound only in the modern ladle era (the reducing slag takes the sulfur). A clean, non-phosphoric ore is sound even in acid Bessemer — exactly why the early Bessemer trade fought over it. The two era-gated tramps are phosphorus and sulfur (the benchmarked slag-partition physics); hydrogen, the kill, speed, scale, and nitrogen are flavor, labelled. The open hearth and BOF share Thomas&#x27; chemistry in this model (their distinction is flavor) — said, and pinned by a test; the bloomery is the named era-0 floor, not a played 4140 route. No new physics — game/ orchestrates the sealed engines (firewall + the golden run preserved). Headless here; the interactive version (pick a method + ore) is `streamlit run game/app_game.py`.</p>
+        <p class="blurb">The §15.2 method→engine map made playable (the game/ spinoff, Slice 2): make the SAME grade (4140) through the methods of history — acid Bessemer (1856), Thomas/basic Bessemer (1879), basic open hearth, the BOF, modern EAF + ladle metallurgy — each a constrained walk through the same validated F1–F4 engines, with the era fixing the refining chemistry (which dephosphorization slag runs, whether the era has a reducing ladle). The PURITY-CONTROL RAMP is the difficulty curve: a phosphoric ore is cold-short in acid Bessemer (acid slag, L_P≈1 — why Bessemer rails cracked), phosphorus-fixed-but-still-dirty in Thomas (basic slag, L_P in the hundreds — no ladle desulf yet), and sound only in the modern ladle era (the reducing slag takes the sulfur). A clean, non-phosphoric ore is sound even in acid Bessemer — exactly why the early Bessemer trade fought over it. The two era-gated tramps are phosphorus and sulfur (the benchmarked slag-partition physics); hydrogen, the kill, speed, scale, and nitrogen are flavor, labelled. The open hearth and BOF share Thomas&#x27; chemistry in this model (their distinction is flavor) — said, and pinned by a test; the bloomery is the named era-0 floor, not a played 4140 route. No new physics — game/ orchestrates the sealed engines (firewall + the golden run preserved). Headless here; the interactive version (pick a method + ore) is <code>streamlit run game/app_game.py</code>.</p>
         <code class="cmd">python -m game.demo_game_methods</code>
         <div class="links"><a href="figures/steel-game-methods.png" target="_blank" rel="noopener">figure ↗</a><span class="sep">|</span><a href="https://github.com/BoykoNeov/steel-sim/blob/main/game/demo_game_methods.py" target="_blank" rel="noopener">source ↗</a><span class="sep">|</span><span class="chip">app: make one heat</span></div>
       </div>
@@ -509,5 +581,30 @@ em { color: #c8cee0; font-style: italic; }
     This page is generated by <code>python -m steel.gallery</code> from a single catalog in <code>steel/gallery.py</code>, and a test (<code>test_gallery.py</code>) fails the build if it drifts — add a demo and its figure, regenerate, and it appears here automatically. &nbsp;·&nbsp; <a href="https://github.com/BoykoNeov/steel-sim/blob/main/README.md" target="_blank" rel="noopener">README</a> &nbsp;·&nbsp; <a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/steel.ipynb" target="_blank" rel="noopener">notebook</a> &nbsp;·&nbsp; <a href="https://github.com/BoykoNeov/steel-sim/blob/main/steel/making.ipynb" target="_blank" rel="noopener">making notebook</a> &nbsp;·&nbsp; <a href="https://github.com/BoykoNeov/steel-sim" target="_blank" rel="noopener">repository</a>
   </footer>
   </div>
+  <script>
+(function () {
+  var q = document.getElementById('q');
+  if (!q) return;
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.card'));
+  var grids = Array.prototype.slice.call(document.querySelectorAll('.grid'));
+  var none = document.getElementById('noresults');
+  q.addEventListener('input', function () {
+    var t = q.value.trim().toLowerCase();
+    var any = false;
+    cards.forEach(function (c) {
+      var hit = !t || c.getAttribute('data-search').indexOf(t) !== -1;
+      c.classList.toggle('hide', !hit);
+      if (hit) any = true;
+    });
+    grids.forEach(function (g) {
+      var vis = g.querySelectorAll('.card:not(.hide)').length > 0;
+      g.classList.toggle('hide', !vis);
+      var h = g.previousElementSibling;
+      if (h && h.classList.contains('section')) h.classList.toggle('hide', !vis);
+    });
+    none.classList.toggle('hide', any);
+  });
+})();
+  </script>
 </body>
 </html>

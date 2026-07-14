@@ -23,6 +23,7 @@ This module has no third-party imports — it is pure stdlib so it runs in any c
 from __future__ import annotations
 
 import html
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -556,21 +557,42 @@ CATALOG: tuple[Entry, ...] = (
 
 
 # --- rendering ----------------------------------------------------------------------------
+# The page styles itself for BOTH color schemes via CSS variables: dark is the default,
+# `prefers-color-scheme: light` swaps the palette. Figures are banked on white, so the
+# thumbnail well (`--shot-bg`) stays white in both schemes.
 _CSS = """\
 :root {
-  --bg: #0f1115; --panel: #171a21; --panel2: #1d2129; --ink: #e7e9ee; --muted: #9aa3b2;
-  --line: #2a2f3a; --accent: #ff8a3d; --accent2: #5ab0ff; --code: #0b0d11;
+  --bg: #0e1014; --panel: #161a21; --panel2: #1c212b; --ink: #e8eaef; --muted: #9aa3b2;
+  --line: #29303c; --accent: #ff8a3d; --accent2: #6cb5ff; --code: #0a0c10;
+  --cmd-ink: #cfe3ff; --em-ink: #c8cee0; --shot-bg: #ffffff; --veil: rgba(14, 16, 20, 0.86);
+  --hover-line: #445067; --shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --panel2: #eef0f4; --ink: #1d222b; --muted: #5c6572;
+    --line: #dcdfe6; --accent: #d3641a; --accent2: #1f6fd6; --code: #eef0f4;
+    --cmd-ink: #17457a; --em-ink: #333c4d; --shot-bg: #ffffff; --veil: rgba(245, 246, 248, 0.88);
+    --hover-line: #b9bfcb; --shadow: 0 12px 26px rgba(25, 31, 42, 0.10);
+  }
 }
 * { box-sizing: border-box; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
+body::before { content: ""; display: block; height: 3px;
+               background: linear-gradient(90deg, #ff5d1f, #ff8a3d, #ffc46b, #6cb5ff); }
 a { color: var(--accent2); text-decoration: none; }
 a:hover { text-decoration: underline; }
-.wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 64px; }
-header h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.01em; }
-header .tag { color: var(--muted); margin: 0 0 22px; font-size: 16px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 30px 20px 64px; }
+header h1 { margin: 0 0 6px; font-size: 32px; letter-spacing: -0.015em; }
+header h1 .hot { background: linear-gradient(90deg, #ff5d1f, #ff9a4d, #ffc46b);
+                 -webkit-background-clip: text; background-clip: text; color: transparent; }
+header .tag { color: var(--muted); margin: 0 0 10px; font-size: 16px; max-width: 72ch; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; padding: 0; list-style: none; }
+.stats li { font-size: 12.5px; color: var(--muted); border: 1px solid var(--line);
+            border-radius: 999px; padding: 2px 11px; background: var(--panel); }
+.stats li b { color: var(--accent); font-weight: 600; }
 .ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;
         margin: 0 0 14px; }
 .way { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
@@ -578,32 +600,100 @@ header .tag { color: var(--muted); margin: 0 0 22px; font-size: 16px; }
 .way p { margin: 0; color: var(--muted); font-size: 13.5px; }
 code, .cmd { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
 .cmd { display: block; background: var(--code); border: 1px solid var(--line); border-radius: 8px;
-       padding: 7px 10px; font-size: 13px; color: #cfe3ff; overflow-x: auto; }
-.note { color: var(--muted); font-size: 13.5px; margin: 6px 0 26px; }
-h2.section { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent);
-             border-bottom: 1px solid var(--line); padding-bottom: 6px; margin: 34px 0 16px; }
+       padding: 7px 10px; font-size: 13px; color: var(--cmd-ink); overflow-x: auto; }
+.note { color: var(--muted); font-size: 13.5px; margin: 6px 0 10px; }
+nav.toc { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px;
+          overflow-x: auto; margin: 0 -20px; padding: 10px 20px;
+          background: var(--veil); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+          border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+nav.toc a { flex: none; font-size: 12.5px; color: var(--muted); border: 1px solid var(--line);
+            border-radius: 999px; padding: 3px 11px; white-space: nowrap;
+            transition: color .12s, border-color .12s; }
+nav.toc a:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
+nav.toc input { flex: none; width: 200px; font: inherit; font-size: 13px; color: var(--ink);
+                background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+                padding: 4px 13px; outline: none; }
+nav.toc input:focus { border-color: var(--accent); }
+nav.toc input::placeholder { color: var(--muted); }
+#noresults { color: var(--muted); font-size: 14px; margin: 28px 0; }
+h2.section { display: flex; align-items: baseline; gap: 10px; font-size: 13px;
+             text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent);
+             border-bottom: 1px solid var(--line); padding-bottom: 6px; margin: 34px 0 16px;
+             scroll-margin-top: 62px; }
+h2.section .count { font-weight: 400; color: var(--muted); letter-spacing: 0; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 18px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-        display: flex; flex-direction: column; transition: border-color .15s, transform .15s; }
-.card:hover { border-color: #3a4150; transform: translateY(-2px); }
-.card .shot { display: block; background: var(--panel2); border-bottom: 1px solid var(--line); }
-.card .shot img { display: block; width: 100%; height: 188px; object-fit: contain; background: #fff; }
+        display: flex; flex-direction: column;
+        transition: border-color .15s, transform .15s, box-shadow .15s; }
+.card:hover { border-color: var(--hover-line); transform: translateY(-3px); box-shadow: var(--shadow); }
+.card .shot { display: block; background: var(--panel2); border-bottom: 1px solid var(--line);
+              overflow: hidden; }
+.card .shot img { display: block; width: 100%; height: 188px; object-fit: contain;
+                  background: var(--shot-bg); transition: transform .25s ease; }
+.card:hover .shot img { transform: scale(1.025); }
 .card .body { padding: 13px 15px 15px; display: flex; flex-direction: column; gap: 9px; flex: 1; }
 .card h3 { margin: 0; font-size: 17px; }
 .card .blurb { margin: 0; color: var(--muted); font-size: 13.5px; flex: 1; }
+.card .blurb strong { color: var(--em-ink); font-weight: 600; }
+.card .blurb code { font-size: 12px; }
 .card .links { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 13px; padding-top: 2px;
                border-top: 1px solid var(--line); margin-top: 2px; }
 .card .links .sep { color: var(--line); }
 .chip { display: inline-block; font-size: 11px; color: var(--muted); border: 1px solid var(--line);
         border-radius: 999px; padding: 1px 8px; }
+.hide { display: none !important; }
 footer { color: var(--muted); font-size: 13px; margin-top: 44px; border-top: 1px solid var(--line);
          padding-top: 18px; }
-em { color: #c8cee0; font-style: italic; }
+em { color: var(--em-ink); font-style: italic; }
+"""
+
+# The one script on the page: the nav filter box. Typing narrows the cards by title / blurb /
+# module / topic (each card carries a lowercased `data-search` attribute); sections whose cards
+# are all filtered out hide with them. Pure vanilla JS, no dependencies, degrades to nothing.
+_JS = """\
+(function () {
+  var q = document.getElementById('q');
+  if (!q) return;
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.card'));
+  var grids = Array.prototype.slice.call(document.querySelectorAll('.grid'));
+  var none = document.getElementById('noresults');
+  q.addEventListener('input', function () {
+    var t = q.value.trim().toLowerCase();
+    var any = false;
+    cards.forEach(function (c) {
+      var hit = !t || c.getAttribute('data-search').indexOf(t) !== -1;
+      c.classList.toggle('hide', !hit);
+      if (hit) any = true;
+    });
+    grids.forEach(function (g) {
+      var vis = g.querySelectorAll('.card:not(.hide)').length > 0;
+      g.classList.toggle('hide', !vis);
+      var h = g.previousElementSibling;
+      if (h && h.classList.contains('section')) h.classList.toggle('hide', !vis);
+    });
+    none.classList.toggle('hide', any);
+  });
+})();
 """
 
 
 def _esc(s: str) -> str:
     return html.escape(s, quote=True)
+
+
+def _slug(topic: str) -> str:
+    """A stable anchor id for a topic section (lowercase, runs of non-alphanumerics → '-')."""
+    return "-".join("".join(ch if ch.isalnum() else " " for ch in topic.lower()).split())
+
+
+def _rich(s: str) -> str:
+    """Escape, then render the blurbs' markdown-lite emphasis (`code`, **strong**, *em*) as real
+    HTML — the catalog is written like the READMEs, and raw asterisks on the page read as typos."""
+    t = _esc(s)
+    t = re.sub(r"`([^`]+)`", r"<code>\1</code>", t)
+    t = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", t)
+    t = re.sub(r"\*([^*]+)\*", r"<em>\1</em>", t)
+    return t
 
 
 def _card_html(e: Entry) -> str:
@@ -623,13 +713,14 @@ def _card_html(e: Entry) -> str:
     if e.app:
         links.append(f'<span class="chip">app: {_esc(e.app)}</span>')
     links_html = '<span class="sep">|</span>'.join(links)
+    search = _esc(f"{e.title} {e.blurb} {e.module} {e.topic}".lower())
     return (
-        '    <article class="card">\n'
+        f'    <article class="card" data-search="{search}">\n'
         f'      <a class="shot" href="{fig_rel}" target="_blank" rel="noopener">'
         f'<img src="{fig_rel}" alt="{_esc(e.title)}" loading="lazy"></a>\n'
         '      <div class="body">\n'
         f'        <h3>{_esc(e.title)}</h3>\n'
-        f'        <p class="blurb">{_esc(e.blurb)}</p>\n'
+        f'        <p class="blurb">{_rich(e.blurb)}</p>\n'
         f'        <code class="cmd">python -m {e.package}.{e.module}</code>\n'
         f'        <div class="links">{links_html}</div>\n'
         '      </div>\n'
@@ -637,14 +728,44 @@ def _card_html(e: Entry) -> str:
     )
 
 
+def _topics() -> list[tuple[str, int]]:
+    """The topics in catalog order with their card counts (drives the nav and section headers)."""
+    out: list[tuple[str, int]] = []
+    for e in CATALOG:
+        if out and out[-1][0] == e.topic:
+            out[-1] = (e.topic, out[-1][1] + 1)
+        else:
+            out.append((e.topic, 1))
+    return out
+
+
+def _nav_html() -> str:
+    """The sticky topic nav: a live filter box plus one jump-chip per section."""
+    chips = "".join(
+        f'    <a href="#{_slug(topic)}">{_esc(topic)}</a>\n' for topic, _ in _topics()
+    )
+    return (
+        '  <nav class="toc">\n'
+        '    <input id="q" type="search" placeholder="Filter demos…" autocomplete="off"\n'
+        '           aria-label="Filter demos by title, blurb, or module name">\n'
+        f"{chips}"
+        "  </nav>"
+    )
+
+
 def _sections_html() -> str:
     out: list[str] = []
+    counts = dict(_topics())
     current: str | None = None
     for e in CATALOG:
         if e.topic != current:
             if current is not None:
                 out.append("  </div>")  # close previous grid
-            out.append(f'  <h2 class="section">{_esc(e.topic)}</h2>')
+            n = counts[e.topic]
+            out.append(
+                f'  <h2 class="section" id="{_slug(e.topic)}">{_esc(e.topic)}'
+                f'<span class="count">{n} demo{"s" if n != 1 else ""}</span></h2>'
+            )
             out.append('  <div class="grid">')
             current = e.topic
         out.append(_card_html(e))
@@ -677,6 +798,16 @@ def render_html() -> str:
         '(ore → billet → and what goes wrong).</p></div>\n'
         '  </div>'
     )
+    n_demos = len(CATALOG)
+    n_topics = len(_topics())
+    stats = (
+        '  <ul class="stats">\n'
+        f'    <li><b>{n_demos}</b> runnable demos</li>\n'
+        f'    <li><b>{n_topics}</b> topics, ore → part</li>\n'
+        '    <li><b>2</b> teaching notebooks</li>\n'
+        '    <li><b>3</b> interactive apps + <b>1</b> playable game</li>\n'
+        '  </ul>'
+    )
     body = (
         '<!doctype html>\n'
         '<html lang="en">\n'
@@ -689,11 +820,12 @@ def render_html() -> str:
         '<body>\n'
         '  <div class="wrap">\n'
         '  <header>\n'
-        '    <h1>steel-sim — visual gallery &amp; guided tour</h1>\n'
+        '    <h1><span class="hot">steel-sim</span> — visual gallery &amp; guided tour</h1>\n'
         '    <p class="tag">Composition + cooling in, microstructure and properties out. '
         'Click any card to open its figure full-size, or copy its run command. '
         'Every surface of the simulator — visualizations, demos, experiments, and the '
         'notebook — in one place.</p>\n'
+        f'{stats}\n'
         '  </header>\n'
         f'{ways}\n'
         '  <p class="note">Suggested first pass: '
@@ -703,6 +835,9 @@ def render_html() -> str:
         f'<a href="{ROOT_README_URL}" target="_blank" rel="noopener">README</a>; the physics and '
         f'validation behind each demo are in '
         f'<a href="{STEEL_README_URL}" target="_blank" rel="noopener">steel/README.md</a>.</p>\n'
+        f'{_nav_html()}\n'
+        '  <p id="noresults" class="hide">No demo matches that filter — try a shorter term '
+        '(titles, blurbs, module names, and topics are all searched).</p>\n'
         f'{_sections_html()}\n'
         '  <footer>\n'
         '    This page is generated by <code>python -m steel.gallery</code> from a single catalog '
@@ -715,6 +850,7 @@ def render_html() -> str:
         'rel="noopener">repository</a>\n'
         '  </footer>\n'
         '  </div>\n'
+        f'  <script>\n{_JS}  </script>\n'
         '</body>\n'
         '</html>\n'
     )
